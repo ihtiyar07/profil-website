@@ -1,0 +1,17 @@
+{
+  "name": "Ahmet İhtiyar — Systems & IoT Engineer",
+  "short_name": "Ahmet İhtiyar",
+  "description": "Full-spectrum systems engineering: ESP32 edge telemetry, Spring Boot & .NET microservices, MetaDB data lineage, and Proxmox infrastructure.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#10B981",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

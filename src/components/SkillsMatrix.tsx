@@ -28,10 +28,10 @@ export const SkillsMatrix: React.FC<SkillsMatrixProps> = ({ currentLang }) => {
   ];
 
   return (
-    <section id="stack" className="w-full max-w-5xl mx-auto px-6 py-14 border-b border-slate-200/80 dark:border-white/10">
+    <section id="stack" className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 border-b border-slate-200/80 dark:border-white/10">
       
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white font-sans">
           {isTr ? 'Teknoloji Yığını & Araçlar' : 'Tech Stack & Production Tools'}
         </h2>
@@ -43,11 +43,11 @@ export const SkillsMatrix: React.FC<SkillsMatrixProps> = ({ currentLang }) => {
       </div>
 
       {/* 4 Clean Badge Groups */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
         {groups.map((group, idx) => (
           <div 
             key={idx}
-            className="p-5 rounded-2xl bg-white dark:bg-[#121520] border border-slate-200 dark:border-white/10 shadow-xs space-y-3"
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121520] border border-slate-200 dark:border-white/10 shadow-xs space-y-2.5 sm:space-y-3"
           >
             <h3 className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
               {group.title}

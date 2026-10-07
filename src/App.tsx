@@ -27,9 +27,9 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = currentLang;
     if (currentLang === 'tr') {
-      document.title = 'Ahmet İhtiyar — Kıdemli Sistem & Arka Uç Mühendisi';
+      document.title = 'Ahmet İhtiyar — Kıdemli Sistem & Arka Uç Mühendisi | Dağıtık Mimari & IoT';
     } else {
-      document.title = 'Ahmet İhtiyar — Senior Systems & Backend Engineer';
+      document.title = 'Ahmet İhtiyar — Senior Systems & Backend Engineer | Distributed Architecture & IoT';
     }
   }, [currentLang]);
 
@@ -48,7 +48,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d13] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-100 dark:selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-300 w-full overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d13] bg-grid-blueprint text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-100 dark:selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-300 w-full overflow-x-hidden transition-colors duration-200">
       
       {/* Floating Navbar with Theme Toggle */}
       <Navbar

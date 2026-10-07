@@ -42,6 +42,7 @@ export const PORTFOLIO_DATA = {
     location: "Türkiye (Open to Global Remote / Hybrid)",
     email: "ahmetihtiyar1453@gmail.com",
     github: "https://github.com/ihtiyar07",
+    linkedin: "https://linkedin.com/in/ahmet-ihtiyar",
     statusBadge: {
       tr: "Aktif: Yeni Projeler & Mimari Danışmanlık İçin Açık",
       en: "Active: Open for Systems & Architecture Projects"
@@ -217,38 +218,6 @@ export const PORTFOLIO_DATA = {
         { label: { tr: 'Yetkilendirme', en: 'Auth Model' }, value: 'Granular RBAC / ABAC' }
       ],
       tags: ['Keycloak', 'OAuth2', 'OIDC', 'Spring Security', 'JWT', 'SSO', 'IAM']
-    },
-    {
-      id: 'multimodal-ai',
-      personas: ['all', 'data'],
-      featured: false,
-      category: {
-        tr: 'Yapay Zeka & Derin Öğrenme',
-        en: 'AI & Deep Learning'
-      },
-      title: {
-        tr: 'Multimodal Görüntü & NLP Dil Modeli Boru Hattı (BLIP & T5)',
-        en: 'Multimodal Vision & NLP Pipeline (BLIP & T5 Transformers)'
-      },
-      summary: {
-        tr: 'BLIP ile görsel açıklama ve nesne sınıflandırma, T5 transformatör modeli ile otomatik metin özetleme ve anlamsal etiketleme sağlayan Python çıkarım mimarisi.',
-        en: 'Python inference architecture powering image captioning & object classification via BLIP, alongside automated document summarization via T5.'
-      },
-      description: {
-        tr: 'Görüntü ve doğal dil işleme modellerini üretim mikroservislerine entegre eden asenkron veri boru hattı. BLIP (Bootstrapping Language-Image Pre-training) modeli görsel verilerden otomatik metinsel öznitelikler çıkarırken, T5 modeli bu öznitelikleri anlamsal kategorilere ve özetlere dönüştürür. FastAPI ile sunulan çıkarım servisi, batching ve bellek optimizasyonu ile donatılmıştır.',
-        en: 'Asynchronous pipeline integrating computer vision and transformer language models into microservice ecosystems. BLIP extracts textual semantics and descriptions from raw images, while T5 normalizes and generates contextual summaries. Deployed via FastAPI with memory caching and tensor batching.'
-      },
-      architecture: {
-        tr: 'Python 3.11+, PyTorch, Hugging Face Transformers (BLIP, T5), FastAPI, Docker, GPU/CPU Optimized Inference.',
-        en: 'Python 3.11+, PyTorch, Hugging Face Transformers (BLIP, T5), FastAPI, Docker, GPU/CPU Optimized Inference.'
-      },
-      metrics: [
-        { label: { tr: 'Modeller', en: 'Models' }, value: 'BLIP (Vision) + T5 (NLP)' },
-        { label: { tr: 'Servis', en: 'Serving' }, value: 'FastAPI Async Inference' },
-        { label: { tr: 'Görev', en: 'Task' }, value: 'Visual Captioning & Summary' },
-        { label: { tr: 'Pipeline', en: 'Pipeline' }, value: 'PyTorch / HuggingFace' }
-      ],
-      tags: ['Python', 'PyTorch', 'BLIP', 'T5', 'FastAPI', 'Deep Learning', 'Computer Vision']
     }
   ],
 
@@ -261,9 +230,9 @@ export const PORTFOLIO_DATA = {
         { name: 'Java (Spring Boot 3, WebFlux, Batch)', level: 95, highlight: true, experience: 'Production Lead', detail: { tr: 'Mikroservisler, Spring Security JWT, Batch ETL, Quartz', en: 'Microservices, Spring Security JWT, Batch ETL, Quartz' } },
         { name: 'C# & .NET (4.8, 8, 10)', level: 90, highlight: true, experience: 'Production Lead', detail: { tr: 'Merkezi ödeme servisleri, Client/App mimarisi, LINQ', en: 'Payment engines, Client/App architecture, LINQ' } },
         { name: 'SQL & Database Optimization', level: 92, highlight: true, experience: 'Deep Expertise', detail: { tr: 'Karmaşık indeksleme, EXPLAIN ANALYZE, Zero-Impact katalog sorguları', en: 'Complex indexing, EXPLAIN ANALYZE, Zero-Impact catalog stats' } },
-        { name: 'Python (FastAPI, PyTorch)', level: 85, experience: 'Advanced', detail: { tr: 'SQL AST parser servisleri, BLIP/T5 çıkarım API\'leri', en: 'SQL AST parser services, BLIP/T5 inference APIs' } },
+        { name: 'Python (FastAPI, SQLGlot, AsyncIO)', level: 88, experience: 'Advanced', detail: { tr: 'SQL AST parser mikroservisleri, asenkron ETL boru hatları', en: 'SQL AST parser microservices, async ETL pipelines' } },
         { name: 'C++ & C', level: 82, experience: 'Embedded/Systems', detail: { tr: 'ESP32 firmware, register manipülasyonu, Modbus ayrıştırma', en: 'ESP32 firmware, register manipulation, Modbus parsing' } },
-        { name: 'JavaScript / TypeScript (React)', level: 88, experience: 'Full Stack', detail: { tr: 'React 18, Vite, UI durum yönetimi, Tailwind, Canvas', en: 'React 18, Vite, state management, Tailwind, Canvas' } }
+        { name: 'JavaScript / TypeScript (React)', level: 88, experience: 'Full Stack', detail: { tr: 'React 18/19, Vite, UI durum yönetimi, Tailwind, Canvas', en: 'React 18/19, Vite, state management, Tailwind, Canvas' } }
       ]
     },
     {
@@ -302,12 +271,12 @@ export const PORTFOLIO_DATA = {
     },
     {
       id: 'security',
-      name: { tr: 'Kimlik, Güvenlik & AI', en: 'IAM, Security & AI' },
+      name: { tr: 'Kimlik, Güvenlik & Ağ Mimarisi', en: 'IAM, Security & Network Transit' },
       iconName: 'ShieldCheck',
       items: [
         { name: 'Keycloak (SSO / IAM)', level: 92, highlight: true, experience: 'IAM Specialist', detail: { tr: 'Multi-realm mimarisi, OAuth2, OpenID Connect, RBAC/ABAC', en: 'Multi-realm, OAuth2, OpenID Connect, RBAC/ABAC federation' } },
         { name: 'Spring Security 6 & OAuth2', level: 90, experience: 'Security Core', detail: { tr: 'Stateless JWT filtreleri, JWKS anahtar rotasyonu', en: 'Stateless JWT filters, JWKS key rotation' } },
-        { name: 'Yapay Zeka (BLIP, T5, PyTorch)', level: 82, experience: 'ML Integration', detail: { tr: 'Görüntü etiketleme, metin özetleme, HuggingFace boru hatları', en: 'Image captioning, text summarization, HuggingFace pipelines' } }
+        { name: 'TLS/mTLS, WireGuard & Ağ Güvenliği', level: 88, experience: 'Infrastructure', detail: { tr: 'Sertifika yönetimi, VPN tünelleri, güvenli servis-servis iletişimi', en: 'Cert management, VPN tunnels, secure microservices transit' } }
       ]
     }
   ],

@@ -1,11 +1,5 @@
 import React from 'react';
-import { 
-  Cpu, 
-  Mail, 
-  ArrowUp,
-  Cloud
-} from 'lucide-react';
-import { GithubIcon } from './GithubIcon';
+import { ArrowUpRight, Mail } from 'lucide-react';
 import { PORTFOLIO_DATA, type Language } from '../data/portfolioData';
 
 interface FooterProps {
@@ -16,82 +10,50 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ currentLang, onOpenContact }) => {
   const isTr = currentLang === 'tr';
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   return (
-    <footer className="bg-slate-950 border-t border-slate-800 text-slate-400 font-mono text-xs py-8 sm:py-12 relative w-full">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
-        
-        {/* Main Footer Row */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6 pb-6 sm:pb-8 border-b border-slate-850">
+    <footer id="contact" className="w-full max-w-5xl mx-auto px-6 py-14 space-y-8">
+      
+      {/* Contact Note */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-8 border-b border-slate-200/80 dark:border-white/10">
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white font-sans">
+            {isTr ? 'Birlikte Çalışalım' : 'Let\'s Build Together'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans max-w-lg">
+            {isTr
+              ? 'Dağıtık mikroservisler, endüstriyel IoT donanımları veya veri soykütüğü projeleriniz için doğrudan ulaşabilirsiniz.'
+              : 'Feel free to reach out for distributed backend architectures, industrial IoT firmware, or data lineage platforms.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={onOpenContact}
+            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>{isTr ? 'İletişime Geç' : 'Contact Me'}</span>
+          </button>
           
-          {/* Brand Info */}
-          <div className="space-y-1.5 sm:space-y-2">
-            <div className="flex items-center gap-2 text-white font-bold text-xs sm:text-sm tracking-wider">
-              <Cpu className="w-4 h-4 text-emerald-400" />
-              <span>AHMET İHTİYAR // SYSTEMS & IOT</span>
-            </div>
-            <p className="text-slate-400 text-xs font-sans max-w-md leading-relaxed">
-              {isTr
-                ? 'ESP32 donanım seviyesinden Spring Boot mikroservislerine, MetaDB soykütüğünden Proxmox sanallaştırmasına uçtan uca mühendislik.'
-                : 'Full-spectrum systems engineering spanning ESP32 firmware, Spring Boot microservices, MetaDB lineage, and Proxmox infrastructure.'}
-            </p>
-          </div>
-
-          {/* Cloudflare Pages Badge */}
-          <div className="w-full sm:w-auto p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1 sm:space-y-1.5 shrink-0">
-            <div className="flex items-center gap-2 text-slate-200">
-              <Cloud className="w-4 h-4 text-orange-400" />
-              <span className="font-bold text-[10px] sm:text-[11px]">CLOUDFLARE PAGES READY</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-auto" />
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between gap-4">
-              <span>Edge Global CDN: &lt;15ms</span>
-              <span className="text-emerald-400 font-semibold">100% Static</span>
-            </div>
-          </div>
-
+          <a
+            href={`mailto:${PORTFOLIO_DATA.profile.email}`}
+            className="px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            {PORTFOLIO_DATA.profile.email}
+          </a>
         </div>
-
-        {/* Bottom Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[10px] sm:text-[11px]">
-          <div className="text-center sm:text-left">
-            © {new Date().getFullYear()} Ahmet İhtiyar. {isTr ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            <a
-              href={PORTFOLIO_DATA.profile.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-400 transition-colors flex items-center gap-1"
-            >
-              <GithubIcon className="w-3.5 h-3.5" />
-              <span>GitHub</span>
-            </a>
-
-            <button
-              onClick={onOpenContact}
-              className="hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>{isTr ? 'İletişim' : 'Contact'}</span>
-            </button>
-
-            <button
-              onClick={scrollToTop}
-              className="p-1.5 rounded-md bg-slate-900 border border-slate-800 hover:text-white hover:border-slate-700 transition-all cursor-pointer flex items-center gap-1"
-              title={isTr ? 'Başa Dön' : 'Scroll to top'}
-              aria-label="Scroll to top"
-            >
-              <ArrowUp className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
       </div>
+
+      {/* Bottom Minimal Signature */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-500 font-mono">
+        <div>
+          © {new Date().getFullYear()} Ahmet İhtiyar.
+        </div>
+        <div>
+          İstanbul, TR • Systems & Distributed Architecture
+        </div>
+      </div>
+
     </footer>
   );
 };

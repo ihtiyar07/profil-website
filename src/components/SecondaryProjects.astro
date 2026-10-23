@@ -1,0 +1,55 @@
+---
+import { SECONDARY_PROJECTS } from '../data/secondaryProjects';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+---
+
+<section id="secondary-projects" class="py-12 sm:py-16 border-b border-[var(--border)]">
+  <!-- Section Title -->
+  <div class="mb-8">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+        03 — {isTr ? 'İkincil İşler' : 'Secondary Works'}
+      </span>
+      <span class="h-px w-8 bg-[var(--border)]"></span>
+    </div>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Diğer Sistem ve Altyapı Projeleri' : 'Selected Systems & Infrastructure'}
+      </h2>
+      <p class="font-mono text-xs text-[var(--text-dim)]">
+        {isTr ? 'Tek satırlık kompakt kayıt defteri' : 'Compact registry index'}
+      </p>
+    </div>
+  </div>
+
+  <!-- Compact Editorial List: name · what it did · stack · year -->
+  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+    {SECONDARY_PROJECTS.map((project) => (
+      <div class="py-4 sm:py-4.5 flex flex-col md:flex-row md:items-baseline justify-between gap-2 sm:gap-4 hover:bg-[var(--bg-subtle)] transition-colors px-2 -mx-2 rounded-[2px]">
+        <div class="flex-1 space-y-1">
+          <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span class="font-serif text-base sm:text-lg font-medium text-[var(--text)]">
+              {project.name}
+            </span>
+            <span class="text-[var(--text-dim)] hidden sm:inline" aria-hidden="true">·</span>
+            <span class="text-xs sm:text-[13px] text-[var(--text)] font-sans">
+              {project.whatItDid[lang]}
+            </span>
+          </div>
+          <div class="font-mono text-[11px] text-[var(--text-muted)]">
+            <span class="text-[#E8590C]">Stack:</span> {project.stack}
+          </div>
+        </div>
+        <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto">
+          {project.year}
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

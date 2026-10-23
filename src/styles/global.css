@@ -1,0 +1,187 @@
+@import "@fontsource/newsreader/index.css";
+@import "@fontsource/geist-sans/index.css";
+@import "@fontsource/jetbrains-mono/index.css";
+@import "tailwindcss";
+
+:root {
+  /* Default light paper theme */
+  --bg: #F4F1EA;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #ECE8DE;
+  --bg-code: #EAE6DC;
+  --text: #14130F;
+  --text-muted: #5B574E;
+  --text-dim: #7C776D;
+  --border: #D9D4C7;
+  --border-strong: #BFB9AA;
+  --accent: #E8590C;
+  --accent-hover: #CF4E08;
+  --accent-subtle: rgba(232, 89, 12, 0.08);
+  --selection: #E8590C;
+  --selection-text: #FFFFFF;
+}
+
+html[data-theme="dark"] {
+  /* Warm almost-black dark theme (NOT navy!) */
+  --bg: #14130F;
+  --bg-card: #1A1915;
+  --bg-subtle: #22201B;
+  --bg-code: #1E1D18;
+  --text: #EDE9DF;
+  --text-muted: #9E988A;
+  --text-dim: #787366;
+  --border: #2C2A24;
+  --border-strong: #423F36;
+  --accent: #E8590C;
+  --accent-hover: #FF6E20;
+  --accent-subtle: rgba(232, 89, 12, 0.12);
+  --selection: #E8590C;
+  --selection-text: #FFFFFF;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #14130F;
+    --bg-card: #1A1915;
+    --bg-subtle: #22201B;
+    --bg-code: #1E1D18;
+    --text: #EDE9DF;
+    --text-muted: #9E988A;
+    --text-dim: #787366;
+    --border: #2C2A24;
+    --border-strong: #423F36;
+    --accent: #E8590C;
+    --accent-hover: #FF6E20;
+    --accent-subtle: rgba(232, 89, 12, 0.12);
+    --selection: #E8590C;
+    --selection-text: #FFFFFF;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: var(--selection);
+  color: var(--selection-text);
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--text);
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.65;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Editorial Typography */
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: 'Newsreader', Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-feature-settings: 'cv01', 'cv02';
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+code, kbd, samp, pre, .font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Accessibility & Focus */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 1rem;
+  background: var(--text);
+  color: var(--bg);
+  padding: 0.5rem 1rem;
+  z-index: 1000;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Pipeline packet pulse animation */
+@keyframes pipeline-pulse-x {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(calc(100% - 10px)); opacity: 0; }
+}
+
+@keyframes pipeline-pulse-y {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(calc(100% - 10px)); opacity: 0; }
+}
+
+.pipeline-packet {
+  animation: pipeline-pulse-x 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (max-width: 768px) {
+  .pipeline-packet {
+    animation: pipeline-pulse-y 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  .pipeline-packet, *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pipeline-packet {
+    display: none !important;
+  }
+}
+
+/* Editorial prose measure */
+.prose-editorial {
+  max-width: 68ch;
+}
+
+/* Subtle hairline borders */
+.border-subtle {
+  border-color: var(--border);
+}
+
+.bg-paper {
+  background-color: var(--bg);
+}
+
+.text-editorial {
+  color: var(--text);
+}
+
+.text-editorial-muted {
+  color: var(--text-muted);
+}
+
+.text-accent {
+  color: var(--accent);
+}

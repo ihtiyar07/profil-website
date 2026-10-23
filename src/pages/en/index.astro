@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Hero from '../../components/Hero.astro';
+import DataPipeline from '../../components/DataPipeline.astro';
+import CaseFiles from '../../components/CaseFiles.astro';
+import SecondaryProjects from '../../components/SecondaryProjects.astro';
+import Invariants from '../../components/Invariants.astro';
+import WritingSection from '../../components/WritingSection.astro';
+import ArchiveSection from '../../components/ArchiveSection.astro';
+import ContactSection from '../../components/ContactSection.astro';
+---
+
+<BaseLayout lang="en">
+  <!-- 00. Hero: Headline, Now line, 2 Actions, Portrait Photo -->
+  <Hero lang="en" />
+
+  <!-- 01. Backbone: "The Path of Data" Interactive Pipeline & Infrastructure Ground -->
+  <DataPipeline lang="en" />
+
+  <!-- 02. Primary Work: 3 Editorial Dossiers (Case 01 / 02 / 03) -->
+  <CaseFiles lang="en" />
+
+  <!-- 03. Secondary Works: Compact Registry -->
+  <SecondaryProjects lang="en" />
+
+  <!-- 04. Invariants: Rule -> Failure Mode -> Solution -> Verification -->
+  <Invariants lang="en" />
+
+  <!-- 05. Technical Writing: MDX Articles -->
+  <WritingSection lang="en" />
+
+  <!-- 06. Historical Timeline & Challenges -->
+  <ArchiveSection lang="en" />
+
+  <!-- 07. Contact: Email, GitHub, LinkedIn, CV PDF -->
+  <ContactSection lang="en" />
+</BaseLayout>

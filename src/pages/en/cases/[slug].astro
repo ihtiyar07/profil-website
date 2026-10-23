@@ -1,0 +1,71 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const cases = await getCollection('cases');
+  return cases
+    .filter((entry) => entry.data.lang === 'en')
+    .map((entry) => {
+      const slug = entry.id.replace(/en$/, '');
+      return {
+        params: { slug },
+        props: { entry }
+      };
+    });
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BaseLayout lang="en" title={`${entry.data.title} — Ahmet İhtiyar`} description={entry.data.summary}>
+  <article class="py-8 sm:py-12 space-y-8 max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="space-y-3 pb-6 border-b border-[var(--border)]">
+      <div class="flex items-center justify-between">
+        <a href="/en#cases" class="font-mono text-xs text-[#E8590C] hover:underline inline-flex items-center gap-1">
+          ← Back to Dossiers ({entry.data.fileNumber})
+        </a>
+        <span class="font-mono text-xs text-[var(--text-dim)]">
+          {entry.data.date}
+        </span>
+      </div>
+
+      <h1 class="text-3xl sm:text-4xl font-serif text-[var(--text)] tracking-tight">
+        {entry.data.title}
+      </h1>
+
+      <p class="font-mono text-xs text-[var(--text-muted)]">
+        {entry.data.tagline}
+      </p>
+
+      <div class="font-mono text-xs text-[#E8590C] bg-[var(--bg-subtle)] p-2.5 rounded-[2px] border-l-2 border-[#E8590C]">
+        {entry.data.testedScale}
+      </div>
+
+      <div class="flex flex-wrap gap-1.5 pt-2">
+        {entry.data.stack.map((tech) => (
+          <span class="font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-code)] text-[var(--text)] border border-[var(--border)] rounded-[2px]">
+            {tech}
+          </span>
+        ))}
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-6 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h3]:text-xl [&>h3]:font-serif [&>p]:text-[14px] [&>p]:leading-relaxed [&>p]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono">
+      <Content />
+    </div>
+
+    <!-- Footer Back Link -->
+    <div class="pt-8 border-t border-[var(--border)] flex justify-between items-center font-mono text-xs">
+      <a href="/en#cases" class="text-[#E8590C] hover:underline inline-flex items-center gap-1">
+        ← Back to Case Studies
+      </a>
+      <a href="mailto:ahmetihtiyar1453@gmail.com" class="text-[var(--text-muted)] hover:text-[#E8590C] hover:underline">
+        Email to Discuss Architecture ↗
+      </a>
+    </div>
+  </article>
+</BaseLayout>

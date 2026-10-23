@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import DataPipeline from '../components/DataPipeline.astro';
+import CaseFiles from '../components/CaseFiles.astro';
+import SecondaryProjects from '../components/SecondaryProjects.astro';
+import Invariants from '../components/Invariants.astro';
+import WritingSection from '../components/WritingSection.astro';
+import ArchiveSection from '../components/ArchiveSection.astro';
+import ContactSection from '../components/ContactSection.astro';
+---
+
+<BaseLayout lang="tr">
+  <!-- 00. Hero: H1, "Şu an" Notu, 2 Aksiyon, Portre Fotoğrafı -->
+  <Hero lang="tr" />
+
+  <!-- 01. Omurga: "Verinin Yolu" İnteraktif Hattı & Altyapı Zemini -->
+  <DataPipeline lang="tr" />
+
+  <!-- 02. Seçilmiş İşler: 3 Birincil Vaka Çalışması (Dosya 01 / 02 / 03) -->
+  <CaseFiles lang="tr" />
+
+  <!-- 03. İkincil İşler: Kompakt Kayıt Defteri -->
+  <SecondaryProjects lang="tr" />
+
+  <!-- 04. Değişmezler: Kural -> Nasıl Bozulur -> Çözüm -> Nerede Doğruladım -->
+  <Invariants lang="tr" />
+
+  <!-- 05. Yazılar: MDX Teknik Makaleler -->
+  <WritingSection lang="tr" />
+
+  <!-- 06. Arşiv: Zaman Çizelgesi -->
+  <ArchiveSection lang="tr" />
+
+  <!-- 07. İletişim: E-posta, GitHub, LinkedIn, CV PDF -->
+  <ContactSection lang="tr" />
+</BaseLayout>

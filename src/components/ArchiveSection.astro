@@ -1,0 +1,57 @@
+---
+import { ARCHIVE_ITEMS } from '../data/archive';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+---
+
+<section id="archive" class="py-12 sm:py-16 border-b border-[var(--border)]">
+  <!-- Section Title -->
+  <div class="mb-8">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+        06 — {isTr ? 'Arşiv' : 'Archive'}
+      </span>
+      <span class="h-px w-8 bg-[var(--border)]"></span>
+    </div>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Zaman Çizelgesi & Yarışmalar' : 'Historical Timeline & Challenges'}
+      </h2>
+      <p class="font-mono text-xs text-[var(--text-dim)]">
+        {isTr ? 'Datathonlar, robotik yarışmaları ve yan dal çalışmaları' : 'Datathons, robotics challenges & exploratory research'}
+      </p>
+    </div>
+  </div>
+
+  <!-- Single Clean Editorial Timeline -->
+  <div class="relative pl-6 sm:pl-8 border-l border-[var(--border-strong)] space-y-6 sm:space-y-8 my-4">
+    {ARCHIVE_ITEMS.map((item) => (
+      <div class="relative group">
+        <!-- Bullet dot -->
+        <span class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-2.5 h-2.5 rounded-full bg-[var(--bg)] border-2 border-[var(--border-strong)] group-hover:border-[#E8590C] group-hover:bg-[#E8590C] transition-colors" aria-hidden="true"></span>
+
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <span class="font-mono text-xs font-semibold text-[#E8590C]">
+              {item.year}
+            </span>
+            <span class="font-serif text-base sm:text-lg font-medium text-[var(--text)]">
+              {item.title[lang]}
+            </span>
+            <span class="font-mono text-[11px] text-[var(--text-dim)] px-1.5 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]">
+              {item.category[lang]}
+            </span>
+          </div>
+          <p class="text-xs sm:text-[13px] text-[var(--text-muted)] font-sans leading-relaxed max-w-3xl">
+            {item.description[lang]}
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

@@ -1,0 +1,36 @@
+---
+import { SITE_META } from '../data/siteMeta';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+---
+
+<footer class="w-full border-t border-[var(--border)] bg-[var(--bg)] text-xs font-mono py-8 sm:py-10 transition-colors">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[var(--text-muted)]">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-[1px] bg-[#E8590C]" aria-hidden="true"></span>
+        <span class="font-medium text-[var(--text)]">Ahmet İhtiyar</span>
+        <span class="text-[var(--text-dim)]">·</span>
+        <span>{isTr ? 'Son Güncelleme:' : 'Last Updated:'} {SITE_META.lastUpdatedFormatted[lang]}</span>
+      </div>
+
+      <div class="text-[var(--text-dim)]">
+        {SITE_META.fontsNote[lang]}
+      </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[var(--border)] text-[11px] text-[var(--text-dim)]">
+      <div>
+        {isTr ? 'Sıfır izleme, sıfır çerez. Yalnızca statik HTML, CSS ve asgari JS.' : 'Zero tracking, zero cookies. Plain static HTML, CSS & minimal JS.'}
+      </div>
+      <div>
+        {isTr ? 'İstanbul, Türkiye' : 'Istanbul, Turkey'} · © {new Date().getFullYear()}
+      </div>
+    </div>
+  </div>
+</footer>

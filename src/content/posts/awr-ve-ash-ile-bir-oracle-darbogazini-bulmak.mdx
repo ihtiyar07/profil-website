@@ -1,0 +1,53 @@
+---
+title: "AWR ve ASH ile bir Oracle darboğazını bulmak"
+date: "2025-11-12"
+lang: "tr"
+summary: "Canlı kurumsal veritabanında locking ve yüksek I/O oluşturan gizli sorguları tespit etmek; Top Timed Events analizi, db file sequential read teşhisi ve plan sabitleme."
+tags: ["Oracle", "DBA", "Performans", "SQL Tuning"]
+readingTime: "6 dk"
+---
+
+Kurumsal sistemlerde "veritabanı yavaşladı" şikayeti geldiğinde ilk yapılan hata, rastgele `SELECT * FROM v$session` çekip kimin ne çalıştırdığını tahmin etmeye çalışmaktır.
+
+Canlı operasyonu aksatmadan ve tahmine yer bırakmadan sorunun kök nedenine inmenin tek mühendislik yolu **AWR (Automatic Workload Repository)** ve **ASH (Active Session History)** analizidir.
+
+## 1. Top Timed Events Tablosunu Okumak
+
+Bir AWR raporu açıldığında ilk bakılacak yer `Top 10 Foreground Events by Total Wait Time` bölümüdür. Burası sistemin CPU mu yaktığını, yoksa bir kaynak beklerken mi donduğunu söyler:
+
+- **`db file sequential read`:** Tipik tek blok okumadır. İndeks taramalarında görülür. Eğer toplam bekleme süresinin %70'ini kaplıyorsa, sistem kötü indeksleme yüzünden diski rastgele dövüyor demektir.
+- **`db file scattered read`:** Çoklu blok okumadır (Full Table Scan). Büyük bir tabloda indeks kullanılmadığında ortaya çıkar.
+- **`enq: TX - row lock contention`:** Uygulama seviyesinde iki işlemin aynı satırı güncellemeye çalışıp birbirini kilitlediğini gösterir.
+
+## 2. ASH Raporu ile Dakika Bazında İzolasyon
+
+AWR 1 saatlik toplu özet verirken, ASH saniyelik örnekleme (sampling) yapar. "Bugün saat 14:15 ile 14:25 arasında ne oldu?" sorusunun yanıtı ASH'tedir:
+
+```sql
+SELECT sql_id, 
+       event, 
+       COUNT(*) as sample_count
+FROM v$active_session_history
+WHERE sample_time BETWEEN TO_TIMESTAMP('2025-11-12 14:15:00', 'YYYY-MM-DD HH24:MI:SS')
+                      AND TO_TIMESTAMP('2025-11-12 14:25:00', 'YYYY-MM-DD HH24:MI:SS')
+  AND session_state = 'WAITING'
+GROUP BY sql_id, event
+ORDER BY sample_count DESC;
+```
+
+Bu sorgu, o 10 dakikalık kriz anında en çok bekleme üreten `SQL_ID` değerini doğrudan önünüze koyar.
+
+## 3. Gerçek Bir Örnek: `cursor_sharing` ve Plan Flip
+
+MetaDB entegrasyonu sırasında karşılaştığımız bir vakada, normalde 20ms süren bir fatura sorgusu aniden 45 saniyeye fırlamıştı.
+
+AWR raporunda `SQL_ID 8b9f0d11` için `Executions: 4,000`, `Elapsed per Exec: 42.1s` görünüyordu.
+
+`dbms_xplan.display_awr` ile sorgunun geçmiş yürütme planlarını incelediğimizde:
+- `Plan Hash Value A`: `INDEX RANGE SCAN` kullanıyor, 20ms'de bitiyor.
+- `Plan Hash Value B`: Yeni üretilmiş plan, histogram çarpıklığı yüzünden `TABLE ACCESS FULL` yapıyor ve 80GB'lık tabloyu diskten tarıyor.
+
+Çözüm:
+`DBMS_SPM` (SQL Plan Management) kullanılarak hızlı olan Plan A sabitlendi (`ACCEPTED = YES, FIXED = YES`) ve sorgu anında eski 20ms çalışma süresine geri döndü.
+
+Mühendislik refleksi; spekülasyon yapmak değil, katalog ve istatistik metriklerinin gösterdiği izleri adım adım takip etmektir.

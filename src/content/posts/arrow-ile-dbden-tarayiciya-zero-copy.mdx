@@ -1,0 +1,59 @@
+---
+title: "Arrow ile DB'den tarayıcıya zero-copy: kazandırdığı ve zorladığı"
+date: "2026-02-28"
+lang: "tr"
+summary: "100K+ satırlık sensör verisinde JSON serileştirme cezasından kurtulmak, Apache Arrow IPC akışı, TypedArray haritalama ve WebGL entegrasyonu deneyimleri."
+tags: ["Apache Arrow", "Performans", "TimescaleDB", "Frontend"]
+readingTime: "7 dk"
+---
+
+Bir soğuk zincir deposundan veya endüstriyel soğutma santralinden 30 günlük sensör geçmişi istediğinizde, saniyede 1 okuma yapan 10 sensör için yüz binlerce veri satırı ile karşılaşırsınız.
+
+Bu büyüklükteki bir zaman serisini kullanıcı ekranına taşımak klasik web mimarisinin en acı veren darboğazlarından biridir.
+
+## 1. Klasik JSON REST API Neden Çöker?
+
+Tipik bir REST uç noktası şu akışı izler:
+1. Veritabanından satırlar okunur (C# / Go / Java nesnelerine dönüştürülür).
+2. Bu nesneler JSON string formatına serileştirilir (her satır için `"timestamp":`, `"value":`, `"sensor_id":` etiketleri tekrarlanır).
+3. Payload sıkıştırılsa bile tarayıcıya ulaştığında ~25MB metin haline gelir.
+4. **En büyük darbe:** Tarayıcıda `const data = await response.json()` çağrıldığı an, JavaScript V8 motoru yüz binlerce nesne tahsis eder (memory allocation). Ana iş parçacığı (main thread) 800 milisaniye donar ve Garbage Collector (GC) dakikalarca nefes alamaz.
+
+## 2. Apache Arrow ve Sütunsal (Columnar) Hafıza Düzeni
+
+Apache Arrow, veriyi satır satır değil; sütun sütun (columnar) bitişik bellek bloklarında tutar:
+
+```
+Satırsal (JSON / Relational):
+ [ {t: 1, v: 22.4}, {t: 2, v: 22.5}, {t: 3, v: 22.8} ... ]
+
+Sütunsal (Apache Arrow RecordBatch):
+ Timestamps: [ 1, 2, 3 ... ] -> bitişik 64-bit int bloğu
+ Values:     [ 22.4, 22.5, 22.8 ... ] -> bitişik 64-bit double bloğu
+```
+
+Bu bellek düzeninin sunduğu devasa avantaj: **Kopyalamasız Aktarım (Zero-Copy Transfer).**
+
+Veritabanından ikili (binary) akışla gelen Arrow IPC RecordBatch blokları, tarayıcıda string parse edilmez. `tableFromIPC(stream)` fonksiyonu doğrudan tarayıcının `ArrayBuffer` belleğindeki pointer'ları okur.
+
+```javascript
+import { tableFromIPC } from 'apache-arrow';
+
+const response = await fetch('/api/telemetry/stream?deviceId=402');
+const table = await tableFromIPC(response.body);
+
+// Sıfır parse süresi! Doğrudan TypedArray erişimi:
+const timestamps = table.getChild('timestamp').toArray(); // Int64Array
+const temperatures = table.getChild('temperature').toArray(); // Float64Array
+```
+
+## 3. Kazandırdıkları
+
+- **CPU Yükü:** Tarayıcıdaki 850ms'lik parse kilitlenmesi `<12ms` seviyesine indi.
+- **Ağ Boyutu:** Tekrarlayan JSON anahtarları olmadığı için 25MB'lık JSON payload'u saf ikili akışta `~3.2MB` seviyesine çekildi.
+- **Doğrudan GPU / Canvas Beslemesi:** `Float64Array` doğrudan WebGL veya HTML5 Canvas çizim döngülerine bellek kopyalaması yapmadan (zero-copy) verilebildi.
+
+## 4. Nerede Zorladı?
+
+- **Frontend Ekosistem Alışkanlıkları:** Çoğu frontend grafik kütüphanesi (Chart.js vb.) veriyi `{ x, y }` nesne dizisi olarak bekler. Arrow tablosunu tekrar nesne dizisine dönüştürürseniz kazandığınız tüm performansı geri verirsiniz. Bu nedenle çizim katmanını doğrudan TypedArray tüketen WebGL / Canvas2D shader'larına uyarlamak gerekti.
+- **Hata Ayıklama:** Geliştirici konsolunda (DevTools Network tab) JSON gibi rahatça okunamaz; gelen veri saf ikili akıştır (binary stream).

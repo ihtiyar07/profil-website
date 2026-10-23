@@ -1,0 +1,66 @@
+---
+title: "Why carrying permissions in JWTs is not always a good idea"
+date: "2026-03-15"
+lang: "en"
+summary: "The fundamental conflict between stateless JWT claims and real-world instant revocation; token bloat, revocation pitfalls, and a Redis-backed versioned claims architecture."
+tags: ["Security", "JWT", "Redis", "Architecture"]
+readingTime: "6 min"
+---
+
+The promise of stateless JWT architectures sounds elegant: "Authorize requests purely by verifying cryptographic signatures, without querying a central database."
+
+While theoretically neat, in enterprise field environments this paradigm encounters an unavoidable wall: **Instant Revocation.**
+
+## 1. The Cost of Embedding Roles into Tokens
+
+When you mint a JWT containing user roles and coarse permissions:
+
+```json
+{
+  "sub": "user_49102",
+  "name": "Ahmet İhtiyar",
+  "roles": ["OPERATOR", "MAINTENANCE_TECH"],
+  "permissions": ["telemetry:read", "chiller:override_setpoint", "ota:trigger"],
+  "exp": 1773590400
+}
+```
+
+Once handed to the client, this token acts as an unrevocable passport. Downstream microservices verify only the public key (JWKS) and proceed.
+
+In production:
+1. A field technician is suspended or their tablet stolen.
+2. An administrator revokes the technician's role from the admin console.
+3. **The problem:** The active JWT remains cryptographically valid for another 55 minutes. The technician can continue executing privileged commands until TTL expiry.
+
+## 2. Why Token Blacklists Fall Short
+
+The default reflex is maintaining an in-memory blacklist of revoked `jti` (JWT ID) tokens in Redis.
+
+This introduces two flaws:
+- **Paradoxical State:** If every request queries Redis anyway, the stateless advantage of JWTs is entirely forfeited.
+- **Unbounded Memory Growth:** In high-volume systems, tracking active revoked token IDs creates cluster memory thrashing.
+
+## 3. A Cleaner Strategy: Versioned Claims
+
+Across our Plasmon and Diventra deployments, we decoupled immutable identity from dynamic operational rights:
+
+1. The JWT contains only immutable identity claims (`sub`) and a token creation generation version (`ver: 3`).
+2. Granular permissions are stored in Redis under `auth:user:{id}`.
+3. When roles change or sessions terminate, the user's version counter is atomically bumped (`ver: 4`).
+4. Microservice middleware checks the cryptographic signature, then compares the token version against Redis in `<0.3ms`.
+
+```
+[Client] ──(Token: ver=3)──► [API Gateway]
+                                   │
+                      JWKS Signature Valid? (Yes)
+                                   │
+                      Redis GET auth:ver:{uid}
+                                   ├─── ver == 3 ? -> ALLOW (<0.3ms)
+                                   └─── ver != 3 ? -> 401 UNAUTHORIZED (Instant Revocation)
+```
+
+## 4. Architectural Summary
+
+- Permissions represent **mutable state**; JWTs represent **immutable claims**.
+- Locking state inside a stateless claim forces an unsafe compromise between security and latency.
+- Cryptographically verify identity at the edge, but never compromise on instantaneous revocation across your microservices mesh.

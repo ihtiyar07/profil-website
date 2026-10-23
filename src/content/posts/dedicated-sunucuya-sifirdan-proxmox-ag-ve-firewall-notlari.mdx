@@ -1,0 +1,64 @@
+---
+title: "Dedicated sunucuya sıfırdan Proxmox: ağ ve firewall notları"
+date: "2025-09-04"
+lang: "tr"
+summary: "Tek bir genel IPv4 ile bare-metal sunucuda Proxmox VE 8 kurulumu, routed bridge mimarisi, iptables/nftables NAT kuralları ve WireGuard yönetim tüneli."
+tags: ["Proxmox", "Linux", "DevOps", "Ağ Güvenliği"]
+readingTime: "7 dk"
+---
+
+Hetzner, OVH veya yerel bir veri merkezinde dedicated (fiziksel) bir sunucu kiraladığınızda elinizde genellikle tek bir fiziksel Ethernet portu ve tek bir genel (public) IPv4 adresi olur.
+
+Bu sunucunun üzerine Proxmox VE kurup arkasında onlarca LXC konteyneri ve KVM sanal makinesi koşturmak istediğinizde, standart ev tipi köprüleme (bridging) çalışmaz. Çünkü veri merkezi switch'i, portunuzdan farklı MAC adresleri gelirse sunucunuzun portunu güvenlik sebebiyle kilitler.
+
+## 1. Ağ Topolojisi: Routed Setup ve Linux Bridge (`vmbr0`)
+
+Çözüm; fiziksel arayüzü doğrudan köprülemek yerine, sanal makineler için izole bir iç ağ (Private Subnet - örn. `10.10.10.0/24`) oluşturmak ve fiziksel IP üzerinden NAT (Network Address Translation) yapmaktır.
+
+`/etc/network/interfaces` yapılandırması:
+
+```
+auto lo
+iface lo inet loopback
+
+# Fiziksel Arayüz (Örnek: enp4s0)
+auto enp4s0
+iface enp4s0 inet static
+    address 198.51.100.42/26
+    gateway 198.51.100.1
+    pointopoint 198.51.100.1
+
+# İzole İç Ağ Köprüsü
+auto vmbr0
+iface vmbr0 inet static
+    address 10.10.10.1/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    # NAT ve Yönlendirme Kuralları
+    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
+    post-up   iptables -t nat -A POSTROUTING -s '10.10.10.0/24' -o enp4s0 -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s '10.10.10.0/24' -o enp4s0 -j MASQUERADE
+```
+
+## 2. Proxmox Yönetim Panelini (Port 8006) Dünyaya Kapatmak
+
+En ölümcül hata, Proxmox VE web arayüzünü (`https://198.51.100.42:8006`) tüm dünyaya açık bırakmaktır. Brute-force saldırıları ve olası sıfır-gün açıkları sunucunuzu tamamen riske atar.
+
+Çözüm: **WireGuard Yönetim Tüneli.**
+
+Sunucu üzerinde izole bir WireGuard arayüzü (`wg0` - `10.20.0.1/24`) kurulur. Proxmox yerel firewall kuralları ile 8006 portu sadece bu VPN IP'sine açılır:
+
+```bash
+# Sadece WireGuard tünelinden gelen 8006 erişimine izin ver
+iptables -A INPUT -p tcp --dport 8006 -i wg0 -j ACCEPT
+iptables -A INPUT -p tcp --dport 8006 -j DROP
+```
+
+Böylece sunucu yönetimi yalnızca şifrelenmiş WireGuard oturumu açıldığında erişilebilir olur.
+
+## 3. ZFS Havuzu ve Proxmox Backup Server (PBS)
+
+Fiziksel sunucuda NVMe diskler varsa, donanımsal RAID kartı yerine **ZFS RAID-1 (mirror)** seçilmelidir:
+- Periyodik `zpool scrub` ile diskteki sessiz bit bozulmaları (bit rot) otomatik tespit edilir ve onarılır.
+- Haftalık artımlı yedeklemeler Proxmox Backup Server'a gönderilir. PBS, blok seviyesinde deduplication (tekilleştirme) yaptığı için 500GB'lık 10 sanal makinenin günlük fark yedekleri sadece ~2-3GB yer tutar.

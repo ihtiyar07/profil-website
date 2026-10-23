@@ -1,0 +1,113 @@
+---
+title: "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali"
+fileNumber: "Dosya 03"
+tagline: "Yetkileri JWT payload'undan çıkarıp Redis'te versiyonlama; Plasmon, Sapmapayı ve Diventra WMS ortak omurgası"
+date: "2024–2025"
+lang: "tr"
+testedScale: "<1ms yetki doğrulama gecikmesi; anında (sub-millisecond) oturum feshi; [SAYI GEREKLİ: eşzamanlı aktif token, qps]"
+summary: "Yetkileri durumsuz JWT içine gömmenin yarattığı güvenlik açığını ortadan kaldıran, Redis tabanlı versiyonlanmış hak (versioned claims) modeliyle çalışan, tüm mikroservislerde ortak kullanılan kimlik ve yetkilendirme altyapısı."
+stack: ["Spring Boot 3", "C# .NET 10", "Redis (Redlock)", "Keycloak SSO", "OAuth2 / OIDC", "OpenAPI"]
+metrics:
+  - label: "Yetki İptal Süresi"
+    value: "< 1 milisaniye"
+  - label: "Redis Sorgu Gecikmesi"
+    value: "< 0.4ms (in-memory)"
+  - label: "Hizmet Verilen Platformlar"
+    value: "Plasmon, Sapmapayı, Diventra WMS"
+  - label: "Token Doğrulama Modeli"
+    value: "Hybrid: Stateless JWT ID + Redis Claims"
+---
+
+## 1. Bağlam
+Diverjans bünyesinde geliştirilen Plasmon (IoT telemetri), Sapmapayı (soğuk zincir uyum) ve Diventra WMS (depo yönetim sistemi) platformlarının tümü heterojen mikroservislerden oluşur. Bu sistemlerin tümü, hem kullanıcı oturumlarını hem de saha teknisyeni ve B2B entegrasyon haklarını yöneten tek bir ortak kimlik ve yetki mimarisi üzerinde birleştirildi.
+
+## 2. Problem
+Mikroservis dünyasında popüler olan "tamamen durumsuz (stateless) JWT" yaklaşımı sahada kritik bir güvenlik açığı oluşturdu:
+- Bir depo operatörünün veya soğutma teknisyeninin yetkileri kaldırıldığında ya da iş akdi feshedildiğinde, elindeki JWT süresi (örn. 60 dakika) bitene kadar yetkili API uç noktalarına istek atmaya devam edebiliyordu.
+- JWT içine tüm roller, izinler ve depo/cihaz hiyerarşisi gömüldüğünde HTTP Authorization başlığı 4KB–8KB boyutuna şişiyor, her API isteğinde ağ yükü katlanıyordu.
+
+## 3. Mimari ve Yetki Doğrulama Akışı
+
+```
+ [ İstemci / Saha Cihazı / Web ]
+                 │ Authorization: Bearer <jwt_id_token>
+                 ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ API Gateway / Downstream Microservice                  │
+ │ ┌────────────────────────────────────────────────────┐ │
+ │ │ 1. Kriptografik İmza Denetimi (JWKS Public Key)   │ │
+ │ │    -> Token süresi & imza geçerli mi?              │ │
+ │ └─────────────────────────┬──────────────────────────┘ │
+ │                           │ Valid
+ │                           ▼
+ │ ┌────────────────────────────────────────────────────┐ │
+ │ │ 2. Redis Yetki & Versiyon Kontrolü                 │ │
+ │ │    GET user:perms:{user_id}                        │ │
+ │ │    -> Kullanıcı aktif mi? Rol sürümü eşleşiyor mu? │ │
+ │ └─────────────────────────┬──────────────────────────┘ │
+ └───────────────────────────┼────────────────────────────┘
+                             │
+            ┌────────────────┴────────────────┐
+            ▼                                 ▼
+      [ Hak Geçerli ]                  [ Yetki İptal / Değişti ]
+     İşleme İzin Ver (<0.4ms)          HTTP 401/403 Anında Kes
+```
+
+## 4. Kararlar ve Elenen Alternatifler
+
+- **Hibrit Model (Stateless JWT Kimliği + Redis Claims) seçildi, saf durumsuz JWT elendi:** Token içinde sadece sabit kimlik bilgileri (`sub`, `iss`, `exp`) taşındı. Değişken izinler (`permissions: ["telemetry:write", "chiller:override"]`) Redis'te `user:auth:{id}` anahtarında tutuldu. Böylece bir yönetici "Yetkiyi Kaldır" düğmesine bastığı mikrosaniyede, Redis anahtarı güncellenir ve kullanıcının bir sonraki isteği anında engellenir.
+- **Versiyonlanmış Haklar (Versioned Claims) seçildi, Karalama Listesi (Blacklist) elendi:** Milyonlarca iptal edilmiş token hash'ini Redis set'inde aramak (blacklist) bellek ve sorgu maliyetini sürekli büyütür. Bunun yerine kullanıcının tek bir `token_version` tamsayı değeri tutuldu; oturum feshedildiğinde bu tamsayı 1 artırıldı. Eski token'lar anında geçersiz kılındı.
+- **Keycloak SSO omurgası korundu:** Kimlik doğrulama, MFA ve federasyon Keycloak üzerinde bırakıldı; yetkilendirme (authorization) ve hızlı oturum iptal motoru ise doğrudan Redis tabanlı özel filtrelerle mikroservis seviyesine indirildi.
+
+## 5. Gerçek Kod: Anında İptal Eden Auth Filtresi
+
+Aşağıdaki C# .NET parçası, gelen her istekte Redis tabanlı versiyon kontrolü yaparak anında oturum feshi uygulayan yetkilendirme ara katmanıdır:
+
+```csharp
+public class InstantRevocationAuthFilter : IAsyncActionFilter
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly ILogger<InstantRevocationAuthFilter> _logger;
+
+    public InstantRevocationAuthFilter(IConnectionMultiplexer redis, ILogger<InstantRevocationAuthFilter> logger)
+    {
+        _redis = redis;
+        _logger = logger;
+    }
+
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        var user = context.HttpContext.User;
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var tokenVersionClaim = user.FindFirst("ver")?.Value;
+
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenVersionClaim))
+        {
+            context.Result = new UnauthorizedResult();
+            return;
+        }
+
+        var db = _redis.GetDatabase();
+        // Redis'ten kullanıcının güncel yetki ve sürüm kaydını <0.3ms içinde oku
+        var currentVersion = await db.StringGetAsync($"auth:ver:{userId}");
+
+        if (!currentVersion.HasValue || currentVersion.ToString() != tokenVersionClaim)
+        {
+            _logger.LogWarning("Oturum anında iptal edildi: User {UserId}", userId);
+            context.Result = new ObjectResult(new { error = "session_revoked" }) { StatusCode = 401 };
+            return;
+        }
+
+        await next();
+    }
+}
+```
+
+## 6. Sonuç ve Ölçülebilir Çıktılar
+- **Yetki İptal Gecikmesi:** Token süresinin bitmesini (60 dakika) bekleme mecburiyeti kalktı; oturum iptali veya rol değişimi `<1 milisaniye` içinde Plasmon, Sapmapayı ve Diventra WMS genelinde devreye girdi.
+- **HTTP Payload Tasarrufu:** JWT token boyutu 5.2KB seviyesinden `<400 bayt` seviyesine indirildi; bu durum özellikle düşük bant genişliğine sahip saha gateway API çağrılarında ciddi tasarruf sağladı.
+- **Hafıza ve Performans:** Redis pipeline sorguları downstream mikroservislerde ortalama `0.3ms – 0.5ms` ek gecikmeyle çalıştı.
+- **Doğrulanan Ölçek:** `[BURAYA GERÇEK SAYI: saniye başına doğrulanan istek (QPS), eşzamanlı aktif oturum sayısı]`
+
+## 7. Neyi Farklı Yapardım?
+- Dağıtık Redis kümesinde geçici ağ kopmalarında (network partition) lokal fallback önbellekleme (local in-memory cache with 5s TTL) yapısını daha erken kurmalıydım. Redis ağ kesintisinde sistemin fail-closed davranarak meşru istekleri reddetmesini önlemek için kısa süreli güvenli yerel önbellek mekanizması sonradan eklendi.

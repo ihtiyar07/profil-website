@@ -1,0 +1,67 @@
+---
+title: "JWT'de yetki taşımak neden her zaman iyi fikir değil"
+date: "2026-03-15"
+lang: "tr"
+summary: "Durumsuz (stateless) JWT iddiası ile kurumsal yetki iptali ihtiyacı arasındaki temel uyuşmazlık, token şişmesi ve Redis destekli versiyonlanmış yetki modeli."
+tags: ["Güvenlik", "JWT", "Redis", "Mimari"]
+readingTime: "6 dk"
+---
+
+Durumsuz (stateless) mimari, modern web dünyasının en çekici vaatlerinden biri: "Veritabanına sormadan, sadece kriptografik imzayı doğrulayarak yetkilendirme yapın." 
+
+Kağıt üzerinde mükemmel görünen bu tasarım, sahada ve kurumsal operasyonlarda kaçınılmaz bir duvara toslar: **Anında yetki iptali (Instant Revocation).**
+
+## 1. Token'a Yetki Koymanın Bedeli
+
+Bir JWT oluşturduğunuzda içine kullanıcının rollerini ve izinlerini yazarsınız:
+
+```json
+{
+  "sub": "user_49102",
+  "name": "Ahmet İhtiyar",
+  "roles": ["OPERATOR", "MAINTENANCE_TECH"],
+  "permissions": ["telemetry:read", "chiller:override_setpoint", "ota:trigger"],
+  "exp": 1773590400
+}
+```
+
+Bu token istemciye teslim edildiğinde artık kendi başına bir pasaporttur. Downstream mikroservisler sadece public key (JWKS) ile imzayı kontrol eder ve isteği kabul eder.
+
+Fakat gerçek hayatta şu senaryo gerçekleşir:
+1. Saha teknisyeni işten ayrılır ya da cihazı çalınır.
+2. Sistem yöneticisi admin panelinden kullanıcının hesabını askıya alır veya `chiller:override_setpoint` yetkisini siler.
+3. **Sorun:** Teknisyenin cihazındaki JWT 55 dakika daha geçerlidir. Token süresi dolana kadar yetkisiz komut göndermeye devam edebilir.
+
+## 2. Neden "Blacklist" Kötü Bir Çözüm?
+
+Bu sorunu çözmek için akla gelen ilk refleks bir "Token Blacklist" (karalama listesi) tutmaktır:
+İptal edilen token'ın `jti` (JWT ID) değerini bir Redis set'ine atarsınız ve her istekte bu set'i kontrol edersiniz.
+
+Bu yaklaşım iki açıdan kusurludur:
+- **Ters Mantık:** Her istekte Redis'e gidiyorsanız, JWT'nin "durumsuz" (stateless) olma avantajını zaten kaybettiniz demektir.
+- **Bellek ve Arama Şişmesi:** Milyonlarca aktif kullanıcının olduğu sistemlerde iptal listesi sürekli büyür; TTL yönetimi ve cluster replikasyonu karmaşıklaşır.
+
+## 3. Daha Temiz Bir Yol: Versiyonlanmış Haklar (Versioned Claims)
+
+Bizim Plasmon ve Diventra projelerinde uyguladığımız çözüm, JWT'yi yalnızca **değişmez kimlik bilgisi** için kullanmak, dinamik yetkileri ise **in-memory versiyonlanmış kayıt** ile eşleştirmektir.
+
+1. JWT içine sadece kullanıcı kimliği (`sub`) ve token üretim versiyonu (`ver: 3`) konur.
+2. Yetki listesi JWT'ye gömülmez; Redis üzerinde `auth:user:{id}` anahtarında tutulur.
+3. Bir kullanıcının yetkisi değiştiğinde veya oturumu kapatıldığında, Redis'teki sürüm numarası artırılır (`ver: 4`).
+4. Mikroservis ara katmanı (middleware), kriptografik imza geçerli olsa bile Redis'teki sürümle token'daki sürümü karşılaştırır. İşlem süresi: `<0.3 milisaniye`.
+
+```
+[İstemci] ──(Token: ver=3)──► [API Gateway]
+                                    │
+                       JWKS İmzası Geçerli mi? (Evet)
+                                    │
+                       Redis GET auth:ver:{uid}
+                                    ├─── ver == 3 ? -> İZİN VER (<0.3ms)
+                                    └─── ver != 3 ? -> 401 UNAUTHORIZED (Anında İptal)
+```
+
+## 4. Özet Çıkarım
+
+- Yetki, zamanla değişen bir **durumdur (state)**; JWT ise durumsuz bir **belgedir (claim)**.
+- Değişebilir bir durumu durumsuz bir belgenin içine mühürlemek, güvenlik ile performans arasında sahte bir uzlaşma yaratır.
+- Kimliği kriptografik olarak dağıtın; fakat operasyonel yetki iptalini milisaniyeler içinde garanti eden ince bir bellek katmanından kaçınmayın.

@@ -1,0 +1,93 @@
+---
+import { INVARIANTS } from '../data/invariants';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+---
+
+<section id="invariants" class="py-12 sm:py-16 border-b border-[var(--border)]">
+  <!-- Section Title -->
+  <div class="mb-10">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+        04 — {isTr ? 'Değişmezler' : 'Architectural Invariants'}
+      </span>
+      <span class="h-px w-8 bg-[var(--border)]"></span>
+    </div>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Mimari İlkeler ve Değişmez Kurallar' : 'Invariants & Failure Modes'}
+      </h2>
+      <p class="font-mono text-xs text-[var(--text-dim)]">
+        {isTr ? 'Kural → Nasıl bozulur → Çözüm → Nerede doğruladım' : 'Rule → Failure mode → Mitigation → Verification'}
+      </p>
+    </div>
+  </div>
+
+  <!-- Invariants 4-Field Matrix -->
+  <div class="space-y-6">
+    {INVARIANTS.map((item) => (
+      <article class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-5 sm:p-6 space-y-4 hover:border-[var(--border-strong)] transition-colors">
+        <!-- Invariant Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-[11px] font-semibold text-[#E8590C]">
+              {item.badge}
+            </span>
+            <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
+            <h3 class="font-serif text-lg sm:text-xl font-medium text-[var(--text)]">
+              {item.title[lang]}
+            </h3>
+          </div>
+        </div>
+
+        <!-- 4 Structured Fields -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+          <!-- 1. Kural -->
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1">
+            <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider">
+              {isTr ? 'Kural' : 'Invariant Rule'}
+            </div>
+            <p class="text-[var(--text)] leading-relaxed text-[13px]">
+              {item.rule[lang]}
+            </p>
+          </div>
+
+          <!-- 2. Nasıl Bozulur -->
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+              {isTr ? 'Nasıl Bozulur (Failure Mode)' : 'How It Breaks (Failure Mode)'}
+            </div>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+              {item.failureMode[lang]}
+            </p>
+          </div>
+
+          <!-- 3. Çözüm -->
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider">
+              {isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}
+            </div>
+            <p class="text-[var(--text)] leading-relaxed text-[13px]">
+              {item.solution[lang]}
+            </p>
+          </div>
+
+          <!-- 4. Nerede Doğruladım -->
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+              {isTr ? 'Nerede Doğruladım' : 'Production Verification'}
+            </div>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+              {item.verification[lang]}
+            </p>
+          </div>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>

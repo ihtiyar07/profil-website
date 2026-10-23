@@ -1,0 +1,283 @@
+---
+import { PIPELINE_STOPS, INFRASTRUCTURE_STRIP } from '../data/pipelineStops';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+---
+
+<section id="pipeline" class="py-12 sm:py-16 border-b border-[var(--border)]">
+  <!-- Section Title -->
+  <div class="mb-8">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+        01 — {isTr ? 'Omurga Mimarisi' : 'Backbone Architecture'}
+      </span>
+      <span class="h-px w-8 bg-[var(--border)]"></span>
+    </div>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Verinin Yolu' : 'The Path of Data'}
+      </h2>
+      <p class="font-mono text-xs text-[var(--text-dim)]">
+        {isTr ? 'Duraklara tıklayarak kararları ve alternatifleri inceleyin' : 'Click nodes to inspect technical decisions & trade-offs'}
+      </p>
+    </div>
+  </div>
+
+  <!-- The Pipeline Stage (Large SVG / HTML Flow) -->
+  <div class="relative bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[3px] p-4 sm:p-6 mb-6">
+    <!-- Desktop Horizontal Track with moving packet -->
+    <div class="hidden md:block relative mb-6">
+      <!-- Background Connecting Line -->
+      <div class="absolute top-1/2 left-6 right-6 -translate-y-1/2 h-[2px] bg-[var(--border-strong)] z-0">
+        <!-- The Single Decorative Animated Packet -->
+        <div class="pipeline-packet absolute -top-1 w-2.5 h-2.5 bg-[#E8590C] rounded-full shadow-[0_0_8px_rgba(232,89,12,0.8)]" aria-hidden="true"></div>
+      </div>
+
+      <!-- 6 Horizontal Stops -->
+      <div class="relative z-10 grid grid-cols-6 gap-2">
+        {PIPELINE_STOPS.map((stop, idx) => (
+          <button
+            type="button"
+            class="pipeline-stop-btn group text-left p-2.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between min-h-[92px]"
+            data-stop-id={stop.id}
+            aria-expanded={idx === 0 ? "true" : "false"}
+            aria-controls={`panel-${stop.id}`}
+            id={`btn-${stop.id}`}
+          >
+            <div class="flex items-center justify-between w-full mb-1">
+              <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium">
+                {stop.order}
+              </span>
+              <span class="stop-indicator w-2 h-2 rounded-full border border-[var(--border-strong)] bg-transparent group-hover:border-[#E8590C] transition-colors"></span>
+            </div>
+            <div>
+              <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-1 group-hover:text-[#E8590C] transition-colors">
+                {stop.name[lang]}
+              </div>
+              <div class="font-mono text-[10px] text-[var(--text-muted)] line-clamp-1">
+                {stop.tech[0]}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- Mobile Vertical Flow -->
+    <div class="md:hidden relative mb-6 pl-6 border-l-2 border-[var(--border-strong)] space-y-3">
+      <!-- Mobile moving packet -->
+      <div class="pipeline-packet absolute left-[-6px] top-0 w-2.5 h-2.5 bg-[#E8590C] rounded-full" aria-hidden="true"></div>
+
+      {PIPELINE_STOPS.map((stop, idx) => (
+        <button
+          type="button"
+          class="pipeline-stop-btn-mobile w-full text-left p-3 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus:outline-none transition-colors"
+          data-stop-id={stop.id}
+          aria-expanded={idx === 0 ? "true" : "false"}
+          aria-controls={`panel-${stop.id}`}
+        >
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-mono text-xs text-[#E8590C] font-semibold">{stop.order}</span>
+            <span class="font-mono text-[10px] text-[var(--text-dim)]">{stop.badge[lang]}</span>
+          </div>
+          <div class="font-serif text-base text-[var(--text)] font-medium">{stop.name[lang]}</div>
+          <div class="font-mono text-xs text-[var(--text-muted)] mt-1">
+            {stop.tech.slice(0, 3).join(' · ')}
+          </div>
+        </button>
+      ))}
+    </div>
+
+    <!-- Stop Detail Inspection Panels -->
+    <div class="border-t border-[var(--border)] pt-5 mt-2">
+      {PIPELINE_STOPS.map((stop, idx) => (
+        <div
+          id={`panel-${stop.id}`}
+          class={`pipeline-detail-panel ${idx === 0 ? 'block' : 'hidden'} space-y-5 transition-opacity duration-200`}
+          role="region"
+          aria-labelledby={`btn-${stop.id}`}
+        >
+          <!-- Panel Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
+            <div class="flex items-center gap-2.5">
+              <span class="font-mono text-xs px-2 py-0.5 bg-[#E8590C] text-white rounded-[2px] font-semibold">
+                {stop.order}
+              </span>
+              <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)]">
+                {stop.name[lang]}
+              </h3>
+            </div>
+            <!-- Technology tags in context -->
+            <div class="flex flex-wrap gap-1.5 font-mono text-[11px]">
+              {stop.tech.map((t) => (
+                <span class="px-2 py-0.5 bg-[var(--bg-code)] text-[var(--text)] border border-[var(--border)] rounded-[2px]">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <!-- 4-Section Inspection Matrix -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+            <!-- 1. O Katmanda Ne Yaptım -->
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+              <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                <span aria-hidden="true">■</span>
+                <span>{isTr ? 'O Katmanda Ne Yaptım' : 'What I Engineered'}</span>
+              </div>
+              <p class="text-[var(--text)] leading-relaxed text-[13px]">
+                {stop.whatIDid[lang]}
+              </p>
+            </div>
+
+            <!-- 2. Hangi Kararı Neden Verdim -->
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+              <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
+                <span class="text-[#E8590C]" aria-hidden="true">▸</span>
+                <span>{isTr ? 'Hangi Kararı Neden Verdim' : 'Architectural Rationale'}</span>
+              </div>
+              <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+                {stop.whyDecision[lang]}
+              </p>
+            </div>
+
+            <!-- 3. Hangi Alternatifi Eledim -->
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+              <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                <span aria-hidden="true">✕</span>
+                <span>{isTr ? 'Hangi Alternatifi Eledim' : 'Alternative Eliminated'}</span>
+              </div>
+              <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+                {stop.alternativeEliminated[lang]}
+              </p>
+            </div>
+
+            <!-- 4. Ne Zorladı -->
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+              <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                <span aria-hidden="true">▲</span>
+                <span>{isTr ? 'Ne Zorladı & Çözüm' : 'Challenge & Mitigation'}</span>
+              </div>
+              <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+                {stop.challenge[lang]}
+              </p>
+            </div>
+          </div>
+
+          <!-- Deep Link to Relevant Case Study -->
+          <div class="pt-2 flex justify-end">
+            <a
+              href={stop.caseLink.href}
+              class="font-mono text-xs text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1"
+            >
+              <span>{stop.caseLink.text[lang]}</span>
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Infrastructure Ground Strip (Altyapı Zemini) -->
+  <div class="border border-[var(--border)] bg-[var(--bg)] rounded-[2px] px-4 py-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-full inline-block"></span>
+        <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
+          {isTr ? 'Altyapı Zemini (Infrastructure Ground)' : 'Infrastructure Ground Plane'}
+        </span>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[var(--text-muted)]">
+        {INFRASTRUCTURE_STRIP.map((infra) => (
+          <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc}>
+            <span class="text-[var(--text-dim)]">·</span>
+            <span class="font-medium text-[var(--text)]">{infra.name}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Interactive Pipeline Script -->
+<script is:inline>
+  (function() {
+    function setupPipeline() {
+      const desktopBtns = document.querySelectorAll('.pipeline-stop-btn');
+      const mobileBtns = document.querySelectorAll('.pipeline-stop-btn-mobile');
+      const panels = document.querySelectorAll('.pipeline-detail-panel');
+
+      function activateStop(stopId) {
+        // Update all desktop buttons
+        desktopBtns.forEach(btn => {
+          const isTarget = btn.getAttribute('data-stop-id') === stopId;
+          btn.setAttribute('aria-expanded', isTarget ? 'true' : 'false');
+          const indicator = btn.querySelector('.stop-indicator');
+          if (isTarget) {
+            btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+            if (indicator) {
+              indicator.classList.remove('bg-transparent');
+              indicator.classList.add('bg-[#E8590C]', 'border-[#E8590C]');
+            }
+          } else {
+            btn.classList.remove('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+            if (indicator) {
+              indicator.classList.remove('bg-[#E8590C]', 'border-[#E8590C]');
+              indicator.classList.add('bg-transparent');
+            }
+          }
+        });
+
+        // Update mobile buttons
+        mobileBtns.forEach(btn => {
+          const isTarget = btn.getAttribute('data-stop-id') === stopId;
+          btn.setAttribute('aria-expanded', isTarget ? 'true' : 'false');
+          if (isTarget) {
+            btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+          } else {
+            btn.classList.remove('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+          }
+        });
+
+        // Update panels
+        panels.forEach(panel => {
+          if (panel.id === `panel-${stopId}`) {
+            panel.classList.remove('hidden');
+            panel.classList.add('block');
+          } else {
+            panel.classList.remove('block');
+            panel.classList.add('hidden');
+          }
+        });
+      }
+
+      desktopBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const stopId = btn.getAttribute('data-stop-id');
+          if (stopId) activateStop(stopId);
+        });
+      });
+
+      mobileBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const stopId = btn.getAttribute('data-stop-id');
+          if (stopId) activateStop(stopId);
+        });
+      });
+
+      // Initialize with first stop active
+      activateStop('device');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupPipeline);
+    } else {
+      setupPipeline();
+    }
+  })();
+</script>

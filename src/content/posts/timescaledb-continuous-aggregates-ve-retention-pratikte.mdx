@@ -1,0 +1,78 @@
+---
+title: "TimescaleDB continuous aggregates ve retention pratikte"
+date: "2026-01-20"
+lang: "tr"
+summary: "Milyarlarca sensör satırında depolama ve sorgu optimizasyonu: hypertable chunking, continuous aggregate maddileştirme ve otomatik retention politikaları."
+tags: ["PostgreSQL", "TimescaleDB", "Veritabanı", "IoT"]
+readingTime: "5 dk"
+---
+
+Endüstriyel IoT projelerinde veritabanına gelen veri hızı başlangıçta küçümsenir. Saniyede sadece 100 paket alan mütevazı bir telemetri hattı bile ayda ~260 milyon satır üretir.
+
+PostgreSQL standart tablolarında bu hacme ulaştığınızda indeksler RAM'e sığmaz hale gelir, vacuum süreleri günleri bulur ve analitik sorgular diski kilitler. Bu noktada TimescaleDB devreye girer.
+
+## 1. Hypertables ve Doğru Chunk Boyutlandırması
+
+TimescaleDB veriyi zaman aralıklarına göre "chunk" adı verilen gizli PostgreSQL tablolarına böler.
+
+Buradaki kritik kural: **Aktif chunk'lar ve indeksleri sunucunun `shared_buffers` ve RAM alanına sığmalıdır.**
+
+```sql
+-- Ham telemetri hypertable'ı: 1 günlük chunk boyutu
+SELECT create_hypertable('sensor_telemetry', 'recorded_at', 
+    chunk_time_interval => INTERVAL '1 day');
+```
+
+Eğer chunk aralığını çok uzun tutarsanız (örn. 30 gün), gelen yeni yazma işlemleri diske paging yapar. Çok kısa tutarsanız (örn. 1 saat) PostgreSQL katalog tablosundaki chunk sayısı yüz binleri bulur ve planlayıcı (planner) yavaşlar. Saha deneyiminde günde 10M–50M satır için **1 günlük chunk aralığı** ideal dengeyi sağlar.
+
+## 2. Continuous Aggregates: Sorgu Anında Değil, Yazma Anında Özet
+
+Bir operatör "Son 6 ayın günlük ortalama basınç grafiğini göster" dediğinde milyarlarca ham satırı taramak deliliktir.
+
+TimescaleDB Continuous Aggregates, standart PostgreSQL `MATERIALIZED VIEW` yapısından farklı olarak **artımlı (incremental)** çalışır:
+
+```sql
+CREATE MATERIALIZED VIEW chiller_hourly_summary
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 hour', recorded_at) AS bucket,
+       device_id,
+       AVG(temperature) AS avg_temp,
+       MIN(temperature) AS min_temp,
+       MAX(temperature) AS max_temp,
+       COUNT(*)         AS sample_count
+FROM sensor_telemetry
+GROUP BY bucket, device_id;
+```
+
+Bu görünüm için bir yenileme politikası (refresh policy) tanımladığınızda:
+```sql
+SELECT add_continuous_aggregate_policy('chiller_hourly_summary',
+    start_offset => INTERVAL '3 days',
+    end_offset   => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '30 minutes');
+```
+Sistem sadece son 3 günde değişen veya gecikmeli gelen kayıtları yeniden hesaplar; 6 ay önceki milyonlarca satır diskte zaten hesaplanmış olarak bekler. Sorgu süresi **15 saniyeden 8 milisaniyeye** düşer.
+
+## 3. Sıkıştırma (Columnar Compression) ve Retention
+
+Sensör verisi doğası gereği son derece tekrarlıdır. TimescaleDB'nin columnar sıkıştırması devreye alındığında:
+
+```sql
+ALTER TABLE sensor_telemetry SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby = 'recorded_at DESC'
+);
+
+SELECT add_compression_policy('sensor_telemetry', INTERVAL '7 days');
+```
+
+7 günden eski chunk'lar otomatik olarak sütunsal formatta sıkıştırılır. Disk ayak izi ortalama **%90 oranında azalır** (100GB veri 10GB'a iner).
+
+Son olarak, yasal sınırların ötesindeki ham veriyi temizlemek için:
+```sql
+-- Ham veriyi 90 gün sonra sil (Continuous aggregate özetleri kalır)
+SELECT add_retention_policy('sensor_telemetry', INTERVAL '90 days');
+```
+
+Bu mimari sayesinde veritabanı sonsuza kadar şişmeden, yıllarca aynı sabit disk alanında ve aynı öngörülebilir gecikmeyle çalışmaya devam eder.

@@ -1,0 +1,95 @@
+---
+import { SITE_META } from '../data/siteMeta';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+
+const headline = SITE_META.headline[lang];
+const nowLine = SITE_META.nowLine[lang];
+---
+
+<section class="py-10 sm:py-16 border-b border-[var(--border)]">
+  <div class="flex flex-col-reverse md:flex-row items-start justify-between gap-8 md:gap-12">
+    <!-- Text Column -->
+    <div class="flex-1 max-w-2xl">
+      <!-- Monospace Section Tag -->
+      <div class="flex items-center gap-2 mb-4">
+        <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+          00 — {isTr ? 'Giriş & Konumlandırma' : 'Positioning'}
+        </span>
+        <span class="h-px w-8 bg-[var(--border)]"></span>
+      </div>
+
+      <!-- H1 Headline -->
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-serif leading-[1.18] tracking-tight text-[var(--text)] mb-5">
+        {headline}
+      </h1>
+
+      <!-- "Now" Line -->
+      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] px-3.5 py-2.5 mb-6 leading-relaxed rounded-r-[2px]">
+        <div class="flex items-start gap-2">
+          <span class="text-[#E8590C] select-none font-bold" aria-hidden="true">▸</span>
+          <span>{nowLine}</span>
+        </div>
+      </div>
+
+      <!-- Bio / Context -->
+      <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed mb-8 prose-editorial font-sans">
+        {isTr ? (
+          <>
+            Ahmet İhtiyar. Bilgisayar Mühendisiyim. Diverjans Bilgi Teknolojileri'nde tam zamanlı olarak donanım seviyesinden (ESP32, Modbus) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) sıfır kopyalama veri aktarımına (Apache Arrow) ve resmi e-imzalı raporlamaya kadar uzanan uçtan uca veri hatlarını kuruyorum.
+          </>
+        ) : (
+          <>
+            Ahmet İhtiyar. Systems and Backend Engineer based in Istanbul. Working full-time at Diverjans Information Technologies, building end-to-end telemetry pipelines from edge microcontrollers (ESP32, Modbus) and message brokers up to time-series storage (TimescaleDB), Apache Arrow zero-copy pipelines, and legally binding audit reports.
+          </>
+        )}
+      </p>
+
+      <!-- 2 Actions -->
+      <div class="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs">
+        <a
+          href="#cases"
+          class="px-4 py-2.5 bg-[#E8590C] text-white hover:bg-[#CF4E08] transition-colors rounded-[2px] font-medium inline-flex items-center gap-2 group"
+        >
+          <span>{isTr ? 'Vaka Çalışmalarını Oku' : 'Read Case Studies'}</span>
+          <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">↓</span>
+        </a>
+
+        <a
+          href={`mailto:${SITE_META.email}`}
+          class="px-4 py-2.5 border border-[var(--border-strong)] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors rounded-[2px] inline-flex items-center gap-2"
+        >
+          <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
+          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Small Real Portrait Photo -->
+    <div class="flex-shrink-0 self-start md:self-auto">
+      <div class="relative group">
+        <div class="w-32 sm:w-40 h-40 sm:h-48 overflow-hidden rounded-[3px] border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
+          <picture>
+            <source srcset="/profile.webp" type="image/webp" />
+            <img
+              src="/profile.png"
+              alt="Ahmet İhtiyar — Portre"
+              width="160"
+              height="192"
+              loading="eager"
+              class="w-full h-full object-cover object-center rounded-[2px] transition-all duration-300 filter contrast-[1.02] saturate-[0.92] group-hover:saturate-100"
+            />
+          </picture>
+        </div>
+        <div class="font-mono text-[10px] text-[var(--text-dim)] mt-2 text-center">
+          Ahmet İhtiyar · {isTr ? 'İstanbul' : 'Istanbul'}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

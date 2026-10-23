@@ -1,0 +1,85 @@
+---
+import { getCollection } from 'astro:content';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+
+const allPosts = await getCollection('posts');
+// Filter posts matching current language, sorted by date descending
+const posts = allPosts
+  .filter(p => p.data.lang === lang)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+---
+
+{posts.length > 0 && (
+  <section id="writing" class="py-12 sm:py-16 border-b border-[var(--border)]">
+    <!-- Section Title -->
+    <div class="mb-8">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+          05 — {isTr ? 'Teknik Notlar & Yazılar' : 'Technical Notes'}
+        </span>
+        <span class="h-px w-8 bg-[var(--border)]"></span>
+      </div>
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+        <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+          {isTr ? 'Mühendislik Yazıları' : 'Engineering Articles'}
+        </h2>
+        <p class="font-mono text-xs text-[var(--text-dim)]">
+          {isTr ? 'Mimari kararlar, veritabanı darboğazları ve saha tecrübeleri' : 'Architecture trade-offs & operational diagnostics'}
+        </p>
+      </div>
+    </div>
+
+    <!-- Posts Editorial List -->
+    <div class="divide-y divide-[var(--border)] border-t border-b border-[var(--border)]">
+      {posts.map((post) => {
+        // Derive slug from id (removing .en if needed)
+        const cleanSlug = post.id.replace(/\.en\.(md|mdx)$/, '').replace(/\.(md|mdx)$/, '');
+        const postUrl = isTr ? `/posts/${cleanSlug}` : `/en/posts/${cleanSlug}`;
+
+        return (
+          <article class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] transition-colors px-2 -mx-2 rounded-[2px]">
+            <div class="space-y-2 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono text-[11px] text-[var(--text-dim)]">
+                  {post.data.date}
+                </span>
+                <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
+                <span class="font-mono text-[11px] text-[var(--text-dim)]">
+                  {post.data.readingTime}
+                </span>
+                <div class="flex gap-1.5 ml-2">
+                  {post.data.tags.map((tag) => (
+                    <span class="font-mono text-[10px] px-1.5 py-0.2 bg-[var(--bg-code)] text-[var(--text-muted)] border border-[var(--border)] rounded-[2px]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <h3 class="text-lg sm:text-xl font-serif text-[var(--text)] group-hover:text-[#E8590C] transition-colors leading-snug">
+                <a href={postUrl} class="focus:outline-none">
+                  {post.data.title}
+                </a>
+              </h3>
+
+              <p class="text-xs sm:text-[13px] text-[var(--text-muted)] font-sans line-clamp-2 leading-relaxed">
+                {post.data.summary}
+              </p>
+            </div>
+
+            <div class="shrink-0 self-start md:self-center font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+              <span>{isTr ? 'Yazıyı Oku' : 'Read Article'}</span>
+              <span aria-hidden="true">→</span>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+)}

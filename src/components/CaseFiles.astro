@@ -1,0 +1,305 @@
+---
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+
+const caseDossiers = [
+  {
+    anchorId: "case-plasmon",
+    fileNo: isTr ? "Dosya 01" : "Case 01",
+    slug: "plasmon",
+    title: isTr 
+      ? "Plasmon: 100K+ Edge Cihaz İçin Telemetri Mimarisi" 
+      : "Plasmon: Telemetry Architecture Designed for 100K+ Edge Devices",
+    tagline: isTr 
+      ? "ESP32 firmware, MQTT/TLS RPC, yerel ring-buffer ve RabbitMQ ingest hattı"
+      : "ESP32 firmware, MQTT/TLS RPC, local ring-buffer & RabbitMQ ingestion pipeline",
+    testedScale: isTr 
+      ? "100K+ cihaz için tasarlandı · Test edilen gerçek ölçek: [BURAYA GERÇEK SAYI: mesaj/sn, p95 gecikme, test edilen cihaz sayısı]"
+      : "Designed for 100K+ devices · Verified test scale: [EXACT NUMBER NEEDED: msg/sec, p95 latency, verified device count]",
+    context: isTr 
+      ? "Plasmon, endüstriyel soğutma ve iklimlendirme ünitelerinin saha koşullarında kesintisiz izlenmesi ve uzaktan parametre yönetimi amacıyla tasarlandı. Bu mimari, 100K+ edge cihaz için tasarlandı; saha donanımından merkezi bulut broker'ına kadar olan telemetri ve komut-kontrol zincirini uçtan uca kapsar."
+      : "Plasmon was engineered for continuous monitoring and remote setpoint orchestration of industrial chillers and HVAC units in harsh factory environments. Designed for 100K+ edge devices, the architecture covers the full pipeline from physical sensor interfaces up to centralized broker ingestion.",
+    problem: isTr 
+      ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA güncellemesi alması gerekiyordu."
+      : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required guaranteed telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
+    diagram: ` [ Sensör / Chiller ] ──(RS-485 Modbus)──► [ ESP32 Gateway: FreeRTOS ]
+                                                     │ (Ağ yokken)
+                                                     ▼
+                                            [ Flash Ring-Buffer ]
+                                                     │ (Bağlantı gelince)
+                                                     ▼
+ [ TimescaleDB ] ◄── [ RabbitMQ DLX ] ◄──MQTT/TLS──► [ EMQX / Mosquitto ]`,
+    decisions: isTr 
+      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu sıfırlandı. REST yerine persistent MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. İkincil failover hattı olarak GSM modemi için donanımsal güç anahtarlaması eklendi."
+      : "C on FreeRTOS with static memory allocations eliminated malloc heap fragmentation. Persistent MQTT over TLS (QoS 1) preserved 85% cellular quota over HTTP. An automated transistor power-cycling switch resolved cellular modem hangs.",
+    codeSnippet: `// Flash Ring-Buffer: Ağ koptuğunda telemetriyi yerel flaşa yazar
+esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
+    FILE *f = fopen(TELEMETRY_RING_FILE, "a+b");
+    if (!f) return ESP_FAIL;
+    long size = ftell(f);
+    if (size >= (long)(MAX_BUFFER_ENTRIES * sizeof(TelemetryFrame))) {
+        fseek(f, 0, SEEK_SET); // Wrap-around circular buffer
+    }
+    fwrite(frame, sizeof(TelemetryFrame), 1, f);
+    fflush(f);
+    fclose(f);
+    return ESP_OK;
+}`,
+    result: isTr 
+      ? "100K+ cihaz ölçeğine göre modellendi. 4G hücresel hat kopsa bile 320KB dahili flaş ring-buffer yaklaşık [SAYI GEREKLİ: X saat/dakika] telemetri kaydını RAM taşması yaşamadan sakladı; hat geldiğinde 0 paket kaybıyla kuyruğa boşaltıldı."
+      : "Engineered for 100K+ devices. The ~320KB flash ring-buffer retained [NUMBER NEEDED: X hours/minutes] of continuous telemetry during outages, draining with 0 packet loss upon reconnect.",
+    whatDifferently: isTr 
+      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Paket başı ~180 bayt olan JSON hücresel kota maliyeti getirdi. Baştan Protobuf veya saf ikili (binary) packed struct mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
+      : "Telemetry originally transmitted JSON frames (~180 bytes). Adopting Protobuf or packed binary structs from day one would have reduced bandwidth consumption by 65% upfront.",
+    stack: ["ESP32 (C/FreeRTOS)", "Modbus RTU/TCP", "MQTT/TLS", "RabbitMQ", "WebSocket", "OpenAPI"]
+  },
+  {
+    anchorId: "case-sapmapayi",
+    fileNo: isTr ? "Dosya 02" : "Case 02",
+    slug: "sapmapayi",
+    title: isTr 
+      ? "Sapmapayı: Soğuk Zincir Uyum Takibi ve Sıfır Kopyalama Raporlama"
+      : "Sapmapayı: Cold-Chain Compliance & Zero-Copy Reporting",
+    tagline: isTr 
+      ? "TimescaleDB, Apache Arrow Zero-Copy IPC akışı, X.509 e-İmza ve RFC 3161 Zaman Damgası"
+      : "TimescaleDB, Apache Arrow Zero-Copy IPC stream, X.509 e-Signature & RFC 3161 Timestamping",
+    testedScale: isTr 
+      ? "Yüz binlerce telemetri satırında 0 kopyalama aktarımı; [SAYI GEREKLİ: rapor oluşturma süresi, günlük işlenen sensör verisi]"
+      : "Zero-copy streaming across hundreds of thousands of records; [EXACT NUMBER NEEDED: report build time, daily records]",
+    context: isTr 
+      ? "Sapmapayı; aşı, ilaç ve bozulabilir gıda depolarındaki soğuk zincir gereksinimlerini denetleyen kurumsal bir uyum (compliance) platformudur. Sensörlerden gelen sıcaklık ve nem verilerini periyodik olarak analiz eder, kritik eşik sapmalarını tespit eder ve yasal olarak bağlayıcı e-imzalı denetim raporları üretir."
+      : "Sapmapayı is an enterprise compliance platform auditing cold-chain integrity across pharmaceutical and perishables storage facilities. It analyzes high-frequency temperature and humidity curves, flags threshold violations, and compiles officially enforceable e-signed audit PDFs.",
+    problem: isTr 
+      ? "Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu JSON formatında tarayıcıya yollamak ~25MB payload yaratıyor ve JavaScript JSON.parse ana iş parçacığını 800ms'den fazla kilitliyordu. Ayrıca üretilen raporların yasal delil niteliği taşıması için resmi e-imza ve zaman damgası zorunluydu."
+      : "Querying a 30-day thermal history returned ~250,000 datapoints. Serializing to JSON generated a 25MB payload that froze browser JavaScript threads for 800ms+. Reports also required legally binding digital signatures and RFC 3161 timestamping.",
+    diagram: ` [ TimescaleDB Hypertables ] ──Continuous Aggregates──► [ .NET Arrow IPC Streamer ]
+                                                                 │
+                                                      Zero-Copy Binary Stream (<3MB)
+                                                                 ▼
+ [ Resmi Denetim PDF ] ◄──PKCS#11 HSM Pool──► [ QuestPDF ] ◄── [ Tarayıcı: Float64Array ]`,
+    decisions: isTr 
+      ? "JSON REST yerine Apache Arrow IPC streaming seçildi; ikili sütunsal tampon doğrudan Float64Array belleğine kopyalamasız eşlendi. Raporlama katmanında yüksek bellek harcayan headless Chromium terk edilerek doğrudan C# QuestPDF motoruna geçildi. Donanımsal HSM imzalama kuyrukları web thread'lerinden izole edildi."
+      : "Adopted Apache Arrow IPC binary streaming over JSON; columnar buffers map directly into Float64Array memory without intermediate copies. Replaced headless Chromium with QuestPDF in C#, slashing memory footprint from 400MB to 15MB. HSM cryptographic signing was offloaded to dedicated background queues.",
+    codeSnippet: `// Apache Arrow RecordBatch IPC Akışı: Sıfır JSON tahsisi
+var schema = new Schema.Builder()
+    .Field(new Field("timestamp", new TimestampType(TimeUnit.Millisecond, "UTC"), false))
+    .Field(new Field("temperature", new DoubleType(), false))
+    .Field(new Field("humidity", new DoubleType(), false)).Build();
+
+using var arrowWriter = new ArrowStreamWriter(outputWriter.AsStream(), schema);
+var batch = await ReadRecordBatchFromDbAsync(cmd, schema, ct);
+await arrowWriter.WriteRecordBatchAsync(batch, ct);
+await outputWriter.FlushAsync(ct);`,
+    result: isTr 
+      ? "250.000 satırlık veri JSON ile ~24.8MB iken Arrow IPC ile ~3.1MB seviyesine indi (~%87 ağ tasarrufu). Tarayıcıdaki 850ms'lik donma <15ms'ye geriledi. Tüm raporlar 5070 sayılı kanuna uyumlu X.509 e-imza ve TÜBİTAK Kamu SM zaman damgasıyla mühürlendi."
+      : "A 250K-row dataset dropped from 24.8MB JSON to ~3.1MB Arrow IPC (~87% network savings). Browser thread freeze dropped from 850ms to <15ms. All reports sealed with X.509 digital certificates and certified RFC 3161 timestamps.",
+    whatDifferently: isTr 
+      ? "İlk sürümde HTML-to-PDF kütüphanesi olarak Puppeteer kullanılmıştı. Headless Chrome sunucuda konteyner başına 400MB+ RAM tüketip kilitlenmelere yol açtı. C# yerel çizim motoruna baştan geçilmeliydi."
+      : "Initially used headless Chromium (Puppeteer) which drew 400MB+ RAM per instance and failed under burst loads. We should have engineered native C# vector rendering from day one.",
+    stack: ["TimescaleDB", "Apache Arrow (IPC)", "C# .NET 10", "X.509 / PKCS#11", "RFC 3161 Timestamp", "QuestPDF"]
+  },
+  {
+    anchorId: "case-auth",
+    fileNo: isTr ? "Dosya 03" : "Case 03",
+    slug: "auth-servisi",
+    title: isTr 
+      ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali"
+      : "Common Auth Service: Instant Revocation in Distributed Microservices",
+    tagline: isTr 
+      ? "Yetkileri JWT payload'undan çıkarıp Redis'te versiyonlama; Plasmon, Sapmapayı ve Diventra WMS ortak omurgası"
+      : "Decoupling roles from JWT payloads into versioned Redis claims; unified across Plasmon, Sapmapayı & Diventra WMS",
+    testedScale: isTr 
+      ? "<1ms yetki doğrulama gecikmesi; anında (sub-millisecond) oturum feshi; [SAYI GEREKLİ: eşzamanlı aktif token, qps]"
+      : "<1ms permission check overhead; sub-millisecond session termination; [EXACT NUMBER NEEDED: active tokens, qps]",
+    context: isTr 
+      ? "Diverjans bünyesinde geliştirilen Plasmon (IoT telemetri), Sapmapayı (soğuk zincir uyum) ve Diventra WMS (depo yönetim sistemi) platformlarının tümü heterojen mikroservislerden oluşur. Bu sistemlerin tümü, hem kullanıcı oturumlarını hem de saha teknisyeni ve B2B entegrasyon haklarını yöneten tek bir ortak kimlik ve yetki mimarisi üzerinde birleştirildi."
+      : "Across Diverjans products—Plasmon (IoT telemetry), Sapmapayı (compliance), and Diventra WMS (warehouse operations)—microservices run on heterogeneous stacks (.NET 10 and Spring Boot 3). A single unified identity and authorization plane was required to govern warehouse personnel, field technicians, and B2B integrations.",
+    problem: isTr 
+      ? "Tamamen durumsuz (stateless) JWT yaklaşımı kurumsal sahada kritik bir açık oluşturdu: Bir operatör işten çıkarıldığında veya yetkisi alındığında, elindeki token süresi (örn. 60 dk) bitene kadar sisteme erişebiliyordu. Rollerin token içine gömülmesi HTTP başlıklarını 6KB'a kadar şişiriyordu."
+      : "Pure stateless JWTs created a severe vulnerability: revoked operators retained full access until token expiry (e.g. 60 mins). Embedding deep role trees inflated Authorization headers to 6KB, wasting bandwidth across millions of IoT calls.",
+    diagram: ` [ İstemci / Saha Cihazı ] ──(Token: sub=u102, ver=3)──► [ API Gateway / Servis ]
+                                                              │
+                                                1. JWKS İmza Kontrolü (Geçerli)
+                                                              ▼
+                                                2. Redis GET auth:ver:u102
+                                                              ├─── ver == 3 ? -> İZİN VER (<0.3ms)
+                                                              └─── ver != 3 ? -> 401 ANINDA İPTAL`,
+    decisions: isTr 
+      ? "Hibrit model uygulandı: JWT yalnızca sabit kimliği ve bir sürüm tamsayısını (ver) taşır. Değişken izinler Redis'te saklanır. İptal durumunda sürüm numarası artırılarak eski token'lar anında (<1ms) geçersiz kılındı. Token blacklist tutulmadı; böylece bellek ve arama karmaşıklığı O(1) seviyesinde sabitlendi."
+      : "Engineered a hybrid model: JWT contains only immutable ID and an incrementing version integer (ver). Dynamic rights reside in Redis. Bumping user version instantly revokes all active tokens in <1ms without unbounded blacklist memory growth.",
+    codeSnippet: `// Instant Revocation Auth Filtresi: Redis üzerinden versiyon kontrolü
+public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next) {
+    var userId = context.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var tokenVer = context.HttpContext.User.FindFirst("ver")?.Value;
+    if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenVer)) {
+        context.Result = new UnauthorizedResult(); return;
+    }
+    var currentVer = await _redis.GetDatabase().StringGetAsync($"auth:ver:{userId}");
+    if (!currentVer.HasValue || currentVer.ToString() != tokenVer) {
+        context.Result = new ObjectResult(new { error = "session_revoked" }) { StatusCode = 401 };
+        return;
+    }
+    await next();
+}`,
+    result: isTr 
+      ? "Yetki iptal gecikmesi 60 dakikadan <1 milisaniyeye indi. JWT boyutu 5.2KB'tan <400 bayta düşürüldü. Downstream servislerdeki Redis pipeline sorgusu ortalama 0.3ms ek gecikmeyle çalıştı. Plasmon, Sapmapayı ve Diventra WMS ortak omurgasında çalıştırıldı."
+      : "Revocation latency dropped from 60 minutes to <1 millisecond. Token size fell from 5.2KB to <400 bytes. Redis checks added only ~0.3ms latency, unifying security across Plasmon, Sapmapayı, and Diventra WMS.",
+    whatDifferently: isTr 
+      ? "Redis kümesindeki geçici ağ bölünmelerinde (network partition) meşru isteklerin fail-closed reddedilmesini önlemek için kısa süreli (5 saniye) yerel RAM önbellek (fallback cache) mekanizmasını en baştan kurmalıydım."
+      : "An in-memory local fallback cache (5s TTL) should have been included earlier to handle transient Redis cluster partitions gracefully, avoiding fail-closed rejection during momentary network blips.",
+    stack: ["Spring Boot 3", "C# .NET 10", "Redis (Redlock)", "Keycloak SSO", "OAuth2 / OIDC", "OpenAPI"]
+  }
+];
+---
+
+<section id="cases" class="py-12 sm:py-16 border-b border-[var(--border)]">
+  <!-- Section Header -->
+  <div class="mb-10">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+        02 — {isTr ? 'Seçilmiş İşler' : 'Primary Work'}
+      </span>
+      <span class="h-px w-8 bg-[var(--border)]"></span>
+    </div>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Birincil Vaka Çalışmaları' : 'Engineering Dossiers'}
+      </h2>
+      <p class="font-mono text-xs text-[var(--text-dim)]">
+        {isTr ? 'Editoryal analiz · Mimari şema · Gerçek kod' : 'Editorial analysis · Architecture diagram · Real code'}
+      </p>
+    </div>
+  </div>
+
+  <!-- 3 Editorial Dossiers -->
+  <div class="space-y-16">
+    {caseDossiers.map((item) => (
+      <article id={item.anchorId} class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-6 sm:p-8 space-y-6">
+        <!-- Dossier Header -->
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[var(--border)]">
+          <div class="space-y-1.5 max-w-2xl">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs px-2.5 py-0.5 bg-[#E8590C] text-white font-semibold rounded-[2px]">
+                {item.fileNo}
+              </span>
+              <span class="font-mono text-xs text-[var(--text-dim)]">
+                {item.testedScale}
+              </span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] tracking-tight pt-1">
+              {item.title}
+            </h3>
+            <p class="font-mono text-xs text-[var(--text-muted)]">
+              {item.tagline}
+            </p>
+          </div>
+
+          <!-- Stack Tags -->
+          <div class="flex flex-wrap md:justify-end gap-1.5 max-w-sm">
+            {item.stack.map((tech) => (
+              <span class="font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text)] rounded-[2px]">
+                {tech}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <!-- 1. Bağlam & Problem -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans">
+          <div class="space-y-2">
+            <h4 class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider">
+              {isTr ? '1. Bağlam' : '1. Context'}
+            </h4>
+            <p class="text-[var(--text)] leading-relaxed text-[13px]">
+              {item.context}
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
+              {isTr ? '2. Problem' : '2. Problem Statement'}
+            </h4>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+              {item.problem}
+            </p>
+          </div>
+        </div>
+
+        <!-- Mimari Diyagram (ASCII / Schematics) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+              {isTr ? '3. Mimari Şema & Veri Hattı' : '3. Architecture Diagram'}
+            </h4>
+            <span class="font-mono text-[10px] text-[var(--text-dim)]">ASCII / Schema</span>
+          </div>
+          <div class="p-4 bg-[var(--bg-code)] border border-[var(--border)] rounded-[2px] overflow-x-auto">
+            <pre class="font-mono text-xs text-[var(--text)] leading-relaxed">{item.diagram}</pre>
+          </div>
+        </div>
+
+        <!-- 3. Kararlar ve Elenen Alternatifler -->
+        <div class="space-y-2">
+          <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
+            {isTr ? '4. Kararlar ve Elenen Alternatifler' : '4. Architectural Trade-offs & Rejected Paths'}
+          </h4>
+          <p class="text-sm text-[var(--text)] leading-relaxed prose-editorial text-[13px]">
+            {item.decisions}
+          </p>
+        </div>
+
+        <!-- 4. Gerçek Kod Parçası (Syntax Highlighted Container) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider">
+              {isTr ? '5. Gerçek Kod Çekirdeği' : '5. Production Code Kernel'}
+            </h4>
+            <span class="font-mono text-[10px] text-[var(--text-dim)]">{isTr ? 'Ekran görüntüsü değil' : 'Not a screenshot'}</span>
+          </div>
+          <div class="p-4 bg-[var(--bg-code)] border border-[var(--border)] rounded-[2px] overflow-x-auto">
+            <pre class="font-mono text-xs text-[var(--text)] leading-relaxed"><code>{item.codeSnippet}</code></pre>
+          </div>
+        </div>
+
+        <!-- 5. Sonuç & Neyi Farklı Yapardım -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-[var(--border)] text-xs font-sans">
+          <div class="space-y-1.5">
+            <div class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
+              {isTr ? '6. Sonuç ve Ölçülebilir Çıktı' : '6. Measurable Outcomes'}
+            </div>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+              {item.result}
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider">
+              {isTr ? '7. Neyi Farklı Yapardım?' : '7. Retrospective & What I Would Change'}
+            </div>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
+              {item.whatDifferently}
+            </p>
+          </div>
+        </div>
+
+        <!-- Link to Standalone Case Dossier -->
+        <div class="flex items-center justify-between pt-3 border-t border-[var(--border)] text-xs font-mono">
+          <span class="text-[var(--text-dim)]">
+            {isTr ? 'Bağımsız dosya olarak incele:' : 'Read full MDX dossier:'}
+          </span>
+          <a
+            href={isTr ? `/cases/${item.slug}` : `/en/cases/${item.slug}`}
+            class="text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1 font-semibold"
+          >
+            <span>{isTr ? 'Dosya Sayfasına Git' : 'Open Dossier Page'}</span>
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>

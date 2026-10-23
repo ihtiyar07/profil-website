@@ -1,0 +1,110 @@
+---
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+
+const navItems = isTr ? [
+  { href: '#pipeline', label: 'Veri Hattı' },
+  { href: '#cases', label: 'Vaka Çalışmaları' },
+  { href: '#invariants', label: 'Değişmezler' },
+  { href: '#writing', label: 'Yazılar' },
+  { href: '#archive', label: 'Arşiv' },
+  { href: '#contact', label: 'İletişim' }
+] : [
+  { href: '/en#pipeline', label: 'Data Path' },
+  { href: '/en#cases', label: 'Case Studies' },
+  { href: '/en#invariants', label: 'Invariants' },
+  { href: '/en#writing', label: 'Writing' },
+  { href: '/en#archive', label: 'Archive' },
+  { href: '/en#contact', label: 'Contact' }
+];
+
+const homeUrl = isTr ? '/' : '/en';
+const targetLangUrl = isTr ? '/en' : '/';
+---
+
+<header class="w-full border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-sm sticky top-0 z-40 transition-colors">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 h-14 sm:h-16 flex items-center justify-between">
+    <!-- Brand / Identity -->
+    <a href={homeUrl} class="flex items-center gap-2 group focus:outline-none" aria-label="Ahmet İhtiyar Ana Sayfa">
+      <span class="w-2.5 h-2.5 rounded-[1px] bg-[#E8590C] inline-block transition-transform group-hover:scale-110"></span>
+      <span class="font-mono text-xs sm:text-sm font-semibold tracking-wider text-[var(--text)] uppercase">
+        Ahmet İhtiyar
+      </span>
+      <span class="hidden md:inline font-mono text-xs text-[var(--text-dim)] border-l border-[var(--border)] pl-2">
+        {isTr ? 'Mühendislik Dosyası' : 'Engineering Dossier'}
+      </span>
+    </a>
+
+    <!-- Nav & Actions -->
+    <div class="flex items-center gap-3 sm:gap-5">
+      <nav class="hidden lg:flex items-center gap-4 text-xs font-mono" aria-label="Main Navigation">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class="text-[var(--text-muted)] hover:text-[#E8590C] hover:underline transition-colors py-1 px-0.5"
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <div class="flex items-center gap-2 sm:gap-2.5 pl-2 border-l border-[var(--border)]">
+        <!-- Language Switcher -->
+        <a
+          href={targetLangUrl}
+          class="font-mono text-xs px-2 py-1 border border-[var(--border)] rounded-[2px] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors"
+          title={isTr ? "Switch to English" : "Türkçe'ye Geç"}
+          aria-label={isTr ? "Switch to English" : "Türkçe'ye Geç"}
+        >
+          {isTr ? 'EN' : 'TR'}
+        </a>
+
+        <!-- Theme Toggle Button -->
+        <button
+          id="theme-toggle-btn"
+          type="button"
+          class="font-mono text-xs px-2 py-1 border border-[var(--border)] rounded-[2px] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors flex items-center gap-1.5 cursor-pointer"
+          aria-label={isTr ? "Temayı Değiştir (Açık/Koyu)" : "Toggle theme (Light/Dark)"}
+        >
+          <span class="theme-icon-light hidden" aria-hidden="true">☼</span>
+          <span class="theme-icon-dark hidden" aria-hidden="true">☾</span>
+          <span id="theme-label" class="text-[11px] uppercase tracking-wider">{isTr ? 'Koyu' : 'Dark'}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  (function() {
+    const btn = document.getElementById('theme-toggle-btn');
+    const label = document.getElementById('theme-label');
+    const isTurkish = document.documentElement.lang === 'tr';
+
+    function updateThemeUI(theme) {
+      if (!label) return;
+      if (theme === 'dark') {
+        label.textContent = isTurkish ? 'Açık' : 'Light';
+      } else {
+        label.textContent = isTurkish ? 'Koyu' : 'Dark';
+      }
+    }
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    updateThemeUI(currentTheme);
+
+    btn?.addEventListener('click', () => {
+      const active = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = active === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('theme', next);
+      } catch (_) {}
+      updateThemeUI(next);
+    });
+  })();
+</script>

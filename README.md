@@ -1,69 +1,28 @@
-# Ahmet İhtiyar — İnteraktif Sistem & Portfolyo Web Sitesi
+# Ahmet İhtiyar — Mühendislik Dosyası (ahmetihtiyar.com)
 
-Bu proje; **Ahmet İhtiyar** için donanım/IoT seviyesinden (ESP32, Modbus RTU/TCP, 4G GSM) dağıtık mikroservislere (Java Spring Boot, C# .NET), kurumsal veri soykütüğüne (MetaDB, Memgraph, PostgreSQL) ve DevOps/Altyapı (Proxmox VE, Fedora Linux, Docker) dünyasına kadar uzanan uçtan uca mühendislik profilini sergileyen, **yüksek etkileşimli ve modern bir portfolyo web uygulamasıdır**.
+Bu depo, **Ahmet İhtiyar**'ın kişisel mühendislik sitesinin kaynak kodlarını içerir. 
 
----
-
-## 🌟 Öne Çıkan İnteraktif Özellikler
-
-1. **İnteraktif Sistem Mimarisi Tuvali (HTML5 Canvas)**:
-   - Donanım (ESP32) -> Mesaj Kuyruğu (MQTT/RabbitMQ) -> Mikroservisler (Spring Boot/.NET) -> Veri Soykütüğü (MetaDB/Memgraph) -> Altyapı (Proxmox) arasındaki paket akışını canlı olarak canlandırır.
-   - Herhangi bir düğüme tıklandığında desteklenen protokolleri ve teknik detayları gösterir.
-2. **Canlı ESP32 & Modbus Telemetri Simülatörü**:
-   - Endüstriyel soğutma ünitesinden gelen sıcaklık, emme/basma basınçları ve invertör frekansını gerçek zamanlı günceller.
-   - "Sıcaklık Artışı Tetikle", "4G Hücresel Failover" ve "Modbus Holding Register Yaz" butonlarıyla ziyaretçilerin interaktif test yapmasını sağlar.
-3. **Geliştirici CLI Terminal Konsolu (`ihtiyar@systems:~$`)**:
-   - Klavyeden komut yazarak veya hazır buton haplarına tıklayarak (`help`, `bio`, `skills`, `projects`, `telemetry`, `infra`, `contact`) sistem ve özgeçmiş detaylarını komut satırından sorgulatır.
-4. **Dinamik Rol Seçici (Persona Switcher)**:
-   - Ziyaretçinin ilgilendiği role göre (**Backend Architect**, **IoT & Embedded**, **DevOps & Infra**, **Data & Lineage**, **IAM & Security**) projeleri, metrikleri ve vurguları filtreler.
-5. **Çift Dil Desteği (TR / EN)**:
-   - Hem yerli hem global şirketler ve teknik mülakatçılar için tek tıkla Türkçe / İngilizce geçişi.
-6. **Kişiselleştirilmiş Yüksek Kaliteli Tasarım**:
-   - Yüklenen portre fotoğrafı, neon siber çerçeve, canlı telemetri durum rozetleri ve 1 tıkla e-posta kopyalama & CV yazdırma özelliği.
+Şablon veya tipik "developer portfolio" yaklaşımı yerine; **iyi editörlüğü yapılmış bir mühendislik dosyası** konseptiyle sıfırdan tasarlandı. Ziyaretçiye sensörden resmi e-imzalı rapora kadar verinin tüm yolunu kuran bir mühendisin mimari kararlarını, değişmezlerini ve vaka analizlerini sunar.
 
 ---
 
-## 🛠️ Yerel Geliştirme (Local Development)
+## 🏛️ Mimari ve Tasarım Sistemi
 
-Projeyi yerel bilgisayarınızda çalıştırmak için:
-
-```bash
-cd profil-website
-
-# Bağımlılıkları yükleyin (ilk seferde)
-npm install
-
-# Geliştirme sunucusunu başlatın
-npm run dev
-```
-
-Tarayıcınızda açılan `http://localhost:5173` adresinden canlı olarak deneyimleyebilirsiniz.
-
----
-
-## 🚀 Cloudflare Pages ile Dağıtım (Deploy Guide)
-
-Proje, Cloudflare Pages için optimize edilmiştir. Sıfır sunucu maliyeti ve global CDN hızıyla 1 dakikada canlıya alabilirsiniz:
-
-### Yöntem 1: GitHub / GitLab ile Otomatik Dağıtım (Önerilen)
-1. Bu projeyi GitHub reponuza push edin.
-2. [Cloudflare Dashboard](https://dash.cloudflare.com/) > **Workers & Pages** > **Create application** > **Pages** > **Connect to Git** adımlarını izleyin.
-3. Proje ayarlarında:
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. **Save and Deploy** butonuna tıklayın. Siteniz saniyeler içinde global edge ağında yayına girecektir.
-
-### Yöntem 2: Wrangler CLI ile Terminalden Doğrudan Dağıtım
-```bash
-# dist paketini derleyin
-npm run build
-
-# Cloudflare Pages'e doğrudan yükleyin
-npx wrangler pages deploy dist --project-name=ahmet-ihtiyar-portfolio
-```
-
-> **Not:** Tek sayfa uygulama (SPA) yönlendirmeleri için `public/_redirects` dosyası hazırdır (`/* /index.html 200`). Herhangi bir alt sayfa veya yenilemede 404 hatası almazsınız.
+- **Varsayılan Tema (Kağıt / Paper):** Zemin `#F4F1EA`, metin `#14130F`, ikincil metin `#5B574E`, çizgiler `#D9D4C7`, tek vurgu rengi `#E8590C` (yanık turuncu). Gradyan, buzlu cam ve kart gölgesi yoktur.
+- **Koyu Tema (Sıcak Neredeyse-Siyah):** Lacivert yerine sıcak zemin `#14130F`, metin `#EDE9DF`, çizgiler `#2C2A24`, aynı vurgu rengi `#E8590C`. Sistem tercihine göre otomatik + anında manuel geçiş.
+- **Tipografi Üçlüsü (Self-hosted WOFF2):**
+  - **Başlıklar:** `Newsreader` (karakterli editoryal serif)
+  - **Gövde:** `Geist Sans` (sakin, okunabilir sans-serif)
+  - **Etiket ve Kod:** `JetBrains Mono` (monospaced detaylar)
+- **Verinin Yolu (The Path of Data):** Sitenin omurgasını oluşturan interaktif 6 duraklı mimari hat:
+  1. *Cihaz (ESP32, Modbus RTU/TCP)*
+  2. *Aktarım (GSM 4G LTE, MQTT over TLS, OTA)*
+  3. *Kuyruk (RabbitMQ)*
+  4. *Depolama (PostgreSQL, TimescaleDB)*
+  5. *Teslimat (Apache Arrow Zero-Copy IPC, WebSocket)*
+  6. *Güven (Redis-backed RBAC, Keycloak SSO, e-İmza, RFC 3161 Zaman Damgası)*
+  *Altyapı Zemini (Infrastructure Ground):* Proxmox VE 8, ZFS, PBS, Docker, Caddy, Prometheus, Oracle.
+- **Sitedeki Tek Dekoratif Animasyon:** Hat üzerinde soldan sağa (mobilde yukarıdan aşağı) ilerleyen paket simülasyonu. `prefers-reduced-motion` aktif olduğunda animasyon tamamen durur.
 
 ---
 
@@ -72,29 +31,122 @@ npx wrangler pages deploy dist --project-name=ahmet-ihtiyar-portfolio
 ```
 profil-website/
 ├── public/
-│   ├── _redirects         # Cloudflare Pages SPA yönlendirme kuralı
-│   ├── favicon.svg        # Özel mikroçip/telemetri favikonu
-│   └── profile.png        # Ahmet İhtiyar portre görseli
+│   ├── favicon.svg            # Mikroçip/telemetri favikonu
+│   ├── profile.png            # Ahmet İhtiyar portre görseli (optimize PNG)
+│   ├── profile.webp           # Retina 12KB WebP portre görseli
+│   ├── robots.txt             # SEO arama motoru kuralları
+│   └── _redirects             # Cloudflare Pages SPA/statik kuralı
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.tsx             # Üst menü, persona ribbon, dil seçici
-│   │   ├── Hero.tsx               # Portre kartı, telemetri başlığı, hızlı eylemler
-│   │   ├── ArchitectureCanvas.tsx # İnteraktif mimari tuvali ve canlı parçacıklar
-│   │   ├── TelemetrySimulator.tsx # ESP32 / Modbus canlı telemetri sandbox
-│   │   ├── Projects.tsx           # MetaDB, IoT, Ödeme, Proxmox case study kartları
-│   │   ├── SkillsMatrix.tsx       # 5 katmanlı teknoloji yığını ve yetkinlik radarı
-│   │   ├── TerminalConsole.tsx    # Geliştirici CLI konsolu
-│   │   ├── RoleFitGuide.tsx       # IK / Teknik lider rol değerlendirme modülü
-│   │   ├── ContactModal.tsx       # 1 tıkla e-posta kopyalama ve CV yazdırma
-│   │   ├── Footer.tsx             # Cloudflare Pages edge durumu ve bağlantılar
-│   │   └── GithubIcon.tsx         # Vektörel GitHub ikonu
-│   ├── data/
-│   │   ├── portfolioData.ts       # TR/EN çift dilli içerik, projeler ve yetkinlikler
-│   │   └── terminalCommands.ts    # CLI komut motoru
-│   ├── App.tsx                    # Ana layout ve reaktif durum yönetimi
-│   ├── index.css                  # Tailwind CSS ve siber cam stilleri
-│   └── main.tsx                   # React 19 başlangıç noktası
-├── dist/                          # Cloudflare Pages üretim paketi
-├── package.json
-└── vite.config.ts
+│   │   ├── Header.astro       # Editoryal üst menü, dil ve tema seçici
+│   │   ├── Hero.astro         # H1, "şu an" satırı, 2 aksiyon, portre
+│   │   ├── DataPipeline.astro # "Verinin Yolu" interaktif hattı ve altyapı şeridi
+│   │   ├── CaseFiles.astro    # 3 birincil vaka çalışması (Dosya 01 / 02 / 03)
+│   │   ├── SecondaryProjects.astro # İkincil işler (kompakt tek satırlık kayıt)
+│   │   ├── Invariants.astro   # 4 alanlı Değişmezler (Kural/Bozulma/Çözüm/Doğrulama)
+│   │   ├── WritingSection.astro # MDX teknik yazılar listesi
+│   │   ├── ArchiveSection.astro # Sade zaman çizelgesi (Datathonlar, Hyperloop)
+│   │   ├── ContactSection.astro # E-posta, GitHub, LinkedIn, CV PDF (form yok)
+│   │   └── Footer.astro       # Son güncelleme, tipografi & Proxmox/Caddy notu
+│   ├── content/
+│   │   ├── cases/             # MDX birincil vaka çalışmaları (TR & EN)
+│   │   │   ├── plasmon.mdx
+│   │   │   ├── sapmapayi.mdx
+│   │   │   └── auth-servisi.mdx
+│   │   └── posts/             # MDX teknik makaleler (TR & EN)
+│   ├── data/                  # Veri modelleri, değişmezler, duraklar, ikincil işler
+│   ├── layouts/
+│   │   └── BaseLayout.astro   # SEO, Person Schema JSON-LD, i18n hreflang
+│   ├── pages/
+│   │   ├── index.astro        # Türkçe ana sayfa (varsayılan)
+│   │   ├── en/index.astro     # İngilizce ana sayfa (/en)
+│   │   ├── cases/[slug].astro # Dinamik vaka çalışması sayfası
+│   │   ├── posts/[slug].astro # Dinamik teknik yazı sayfası
+│   │   └── rss.xml.ts         # Otomatik RSS feed motoru
+│   └── styles/
+│       └── global.css         # Tasarım tokenları ve tipografi stilleri
+├── astro.config.mjs           # Astro, MDX, Sitemap, i18n konfigürasyonu
+└── package.json
 ```
+
+---
+
+## 🛠️ Yerel Geliştirme (Local Development)
+
+```bash
+cd profil-website
+
+# Bağımlılıkları yükleyin
+npm install
+
+# Geliştirme sunucusunu başlatın
+npm run dev
+
+# Statik çıktı derleyin (dist/)
+npm run build
+
+# Üretim çıktısını yerel olarak önizleyin
+npm run preview
+```
+
+---
+
+## 🚀 Dağıtım Notları (Deployment Guide)
+
+### 1. Kendi Proxmox VE Sunucunuzda Caddy ile Yayınlama (Önerilen)
+
+Sitenin `npm run build` ile üretilen `dist/` klasörü saf statik dosyalardan oluşur. Caddy web sunucusu ile sıfır konfigürasyon eforu ve otomatik Let's Encrypt TLS ile servis edebilirsiniz:
+
+`/etc/caddy/Caddyfile`:
+```caddy
+ahmetihtiyar.com, www.ahmetihtiyar.com {
+    root * /var/www/ahmetihtiyar.com/dist
+    file_server
+    encode gzip zstd
+
+    # Güvenlik ve Önbellek Başlıkları
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Statik Varlıklar İçin 1 Yıllık Önbellekleme
+    @static {
+        file
+        path /_astro/* *.woff2 *.webp *.png *.svg
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # 404 Yönlendirmesi
+    handle_errors {
+        rewrite * /{err.status_code}.html
+        file_server
+    }
+}
+```
+
+Servisi yeniden başlatın:
+```bash
+sudo systemctl reload caddy
+```
+
+### 2. Cloudflare Pages ile Dağıtım
+
+1. Reponuzu GitHub'a push edin.
+2. [Cloudflare Dashboard](https://dash.cloudflare.com/) > **Workers & Pages** > **Create application** > **Pages** > **Connect to Git**.
+3. Derleme Ayarları:
+   - **Framework preset:** `Astro`
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+4. **Save and Deploy**'a tıklayın. Siteniz saniyeler içinde global edge CDN üzerinde yayına girecektir.
+
+---
+
+## 📊 Performans ve Metrikler
+
+- **İlk Yükleme JS Boyutu:** `< 2 KB` (Yalnızca hafif tema geçişi ve interaktif durak seçici kodu).
+- **CSS Boyutu:** `~44 KB` (Kritik CSS doğrudan derlenir).
+- **Görsel Boyutu:** WebP portre görseli `12.8 KB` (940 KB'tan optimize edildi).
+- **Lighthouse Hedefi:** Performance, Accessibility, Best Practices ve SEO kategorilerinde 98–100.

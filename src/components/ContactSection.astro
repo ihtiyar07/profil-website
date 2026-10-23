@@ -29,7 +29,7 @@ const isTr = lang === 'tr';
   </div>
 
   <!-- Contact Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Email -->
     <a
       href={`mailto:${SITE_META.email}`}
@@ -79,6 +79,24 @@ const isTr = lang === 'tr';
       </div>
       <div class="font-mono text-[10px] text-[#E8590C] pt-1">
         {isTr ? 'Ağa Bağlan ↗' : 'Connect on LinkedIn ↗'}
+      </div>
+    </a>
+
+    <!-- Resume / CV PDF -->
+    <a
+      href={SITE_META.cvPath}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-colors group block space-y-1"
+    >
+      <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+        {isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}
+      </div>
+      <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+        {isTr ? 'CV (PDF İndir)' : 'Download PDF CV'}
+      </div>
+      <div class="font-mono text-[10px] text-[#E8590C] pt-1">
+        {isTr ? 'Dosyayı İndir ↓' : 'Get PDF File ↓'}
       </div>
     </a>
   </div>

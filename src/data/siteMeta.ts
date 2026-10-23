@@ -20,6 +20,7 @@ export const SITE_META = {
   email: "ahmetihtiyar1453@gmail.com",
   github: "https://github.com/ihtiyar07",
   linkedin: "https://linkedin.com/in/ahmet-ihtiyar",
+  cvPath: "/cv-ahmet-ihtiyar.pdf",
   lastUpdatedDate: "2026-10-23",
   lastUpdatedFormatted: {
     tr: "23 Ekim 2026",

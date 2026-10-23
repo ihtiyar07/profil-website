@@ -25,7 +25,7 @@ const caseDossiers = [
       : "Plasmon was engineered for continuous monitoring and remote setpoint orchestration of industrial chillers and HVAC units in harsh factory environments. Designed for 100K+ edge devices, the architecture covers the full pipeline from physical sensor interfaces up to centralized broker ingestion.",
     problem: isTr 
       ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA güncellemesi alması gerekiyordu."
-      : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required guaranteed telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
+      : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required reliable offline telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
     diagram: ` [ Sensör / Chiller ] ──(RS-485 Modbus)──► [ ESP32 Gateway: FreeRTOS ]
                                                      │ (Ağ yokken)
                                                      ▼
@@ -34,7 +34,7 @@ const caseDossiers = [
                                                      ▼
  [ TimescaleDB ] ◄── [ RabbitMQ DLX ] ◄──MQTT/TLS──► [ EMQX / Mosquitto ]`,
     decisions: isTr 
-      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu sıfırlandı. REST yerine persistent MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. İkincil failover hattı olarak GSM modemi için donanımsal güç anahtarlaması eklendi."
+      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu önlendi. REST yerine persistent MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. İkincil failover hattı olarak GSM modemi için donanımsal güç anahtarlaması eklendi."
       : "C on FreeRTOS with static memory allocations eliminated malloc heap fragmentation. Persistent MQTT over TLS (QoS 1) preserved 85% cellular quota over HTTP. An automated transistor power-cycling switch resolved cellular modem hangs.",
     codeSnippet: `// Flash Ring-Buffer: Ağ koptuğunda telemetriyi yerel flaşa yazar
 esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
@@ -156,7 +156,7 @@ public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionE
 ];
 ---
 
-<section id="cases" class="py-12 sm:py-16 border-b border-[var(--border)]">
+<section id="cases" class="py-12 sm:py-16 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
   <!-- Section Header -->
   <div class="mb-10">
     <div class="flex items-center gap-2 mb-2">
@@ -178,7 +178,7 @@ public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionE
   <!-- 3 Editorial Dossiers -->
   <div class="space-y-16">
     {caseDossiers.map((item) => (
-      <article id={item.anchorId} class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-6 sm:p-8 space-y-6">
+      <article id={item.anchorId} class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-6 sm:p-8 space-y-6 scroll-mt-20 sm:scroll-mt-24">
         <!-- Dossier Header -->
         <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[var(--border)]">
           <div class="space-y-1.5 max-w-2xl">

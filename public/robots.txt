@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://ahmetihtiyar.com/sitemap.xml
+Sitemap: https://ahmetihtiyar.com/sitemap-index.xml

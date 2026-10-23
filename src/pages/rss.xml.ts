@@ -1,6 +1,7 @@
 import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
 import { SITE_META } from '../data/siteMeta';
+import { getPostSlug } from '../data/slugUtils';
 import type { APIContext } from 'astro';
 
 export async function GET(context: APIContext) {
@@ -15,7 +16,7 @@ export async function GET(context: APIContext) {
         title: post.data.title,
         pubDate: new Date(post.data.date),
         description: post.data.summary,
-        link: `/posts/${post.id.replace(/\.en\.(md|mdx)$/, '').replace(/\.(md|mdx)$/, '')}/`,
+        link: `/posts/${getPostSlug(post)}`,
       })),
     customData: `<language>tr-TR</language>`,
   });

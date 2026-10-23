@@ -1,0 +1,65 @@
+---
+title: "From-scratch Proxmox on a dedicated server: network and firewall notes"
+slug: "from-scratch-proxmox-on-dedicated-server-network-and-firewall"
+date: "2025-09-04"
+lang: "en"
+summary: "Bare-metal Proxmox VE 8 setup on a single public IPv4: routed bridge architecture, iptables/nftables NAT rules, and private WireGuard management tunnels."
+tags: ["Proxmox", "Linux", "DevOps", "Network Security"]
+readingTime: "7 min"
+---
+
+When leasing a bare-metal dedicated server from providers like Hetzner or OVH, you typically receive a single physical Ethernet interface and a single public IPv4 address.
+
+Installing Proxmox VE to host multiple LXC containers and KVM virtual machines breaks if you configure standard bridged networking (`vmbr0` bridged to `eth0`), because upstream datacenter switches disable switch ports if they detect unauthorized MAC addresses.
+
+## 1. Network Topology: Routed Setup and Linux Bridge (`vmbr0`)
+
+The resilient approach is creating a routed private subnet (e.g., `10.10.10.0/24`) for internal guest VMs and masquerading outbound traffic via NAT behind the host's public IP.
+
+Host `/etc/network/interfaces` configuration:
+
+```
+auto lo
+iface lo inet loopback
+
+# Physical Network Interface
+auto enp4s0
+iface enp4s0 inet static
+    address 198.51.100.42/26
+    gateway 198.51.100.1
+    pointopoint 198.51.100.1
+
+# Isolated Guest Bridge
+auto vmbr0
+iface vmbr0 inet static
+    address 10.10.10.1/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    # Kernel Forwarding & NAT Masquerade
+    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
+    post-up   iptables -t nat -A POSTROUTING -s '10.10.10.0/24' -o enp4s0 -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s '10.10.10.0/24' -o enp4s0 -j MASQUERADE
+```
+
+## 2. Hardening Proxmox Web GUI (Port 8006) Behind WireGuard
+
+Exposing the Proxmox VE administration interface (`https://198.51.100.42:8006`) to the open internet is a severe vulnerability, inviting brute-force attempts and zero-day exploits.
+
+Remediation: **WireGuard Management VPN.**
+
+An isolated WireGuard interface (`wg0` on `10.20.0.1/24`) is provisioned on the host. Host firewall rules restrict port 8006 strictly to this encrypted VPN tunnel:
+
+```bash
+# Allow GUI access exclusively through the WireGuard interface
+iptables -A INPUT -p tcp --dport 8006 -i wg0 -j ACCEPT
+iptables -A INPUT -p tcp --dport 8006 -j DROP
+```
+
+Management consoles become entirely unreachable unless an authenticated WireGuard session is established.
+
+## 3. ZFS Storage Pools and Proxmox Backup Server (PBS)
+
+On bare-metal servers equipped with dual NVMe drives, **ZFS RAID-1 (mirror)** is preferred over hardware RAID controllers:
+- Periodic automated `zpool scrub` runs detect and self-heal silent data degradation (bit rot) using parity blocks.
+- Scheduled backups are streamed to a dedicated Proxmox Backup Server (PBS). PBS implements block-level deduplication, compressing daily incremental backup deltas across 10 virtual machines down to ~2–3GB.

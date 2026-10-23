@@ -96,7 +96,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
     },
     whyDecision: {
       tr: "Doğrudan veritabanı yazımı yerine araya RabbitMQ koydum; veritabanı bakım, restart veya yoğun yük anlarında telemetri kaybını önledi ve arka uç yazma hızını diskin I/O hızına göre regüle etti.",
-      en: "Decoupled ingestion from storage via RabbitMQ; smoothed database write spikes during peak hours and guaranteed zero data drop during database restarts."
+      en: "Decoupled ingestion from storage via RabbitMQ; smoothed database write spikes during peak hours and prevented telemetry loss during database restarts."
     },
     alternativeEliminated: {
       tr: "Apache Kafka ertelendi; cihaz bazlı komut-yanıt (RPC) desenleri, karmaşık routing key filtreleri ve küçük ayak izli operasyon ihtiyacı nedeniyle bu ölçekte RabbitMQ çok daha çevik ve verimliydi.",
@@ -132,7 +132,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Selected relational PostgreSQL + TimescaleDB over NoSQL; unified customer hierarchies, device topology, and high-frequency time-series within a single ACID SQL engine."
     },
     alternativeEliminated: {
-      tr: "MongoDB ve InfluxDB elendi; kurumsal raporlama için gerekli olan karmaşık SQL join kabiliyetleri ve ACID garantisi eksikliği nedeniyle elendi.",
+      tr: "MongoDB ve InfluxDB elendi; kurumsal raporlama için gerekli olan karmaşık SQL join kabiliyetleri ve ACID işlem sınırları eksikliği nedeniyle elendi.",
       en: "Eliminated MongoDB and InfluxDB; lacking native relational JOIN performance and strict transaction boundaries required for enterprise audit reports."
     },
     challenge: {

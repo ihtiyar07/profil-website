@@ -1,0 +1,80 @@
+---
+title: "TimescaleDB continuous aggregates and retention in practice"
+slug: "timescaledb-continuous-aggregates-and-retention-in-practice"
+date: "2026-01-20"
+lang: "en"
+summary: "Storage and query optimization across billions of sensor records: hypertable chunk sizing, continuous aggregate materialization, and automated retention policies."
+tags: ["PostgreSQL", "TimescaleDB", "Database", "IoT"]
+readingTime: "5 min"
+---
+
+In industrial IoT initiatives, incoming data volume is routinely underestimated. A modest telemetry stream ingesting just 100 packets per second generates ~260 million rows every month.
+
+Standard PostgreSQL tables under this sustained load quickly degrade: indexes outgrow available RAM, autovacuum cycles take days, and analytical queries choke disk I/O. This is where TimescaleDB provides architectural leverage.
+
+## 1. Hypertables and Proper Chunk Sizing
+
+TimescaleDB partitions table data along time intervals into hidden child tables called chunks.
+
+The golden rule of chunk sizing: **Active chunks and their corresponding indexes must fit comfortably within `shared_buffers` and available server RAM.**
+
+```sql
+-- Raw telemetry hypertable: 1-day chunk interval
+SELECT create_hypertable('sensor_telemetry', 'recorded_at', 
+    chunk_time_interval => INTERVAL '1 day');
+```
+
+If chunk intervals are set too broad (e.g., 30 days), ingestion triggers OS disk paging. If set too fine (e.g., 1 hour), PostgreSQL catalog bloat degrades query planner performance. In production with 10M–50M rows daily, **a 1-day chunk interval** offers the optimal balance.
+
+## 2. Continuous Aggregates: Incremental Rollups at Write Time
+
+When an operations manager requests a 6-month historical temperature curve, scanning billions of raw telemetry rows is disastrous.
+
+TimescaleDB Continuous Aggregates operate **incrementally**, unlike standard PostgreSQL `MATERIALIZED VIEW` constructs:
+
+```sql
+CREATE MATERIALIZED VIEW chiller_hourly_summary
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 hour', recorded_at) AS bucket,
+       device_id,
+       AVG(temperature) AS avg_temp,
+       MIN(temperature) AS min_temp,
+       MAX(temperature) AS max_temp,
+       COUNT(*)         AS sample_count
+FROM sensor_telemetry
+GROUP BY bucket, device_id;
+```
+
+Coupled with an automated refresh policy:
+```sql
+SELECT add_continuous_aggregate_policy('chiller_hourly_summary',
+    start_offset => INTERVAL '3 days',
+    end_offset   => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '30 minutes');
+```
+
+The system recalculates only recently modified or late-arriving records within the designated sliding window; historical months remain pre-computed on disk. Query execution drops from **15 seconds to 8 milliseconds**.
+
+## 3. Columnar Compression and Retention
+
+Sensor readings exhibit high entropy across time but high repetition across columns. TimescaleDB's native columnar compression enables significant savings:
+
+```sql
+ALTER TABLE sensor_telemetry SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby = 'recorded_at DESC'
+);
+
+SELECT add_compression_policy('sensor_telemetry', INTERVAL '7 days');
+```
+
+Chunks older than 7 days compress automatically into columnar format, reducing storage consumption by **approximately 90%** (shrinking 100GB to 10GB).
+
+Finally, obsolete raw readings beyond operational compliance mandates are purged cleanly:
+```sql
+-- Drop raw data older than 90 days; retain continuous aggregate summaries indefinitely
+SELECT add_retention_policy('sensor_telemetry', INTERVAL '90 days');
+```
+
+This discipline keeps hypertable disk utilization stable, enabling years of predictable query performance on fixed storage footprints.

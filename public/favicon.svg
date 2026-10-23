@@ -1,10 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="14" fill="#030712"/>
-  <rect x="2" y="2" width="60" height="60" rx="12" stroke="#10B981" stroke-width="2" stroke-opacity="0.4"/>
-  <!-- Chip Core -->
-  <rect x="18" y="18" width="28" height="28" rx="6" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
-  <circle cx="32" cy="32" r="6" fill="#10B981"/>
-  <!-- Pins / Traces -->
-  <path d="M32 6V18M32 46V58M6 32H18M46 32H58" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
-  <path d="M14 14L22 22M42 42L50 50M14 50L22 42M42 22L50 14" stroke="#06B6D4" stroke-width="2" stroke-linecap="round"/>
+  <!-- Base background (warm near-black) -->
+  <rect width="64" height="64" rx="8" fill="#14130F" />
+  <rect x="1.5" y="1.5" width="61" height="61" rx="6.5" stroke="#2C2A24" stroke-width="1.5" />
+  
+  <!-- Data Bus Line (connecting stops) -->
+  <line x1="12" y1="32" x2="52" y2="32" stroke="#5B574E" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Left station (Sensor/MCU) -->
+  <circle cx="18" cy="32" r="4.5" fill="#14130F" stroke="#E8590C" stroke-width="2" />
+  
+  <!-- Central data packet (accent) -->
+  <circle cx="32" cy="32" r="5" fill="#E8590C" />
+  
+  <!-- Right station (Signed delivery) -->
+  <circle cx="46" cy="32" r="4.5" fill="#14130F" stroke="#EDE9DF" stroke-width="2" />
+  
+  <!-- Subtle top/bottom telemetry ticks -->
+  <line x1="32" y1="16" x2="32" y2="24" stroke="#E8590C" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="32" y1="40" x2="32" y2="48" stroke="#E8590C" stroke-width="1.5" stroke-linecap="round" />
 </svg>

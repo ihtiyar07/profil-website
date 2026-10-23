@@ -1,0 +1,60 @@
+---
+title: "Zero-copy from DB to browser with Apache Arrow: gains and friction points"
+slug: "zero-copy-from-db-to-browser-with-apache-arrow"
+date: "2026-02-28"
+lang: "en"
+summary: "Eliminating the JSON serialization penalty across 100K+ sensor rows: Apache Arrow IPC streaming, TypedArray mapping, and WebGL integration lessons."
+tags: ["Apache Arrow", "Performance", "TimescaleDB", "Frontend"]
+readingTime: "7 min"
+---
+
+When querying 30 days of sensor history from a cold-chain warehouse or industrial refrigeration plant, polling 10 sensors at 1Hz yields hundreds of thousands of datapoints.
+
+Shipping time-series data of this volume to a client dashboard exposes one of the most painful bottlenecks in standard web architecture.
+
+## 1. Why Conventional JSON REST APIs Stumble
+
+A typical REST endpoint executes this sequence:
+1. Rows are fetched from the database (hydrated into C#, Go, or Java domain models).
+2. Those objects are serialized into JSON text (duplicating keys like `"timestamp":`, `"value":`, `"sensor_id":` on every single row).
+3. Even when gzipped, the payload explodes into ~25MB of text once decompressed in the browser.
+4. **The fatal blow:** The moment the client calls `const data = await response.json()`, the JavaScript V8 runtime allocates hundreds of thousands of distinct heap objects. The main thread freezes for 800ms+, triggering aggressive Garbage Collector (GC) pauses.
+
+## 2. Apache Arrow and Columnar Memory Layout
+
+Apache Arrow organizes data column by column within contiguous memory buffers rather than row by row:
+
+```
+Row-Oriented (JSON / Relational):
+ [ {t: 1, v: 22.4}, {t: 2, v: 22.5}, {t: 3, v: 22.8} ... ]
+
+Column-Oriented (Apache Arrow RecordBatch):
+ Timestamps: [ 1, 2, 3 ... ] -> contiguous 64-bit int buffer
+ Values:     [ 22.4, 22.5, 22.8 ... ] -> contiguous 64-bit float buffer
+```
+
+The decisive architectural advantage: **Zero-Copy Memory Transfer.**
+
+Binary Arrow IPC stream chunks received from the backend bypass string parsing entirely. The JavaScript library's `tableFromIPC(stream)` maps directly onto pointers within the browser's underlying `ArrayBuffer`.
+
+```javascript
+import { tableFromIPC } from 'apache-arrow';
+
+const response = await fetch('/api/telemetry/stream?deviceId=402');
+const table = await tableFromIPC(response.body);
+
+// Zero string parse time! Direct TypedArray memory view:
+const timestamps = table.getChild('timestamp').toArray(); // Int64Array
+const temperatures = table.getChild('temperature').toArray(); // Float64Array
+```
+
+## 3. Measurable Gains
+
+- **CPU Overhead:** Browser parsing freeze dropped from 850ms down to `<12ms`.
+- **Bandwidth Consumption:** Removing redundant dictionary keys compressed a 25MB JSON payload into `~3.2MB` raw binary Arrow.
+- **Direct GPU / Canvas Feeding:** The resulting `Float64Array` fed straight into WebGL vertex shaders and HTML5 Canvas render loops without intermediate copies.
+
+## 4. Friction Points & Challenges
+
+- **Frontend Ecosystem Incompatibilities:** Mainstream charting libraries (such as Chart.js) expect arrays of `{ x, y }` objects. Re-hydrating Arrow columns into object arrays forfeits the entire performance dividend. We had to tailor charting render loops to consume TypedArrays directly.
+- **Developer Ergonomics & Debugging:** Arrow binary streams cannot be previewed trivially in DevTools Network inspectors like plain JSON; inspection requires dedicated CLI utilities or custom debug endpoints.

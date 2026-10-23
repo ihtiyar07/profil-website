@@ -121,42 +121,58 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   top: 1rem;
 }
 
-/* Pipeline packet pulse animation */
+/* Ensure all anchor targets have breathing room under sticky header */
+section[id], article[id], div[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* Pipeline packet pulse animation: moves from 0% to 100% along the track */
 @keyframes pipeline-pulse-x {
-  0% { transform: translateX(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateX(calc(100% - 10px)); opacity: 0; }
+  0% { left: 0%; opacity: 0; }
+  4% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
 }
 
 @keyframes pipeline-pulse-y {
-  0% { transform: translateY(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateY(calc(100% - 10px)); opacity: 0; }
+  0% { top: 0%; opacity: 0; }
+  4% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
 }
 
-.pipeline-packet {
-  animation: pipeline-pulse-x 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.pipeline-packet-desktop {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  animation: pipeline-pulse-x 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  z-index: 20;
 }
 
-@media (max-width: 768px) {
-  .pipeline-packet {
-    animation: pipeline-pulse-y 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
+.pipeline-packet-mobile {
+  position: absolute;
+  left: -5px;
+  transform: translateY(-50%);
+  animation: pipeline-pulse-y 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  z-index: 20;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;
   }
-  .pipeline-packet, *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .pipeline-packet-desktop,
+  .pipeline-packet-mobile {
+    animation: none !important;
+    opacity: 1 !important;
+    display: block !important;
   }
-  .pipeline-packet {
-    display: none !important;
+  .pipeline-packet-desktop {
+    left: 8% !important;
+  }
+  .pipeline-packet-mobile {
+    top: 5% !important;
+    left: -5px !important;
   }
 }
 

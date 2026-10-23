@@ -1,5 +1,6 @@
 ---
 title: "JWT'de yetki taşımak neden her zaman iyi fikir değil"
+slug: "jwtde-yetki-tasimak-neden-her-zaman-iyi-fikir-degil"
 date: "2026-03-15"
 lang: "tr"
 summary: "Durumsuz (stateless) JWT iddiası ile kurumsal yetki iptali ihtiyacı arasındaki temel uyuşmazlık, token şişmesi ve Redis destekli versiyonlanmış yetki modeli."
@@ -64,4 +65,4 @@ Bizim Plasmon ve Diventra projelerinde uyguladığımız çözüm, JWT'yi yalnı
 
 - Yetki, zamanla değişen bir **durumdur (state)**; JWT ise durumsuz bir **belgedir (claim)**.
 - Değişebilir bir durumu durumsuz bir belgenin içine mühürlemek, güvenlik ile performans arasında sahte bir uzlaşma yaratır.
-- Kimliği kriptografik olarak dağıtın; fakat operasyonel yetki iptalini milisaniyeler içinde garanti eden ince bir bellek katmanından kaçınmayın.
+- Kimliği kriptografik olarak dağıtın; fakat operasyonel yetki iptalini milisaniyeler içinde sağlayan ince bir bellek katmanından kaçınmayın.

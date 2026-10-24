@@ -30,14 +30,54 @@ const isTr = lang === 'tr';
 
   <!-- The Pipeline Stage (Large SVG / HTML Flow) -->
   <div class="relative bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[3px] p-4 sm:p-6 mb-6">
+    <!-- Telemetry Ping Simulator Control Strip -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-[2px]">
+      <div class="flex items-center gap-3">
+        <button
+          id="telemetry-ping-btn"
+          type="button"
+          class="px-3 py-1.5 bg-[#E8590C] hover:bg-[#CF4E08] text-white text-xs font-mono font-medium rounded-[2px] inline-flex items-center gap-2 cursor-pointer tactile-btn shadow-sm"
+          title={isTr ? "6 istasyon boyunca telemetri paket akışını simüle et (Kısayol: P veya Boşluk)" : "Simulate telemetry stream across all 6 stations (Shortcut: P or Space)"}
+          aria-label={isTr ? "Telemetri ping simülasyonunu başlat" : "Fire telemetry ping simulation"}
+        >
+          <span class="w-2 h-2 rounded-full bg-white animate-pulse" aria-hidden="true"></span>
+          <span id="ping-btn-label">{isTr ? 'Telemetri Pingi Ateşle' : 'Fire Telemetry Ping'}</span>
+          <kbd class="kbd-key text-[9px] px-1 py-0 bg-black/20 border-white/20 text-white hidden sm:inline-flex">P</kbd>
+        </button>
+        <div class="hidden sm:flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-dim)]">
+          <span>{isTr ? 'Kısayol:' : 'Shortcut:'}</span>
+          <kbd class="kbd-key">1–6</kbd>
+          <span>{isTr ? 'ile durak seç' : 'select stop'}</span>
+        </div>
+      </div>
+
+      <!-- Telemetry Live Monitor Feed Ticker -->
+      <div class="flex items-center gap-2 font-mono text-xs overflow-hidden max-w-full">
+        <span class="led-status led-green shrink-0" id="pipeline-status-led" aria-hidden="true"></span>
+        <div class="truncate text-[11px]" id="pipeline-telemetry-feed">
+          <span class="text-[var(--text-dim)]">[MONITOR]:</span>
+          <span class="text-[var(--text-muted)]" id="telemetry-log-text">
+            {isTr ? 'Hattaki tüm istasyonlar senkronize · Hazır' : 'All stations synchronized · Ready for ingestion'}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Desktop Flow Schematic (Visible SVG Track + Animated Packet) -->
     <div class="hidden md:block relative mb-5">
-      <!-- Continuous Schematic SVG Track -->
+      <!-- Continuous Schematic SVG Track with Track Illumination -->
       <div class="relative h-10 w-full mb-2">
         <svg class="w-full h-full" viewBox="0 0 1000 40" fill="none" preserveAspectRatio="none" aria-hidden="true">
-          <!-- Main Bus Line -->
+          <!-- Main Bus Line (Base) -->
           <line x1="40" y1="20" x2="960" y2="20" stroke="var(--border-strong)" stroke-width="2" />
           
+          <!-- Illuminated Segment Overlays -->
+          <line id="track-seg-0" x1="83" y1="20" x2="250" y2="20" stroke="#E8590C" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
+          <line id="track-seg-1" x1="250" y1="20" x2="417" y2="20" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+          <line id="track-seg-2" x1="417" y1="20" x2="583" y2="20" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+          <line id="track-seg-3" x1="583" y1="20" x2="750" y2="20" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+          <line id="track-seg-4" x1="750" y1="20" x2="917" y2="20" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+
           <!-- Directional Arrows between nodes -->
           <path d="M190 16 L200 20 L190 24" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           <path d="M350 16 L360 20 L350 24" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -46,25 +86,33 @@ const isTr = lang === 'tr';
           <path d="M830 16 L840 20 L830 24" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 
           <!-- Station Nodes on track -->
-          <circle cx="83" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-0" />
-          <circle cx="250" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1" />
-          <circle cx="417" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2" />
-          <circle cx="583" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3" />
-          <circle cx="750" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4" />
-          <circle cx="917" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5" />
+          <circle cx="83" cy="20" r="6" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200" id="svg-node-0" />
+          <circle cx="250" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1 transition-all duration-200" id="svg-node-1" />
+          <circle cx="417" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2 transition-all duration-200" id="svg-node-2" />
+          <circle cx="583" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3 transition-all duration-200" id="svg-node-3" />
+          <circle cx="750" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4 transition-all duration-200" id="svg-node-4" />
+          <circle cx="917" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5 transition-all duration-200" id="svg-node-5" />
+
+          <!-- Shockwave Indicator Rings for Ping Simulation -->
+          <circle cx="83" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
+          <circle cx="250" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-1" />
+          <circle cx="417" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-2" />
+          <circle cx="583" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
+          <circle cx="750" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
+          <circle cx="917" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
         </svg>
 
         <!-- The Single Decorative Animated Packet (Desktop) -->
-        <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full" aria-hidden="true" title="Veri Paketi"></div>
+        <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet"></div>
       </div>
 
-      <!-- 6 Interactive Horizontal Station Cards -->
+      <!-- 6 Interactive Horizontal Station Cards with Keyboard Hints -->
       <div class="relative z-10 grid grid-cols-6 gap-2" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
         {PIPELINE_STOPS.map((stop, idx) => (
           <button
             type="button"
             role="tab"
-            class="pipeline-stop-btn group text-left p-2.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between min-h-[96px]"
+            class="pipeline-stop-btn group text-left p-2.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between min-h-[96px] tactile-btn"
             data-stop-id={stop.id}
             data-index={idx}
             aria-selected={idx === 0 ? "true" : "false"}
@@ -73,8 +121,9 @@ const isTr = lang === 'tr';
             tabindex={idx === 0 ? "0" : "-1"}
           >
             <div class="flex items-center justify-between w-full mb-1">
-              <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium">
-                {stop.order}
+              <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium flex items-center gap-1">
+                <span>{stop.order}</span>
+                <kbd class="kbd-key text-[8px] px-1 py-0 hidden lg:inline-flex">{idx + 1}</kbd>
               </span>
               <span class="stop-indicator w-2 h-2 rounded-full border border-[var(--border-strong)] bg-transparent group-hover:border-[#E8590C] transition-colors"></span>
             </div>
@@ -100,7 +149,7 @@ const isTr = lang === 'tr';
         <button
           type="button"
           role="tab"
-          class="pipeline-stop-btn-mobile w-full text-left p-3 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-colors"
+          class="pipeline-stop-btn-mobile w-full text-left p-3 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-colors tactile-btn"
           data-stop-id={stop.id}
           data-index={idx}
           aria-selected={idx === 0 ? "true" : "false"}
@@ -109,7 +158,10 @@ const isTr = lang === 'tr';
           tabindex={idx === 0 ? "0" : "-1"}
         >
           <div class="flex items-center justify-between mb-1">
-            <span class="font-mono text-xs text-[#E8590C] font-semibold">{stop.order}</span>
+            <span class="font-mono text-xs text-[#E8590C] font-semibold flex items-center gap-1.5">
+              <span>{stop.order}</span>
+              <kbd class="kbd-key text-[9px] px-1">{idx + 1}</kbd>
+            </span>
             <span class="font-mono text-[10px] text-[var(--text-dim)]">{stop.badge[lang]}</span>
           </div>
           <div class="font-serif text-base text-[var(--text)] font-medium">{stop.name[lang]}</div>
@@ -125,7 +177,7 @@ const isTr = lang === 'tr';
       {PIPELINE_STOPS.map((stop, idx) => (
         <div
           id={`panel-${stop.id}`}
-          class={`pipeline-detail-panel ${idx === 0 ? 'block' : 'hidden'} space-y-5 transition-opacity duration-200`}
+          class={`pipeline-detail-panel ${idx === 0 ? 'block opacity-100' : 'hidden opacity-0'} space-y-5 transition-all duration-200`}
           role="tabpanel"
           aria-labelledby={`btn-${stop.id}`}
         >
@@ -149,10 +201,10 @@ const isTr = lang === 'tr';
             </div>
           </div>
 
-          <!-- 4-Section Inspection Matrix -->
+          <!-- 4-Section Inspection Matrix with Engineering Corner Marks -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
             <!-- 1. O Katmanda Ne Yaptım -->
-            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5 tech-corner-marks shadow-sm">
               <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
                 <span aria-hidden="true">■</span>
                 <span>{isTr ? 'O Katmanda Ne Yaptım' : 'What I Engineered'}</span>
@@ -163,7 +215,7 @@ const isTr = lang === 'tr';
             </div>
 
             <!-- 2. Hangi Kararı Neden Verdim -->
-            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5 tech-corner-marks shadow-sm">
               <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
                 <span class="text-[#E8590C]" aria-hidden="true">▸</span>
                 <span>{isTr ? 'Hangi Kararı Neden Verdim' : 'Architectural Rationale'}</span>
@@ -174,7 +226,7 @@ const isTr = lang === 'tr';
             </div>
 
             <!-- 3. Hangi Alternatifi Eledim -->
-            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5 tech-corner-marks shadow-sm">
               <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
                 <span aria-hidden="true">✕</span>
                 <span>{isTr ? 'Hangi Alternatifi Eledim' : 'Alternative Eliminated'}</span>
@@ -185,7 +237,7 @@ const isTr = lang === 'tr';
             </div>
 
             <!-- 4. Ne Zorladı -->
-            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5">
+            <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-[2px] space-y-1.5 tech-corner-marks shadow-sm">
               <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
                 <span aria-hidden="true">▲</span>
                 <span>{isTr ? 'Ne Zorladı & Çözüm' : 'Challenge & Mitigation'}</span>
@@ -196,13 +248,23 @@ const isTr = lang === 'tr';
             </div>
           </div>
 
-          <!-- Deep Link to Relevant Case Study -->
-          <div class="pt-2 flex justify-end">
+          <!-- Deep Link to Relevant Case Study & Copy Note -->
+          <div class="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <button
+              type="button"
+              class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 text-[11px] cursor-pointer tactile-btn"
+              data-stop-name={stop.name[lang]}
+              data-stop-summary={`${stop.order}. ${stop.name[lang]}: ${stop.whatIDid[lang]}`}
+            >
+              <span>📋 {isTr ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary'}</span>
+            </button>
+
             <a
               href={stop.caseLink.href}
-              class="font-mono text-xs text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1"
+              class="text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group"
             >
               <span>{stop.caseLink.text[lang]}</span>
+              <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
             </a>
           </div>
         </div>
@@ -231,7 +293,7 @@ const isTr = lang === 'tr';
   </div>
 </section>
 
-<!-- Interactive Pipeline Script with Keyboard Navigation -->
+<!-- Interactive Pipeline & Telemetry Ping Simulator Script -->
 <script is:inline>
   (function() {
     function setupPipeline() {
@@ -239,6 +301,65 @@ const isTr = lang === 'tr';
       const mobileBtns = Array.from(document.querySelectorAll('.pipeline-stop-btn-mobile'));
       const panels = Array.from(document.querySelectorAll('.pipeline-detail-panel'));
       const svgNodes = Array.from(document.querySelectorAll('.svg-node'));
+      const trackSegments = [
+        document.getElementById('track-seg-0'),
+        document.getElementById('track-seg-1'),
+        document.getElementById('track-seg-2'),
+        document.getElementById('track-seg-3'),
+        document.getElementById('track-seg-4')
+      ];
+
+      const pingBtn = document.getElementById('telemetry-ping-btn');
+      const pingBtnLabel = document.getElementById('ping-btn-label');
+      const telemetryLog = document.getElementById('telemetry-log-text');
+      const isTurkish = document.documentElement.lang === 'tr';
+
+      const STOP_IDS = ['device', 'transport', 'queue', 'storage', 'delivery', 'security'];
+
+      const PING_TELEMETRY_LOGS = isTurkish ? [
+        '[01/06 EDGE] ESP32 Modbus RTU: Regs #40001-40016 OK (24.2°C, 58% RH) · CRC: 0xA4F1 [1.2ms]',
+        '[02/06 NET] MQTT TLS 1.3: Topic tele/chiller01 -> broker (QoS 1, PktId: 849) [4.8ms]',
+        '[03/06 QUEUE] RabbitMQ AMQP: tele.direct exchange -> worker pool acked [0.8ms]',
+        '[04/06 STORE] TimescaleDB: Chunk #8192 Inserted (Columnar Compressed) [2.1ms]',
+        '[05/06 STREAM] Apache Arrow: Zero-copy IPC RecordBatch -> Float64Array buffer [1.3ms]',
+        '[06/06 TRUST] X.509 + RFC 3161: PKCS#11 Sealed & Timestamped [3.4ms]'
+      ] : [
+        '[01/06 EDGE] ESP32 Modbus RTU: Regs #40001-40016 OK (24.2°C, 58% RH) · CRC: 0xA4F1 [1.2ms]',
+        '[02/06 NET] MQTT TLS 1.3: Topic tele/chiller01 -> broker (QoS 1, PktId: 849) [4.8ms]',
+        '[03/06 QUEUE] RabbitMQ AMQP: tele.direct exchange -> worker pool acked [0.8ms]',
+        '[04/06 STORE] TimescaleDB: Chunk #8192 Inserted (Columnar Compressed) [2.1ms]',
+        '[05/06 STREAM] Apache Arrow: Zero-copy IPC RecordBatch -> Float64Array buffer [1.3ms]',
+        '[06/06 TRUST] X.509 + RFC 3161: PKCS#11 Sealed & Timestamped [3.4ms]'
+      ];
+
+      function updateTrackIllumination(activeIdx) {
+        trackSegments.forEach((seg, sIdx) => {
+          if (!seg) return;
+          if (sIdx < activeIdx) {
+            seg.setAttribute('opacity', '0.9');
+            seg.setAttribute('stroke', '#E8590C');
+          } else if (sIdx === activeIdx) {
+            seg.setAttribute('opacity', '0.5');
+            seg.setAttribute('stroke', '#E8590C');
+          } else {
+            seg.setAttribute('opacity', '0.15');
+            seg.setAttribute('stroke', 'var(--border-strong)');
+          }
+        });
+      }
+
+      function flashRing(nodeIdx) {
+        const ring = document.getElementById(`ping-ring-${nodeIdx}`);
+        if (!ring) return;
+        ring.classList.remove('hidden');
+        ring.classList.remove('ping-shockwave');
+        // Force reflow
+        void ring.offsetWidth;
+        ring.classList.add('ping-shockwave');
+        setTimeout(() => {
+          ring.classList.add('hidden');
+        }, 650);
+      }
 
       function activateStop(stopId, focusTarget = false) {
         let activeIdx = 0;
@@ -291,18 +412,22 @@ const isTr = lang === 'tr';
           }
         });
 
+        // Update Track Segments
+        updateTrackIllumination(activeIdx);
+
         // Update panels
         panels.forEach((panel) => {
           if (panel.id === `panel-${stopId}`) {
-            panel.classList.remove('hidden');
-            panel.classList.add('block');
+            panel.classList.remove('hidden', 'opacity-0');
+            panel.classList.add('block', 'opacity-100');
           } else {
-            panel.classList.remove('block');
-            panel.classList.add('hidden');
+            panel.classList.remove('block', 'opacity-100');
+            panel.classList.add('hidden', 'opacity-0');
           }
         });
       }
 
+      // Event listeners for desktop tabs
       desktopBtns.forEach((btn, idx) => {
         btn.addEventListener('click', () => {
           const stopId = btn.getAttribute('data-stop-id');
@@ -337,6 +462,88 @@ const isTr = lang === 'tr';
         btn.addEventListener('click', () => {
           const stopId = btn.getAttribute('data-stop-id');
           if (stopId) activateStop(stopId);
+        });
+      });
+
+      // Telemetry Ping Simulation
+      let isPinging = false;
+      function runTelemetryPing() {
+        if (isPinging) return;
+        isPinging = true;
+
+        if (pingBtn) {
+          pingBtn.setAttribute('disabled', 'true');
+          pingBtn.classList.add('opacity-75');
+        }
+        if (pingBtnLabel) {
+          pingBtnLabel.textContent = isTurkish ? 'Ping İletiliyor...' : 'Transmitting Ping...';
+        }
+
+        const delays = [0, 220, 440, 660, 880, 1100];
+        delays.forEach((delay, hopIdx) => {
+          setTimeout(() => {
+            const stopId = STOP_IDS[hopIdx];
+            activateStop(stopId);
+            flashRing(hopIdx);
+            if (telemetryLog) {
+              telemetryLog.textContent = PING_TELEMETRY_LOGS[hopIdx];
+            }
+          }, delay);
+        });
+
+        // Complete Ping
+        setTimeout(() => {
+          isPinging = false;
+          if (pingBtn) {
+            pingBtn.removeAttribute('disabled');
+            pingBtn.classList.remove('opacity-75');
+          }
+          if (pingBtnLabel) {
+            pingBtnLabel.textContent = isTurkish ? 'Telemetri Pingi Ateşle' : 'Fire Telemetry Ping';
+          }
+          if (telemetryLog) {
+            telemetryLog.textContent = isTurkish 
+              ? '✔ PING TAMAMLANDI · Toplam Gecikme: 13.6ms · 0 Paket Kaybı · Uçtan Uca Bütünlük: %100'
+              : '✔ PING VERIFIED · Total Latency: 13.6ms · 0 Packet Loss · End-to-end Integrity: 100%';
+          }
+          if (typeof window.showToast === 'function') {
+            window.showToast(isTurkish ? '✓ Telemetri hattı uçtan uca doğrulandı (13.6ms)' : '✓ Telemetry pipeline verified end-to-end (13.6ms)');
+          }
+        }, 1400);
+      }
+
+      pingBtn?.addEventListener('click', runTelemetryPing);
+
+      // Keyboard numbers 1 to 6 to switch stops, and P / Space for ping
+      window.addEventListener('keydown', (e) => {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
+          return;
+        }
+
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= 6) {
+          e.preventDefault();
+          const targetId = STOP_IDS[num - 1];
+          if (targetId) activateStop(targetId, true);
+        } else if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          runTelemetryPing();
+        }
+      });
+
+      // Stop Note Copy Buttons
+      document.querySelectorAll('.copy-stop-note-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const summary = btn.getAttribute('data-stop-summary') || '';
+          try {
+            await navigator.clipboard.writeText(summary);
+            if (typeof window.showToast === 'function') {
+              window.showToast(isTurkish ? '✓ Katman özeti kopyalandı' : '✓ Stop summary copied');
+            }
+          } catch (_) {
+            prompt('Özet:', summary);
+          }
         });
       });
 

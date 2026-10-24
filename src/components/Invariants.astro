@@ -28,12 +28,12 @@ const isTr = lang === 'tr';
     </div>
   </div>
 
-  <!-- Invariants 4-Field Matrix -->
+  <!-- Invariants 4-Field Matrix with Tactile Cards -->
   <div class="space-y-6">
-    {INVARIANTS.map((item) => (
-      <article class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-5 sm:p-6 space-y-4 hover:border-[var(--border-strong)] transition-colors">
+    {INVARIANTS.map((item, idx) => (
+      <article class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-5 sm:p-6 space-y-4 hover:border-[var(--border-strong)] transition-all tech-corner-marks shadow-sm">
         <!-- Invariant Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
           <div class="flex items-center gap-2.5">
             <span class="font-mono text-[11px] font-semibold text-[#E8590C]">
               {item.badge}
@@ -43,14 +43,22 @@ const isTr = lang === 'tr';
               {item.title[lang]}
             </h3>
           </div>
+
+          <div class="flex items-center gap-2 self-start sm:self-auto">
+            <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981] bg-[var(--bg-subtle)] border border-[var(--border)] px-2 py-0.5 rounded-[2px]">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+              <span>{isTr ? 'KURAL: KORUNUYOR' : 'ENFORCED'}</span>
+            </span>
+          </div>
         </div>
 
         <!-- 4 Structured Fields -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
           <!-- 1. Kural -->
-          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1">
-            <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider">
-              {isTr ? 'Kural' : 'Invariant Rule'}
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1.5">
+            <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+              <span>■</span>
+              <span>{isTr ? 'Kural' : 'Invariant Rule'}</span>
             </div>
             <p class="text-[var(--text)] leading-relaxed text-[13px]">
               {item.rule[lang]}
@@ -58,9 +66,10 @@ const isTr = lang === 'tr';
           </div>
 
           <!-- 2. Nasıl Bozulur -->
-          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider">
-              {isTr ? 'Nasıl Bozulur (Failure Mode)' : 'How It Breaks (Failure Mode)'}
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1.5">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+              <span>✕</span>
+              <span>{isTr ? 'Nasıl Bozulur (Failure Mode)' : 'How It Breaks (Failure Mode)'}</span>
             </div>
             <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
               {item.failureMode[lang]}
@@ -68,9 +77,10 @@ const isTr = lang === 'tr';
           </div>
 
           <!-- 3. Çözüm -->
-          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider">
-              {isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] rounded-r-[2px] space-y-1.5">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
+              <span>▸</span>
+              <span>{isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}</span>
             </div>
             <p class="text-[var(--text)] leading-relaxed text-[13px]">
               {item.solution[lang]}
@@ -78,16 +88,50 @@ const isTr = lang === 'tr';
           </div>
 
           <!-- 4. Nerede Doğruladım -->
-          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider">
-              {isTr ? 'Nerede Doğruladım' : 'Production Verification'}
+          <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--border-strong)] rounded-r-[2px] space-y-1.5">
+            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+              <span>▲</span>
+              <span>{isTr ? 'Nerede Doğruladım' : 'Production Verification'}</span>
             </div>
             <p class="text-[var(--text-muted)] leading-relaxed text-[13px]">
               {item.verification[lang]}
             </p>
           </div>
         </div>
+
+        <!-- Invariant Footer Action -->
+        <div class="pt-2 flex justify-between items-center text-xs font-mono">
+          <span class="text-[10px] text-[var(--text-dim)]">
+            {isTr ? 'Hata Modu Güvencesi' : 'Failure Mode Assurance'}
+          </span>
+          <button
+            type="button"
+            class="copy-invariant-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 text-[11px] cursor-pointer tactile-btn"
+            data-rule={`${item.badge}: ${item.rule[lang]}`}
+          >
+            <span>📋 {isTr ? 'Kuralı Kopyala' : 'Copy Invariant'}</span>
+          </button>
+        </div>
       </article>
     ))}
   </div>
 </section>
+
+<script is:inline>
+  (function() {
+    document.querySelectorAll('.copy-invariant-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const text = btn.getAttribute('data-rule') || '';
+        const isTr = document.documentElement.lang === 'tr';
+        try {
+          await navigator.clipboard.writeText(text);
+          if (typeof window.showToast === 'function') {
+            window.showToast(isTr ? '✓ Değişmez kural panoya kopyalandı' : '✓ Invariant rule copied to clipboard');
+          }
+        } catch (_) {
+          prompt('Kural:', text);
+        }
+      });
+    });
+  })();
+</script>

@@ -23,17 +23,20 @@ const isTr = lang === 'tr';
         {isTr ? 'Diğer Sistem ve Altyapı Projeleri' : 'Selected Systems & Infrastructure'}
       </h2>
       <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Tek satırlık kompakt kayıt defteri' : 'Compact registry index'}
+        {isTr ? 'Kayıt defteri formatında operasyonel ve mimari çalışmalar' : 'Operational & architectural works in system registry format'}
       </p>
     </div>
   </div>
 
-  <!-- Compact Editorial List: name · what it did · stack · year -->
+  <!-- Compact Editorial Registry List -->
   <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
-    {SECONDARY_PROJECTS.map((project) => (
-      <div class="py-4 sm:py-4.5 flex flex-col md:flex-row md:items-baseline justify-between gap-2 sm:gap-4 hover:bg-[var(--bg-subtle)] transition-colors px-2 -mx-2 rounded-[2px]">
-        <div class="flex-1 space-y-1">
+    {SECONDARY_PROJECTS.map((project, idx) => (
+      <div class="py-4 sm:py-5 flex flex-col md:flex-row md:items-baseline justify-between gap-2 sm:gap-4 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-[2px] border-l-2 border-transparent hover:border-[#E8590C]">
+        <div class="flex-1 space-y-1.5">
           <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span class="font-mono text-[10px] text-[#E8590C] font-semibold">
+              REG-{String(idx + 1).padStart(2, '0')}
+            </span>
             <span class="font-serif text-base sm:text-lg font-medium text-[var(--text)]">
               {project.name}
             </span>
@@ -42,12 +45,17 @@ const isTr = lang === 'tr';
               {project.whatItDid[lang]}
             </span>
           </div>
-          <div class="font-mono text-[11px] text-[var(--text-muted)]">
-            <span class="text-[#E8590C]">Stack:</span> {project.stack}
+          <div class="font-mono text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span class="text-[#E8590C] text-[10px] font-semibold uppercase tracking-wider">Stack:</span>
+            {project.stack.split(',').map((item) => (
+              <span class="px-1.5 py-0.2 bg-[var(--bg-code)] text-[var(--text-muted)] border border-[var(--border)] rounded-[2px] text-[10px]">
+                {item.trim()}
+              </span>
+            ))}
           </div>
         </div>
-        <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto">
-          {project.year}
+        <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto flex items-center gap-2">
+          <span>{project.year}</span>
         </div>
       </div>
     ))}

@@ -23,44 +23,61 @@ const isTr = lang === 'tr';
         {isTr ? 'İletişime Geçin' : 'Get in Touch'}
       </h2>
       <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Form yok · Doğrudan doğrudan temas' : 'No web forms · Direct contact channels'}
+        {isTr ? 'Form yok · Doğrudan mühendislik teması' : 'No form walls · Direct engineering channels'}
       </p>
     </div>
   </div>
 
   <!-- Contact Grid -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <!-- Email -->
-    <a
-      href={`mailto:${SITE_META.email}`}
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-colors group block space-y-1"
-    >
-      <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-        {isTr ? 'E-posta' : 'Email'}
+    <!-- Email Card with Copy Action -->
+    <div class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tech-corner-marks shadow-sm">
+      <div class="space-y-1">
+        <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+          <span>{isTr ? 'E-posta' : 'Email'}</span>
+          <button
+            type="button"
+            id="copy-contact-email-btn"
+            class="text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 cursor-pointer tactile-btn px-1.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)]"
+            title={isTr ? "E-postayı kopyala" : "Copy email address"}
+          >
+            <span>📋</span>
+            <span class="copy-email-label">{isTr ? 'Kopyala' : 'Copy'}</span>
+          </button>
+        </div>
+        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors truncate" title={SITE_META.email}>
+          {SITE_META.email}
+        </div>
       </div>
-      <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors truncate">
-        {SITE_META.email}
+      <div>
+        <a
+          href={`mailto:${SITE_META.email}`}
+          class="font-mono text-[11px] text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1"
+        >
+          <span>{isTr ? 'Mesaj Gönder' : 'Send Direct Mail'}</span>
+          <span aria-hidden="true">↗</span>
+        </a>
       </div>
-      <div class="font-mono text-[10px] text-[#E8590C] pt-1">
-        {isTr ? 'Mesaj Gönder ↗' : 'Send Direct Mail ↗'}
-      </div>
-    </a>
+    </div>
 
     <!-- GitHub -->
     <a
       href={SITE_META.github}
       target="_blank"
       rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-colors group block space-y-1"
+      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tech-corner-marks shadow-sm tactile-btn"
     >
-      <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-        GitHub
+      <div class="space-y-1">
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+          GitHub
+        </div>
+        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+          github.com/ihtiyar07
+        </div>
       </div>
-      <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-        github.com/ihtiyar07
-      </div>
-      <div class="font-mono text-[10px] text-[#E8590C] pt-1">
-        {isTr ? 'Depoları İncele ↗' : 'Inspect Repositories ↗'}
+      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
+        <span>{isTr ? 'Depoları İncele' : 'Inspect Repositories'}</span>
+        <span aria-hidden="true">↗</span>
       </div>
     </a>
 
@@ -69,16 +86,19 @@ const isTr = lang === 'tr';
       href={SITE_META.linkedin}
       target="_blank"
       rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-colors group block space-y-1"
+      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tech-corner-marks shadow-sm tactile-btn"
     >
-      <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-        LinkedIn
+      <div class="space-y-1">
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+          LinkedIn
+        </div>
+        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+          in/ahmet-ihtiyar
+        </div>
       </div>
-      <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-        in/ahmet-ihtiyar
-      </div>
-      <div class="font-mono text-[10px] text-[#E8590C] pt-1">
-        {isTr ? 'Ağa Bağlan ↗' : 'Connect on LinkedIn ↗'}
+      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
+        <span>{isTr ? 'Ağa Bağlan' : 'Connect on LinkedIn'}</span>
+        <span aria-hidden="true">↗</span>
       </div>
     </a>
 
@@ -87,17 +107,47 @@ const isTr = lang === 'tr';
       href={SITE_META.cvPath}
       target="_blank"
       rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-colors group block space-y-1"
+      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tech-corner-marks shadow-sm tactile-btn"
     >
-      <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-        {isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}
+      <div class="space-y-1">
+        <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+          <span>{isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}</span>
+          <span class="text-[10px] text-[var(--text-dim)]">PDF · 142 KB</span>
+        </div>
+        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+          {isTr ? 'Ahmet_Ihtiyar_CV.pdf' : 'Ahmet_Ihtiyar_CV.pdf'}
+        </div>
       </div>
-      <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-        {isTr ? 'CV (PDF İndir)' : 'Download PDF CV'}
-      </div>
-      <div class="font-mono text-[10px] text-[#E8590C] pt-1">
-        {isTr ? 'Dosyayı İndir ↓' : 'Get PDF File ↓'}
+      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
+        <span>{isTr ? 'Dosyayı İndir' : 'Download Document'}</span>
+        <span aria-hidden="true">↓</span>
       </div>
     </a>
   </div>
 </section>
+
+<script is:inline>
+  (function() {
+    const copyBtn = document.getElementById('copy-contact-email-btn');
+    if (!copyBtn) return;
+    copyBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const email = 'ahmetihtiyar1453@gmail.com';
+      const label = copyBtn.querySelector('.copy-email-label');
+      const isTr = document.documentElement.lang === 'tr';
+      try {
+        await navigator.clipboard.writeText(email);
+        if (label) label.textContent = isTr ? '✓ Kopyalandı!' : '✓ Copied!';
+        if (typeof window.showToast === 'function') {
+          window.showToast(isTr ? '✓ E-posta adresi panoya kopyalandı' : '✓ Email address copied to clipboard');
+        }
+        setTimeout(() => {
+          if (label) label.textContent = isTr ? 'Kopyala' : 'Copy';
+        }, 2000);
+      } catch (_) {
+        prompt('E-posta:', email);
+      }
+    });
+  })();
+</script>

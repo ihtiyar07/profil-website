@@ -50,30 +50,61 @@ const nowLine = SITE_META.nowLine[lang];
         )}
       </p>
 
-      <!-- 2 Actions -->
+      <!-- 3 Actions: Primary, Mail, Quick Copy -->
       <div class="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs">
         <a
           href="#cases"
-          class="px-4 py-2.5 bg-[#E8590C] text-white hover:bg-[#CF4E08] transition-colors rounded-[2px] font-medium inline-flex items-center gap-2 group"
+          class="px-4 py-2.5 bg-[#E8590C] text-white hover:bg-[#CF4E08] transition-all rounded-[2px] font-medium inline-flex items-center gap-2 group tactile-btn"
         >
           <span>{isTr ? 'Vaka Çalışmalarını Oku' : 'Read Case Studies'}</span>
           <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">↓</span>
         </a>
 
-        <a
-          href={`mailto:${SITE_META.email}`}
-          class="px-4 py-2.5 border border-[var(--border-strong)] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors rounded-[2px] inline-flex items-center gap-2"
-        >
-          <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
-          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
-        </a>
+        <div class="flex items-center gap-1.5">
+          <a
+            href={`mailto:${SITE_META.email}`}
+            class="px-4 py-2.5 border border-[var(--border-strong)] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-all rounded-[2px] inline-flex items-center gap-2 tactile-btn"
+          >
+            <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
+            <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+          </a>
+
+          <button
+            type="button"
+            id="hero-copy-email-btn"
+            class="px-2.5 py-2.5 border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[#E8590C] hover:border-[#E8590C] transition-all rounded-[2px] inline-flex items-center gap-1 cursor-pointer tactile-btn"
+            title={isTr ? "E-posta adresini panoya kopyala" : "Copy email address to clipboard"}
+            aria-label={isTr ? "E-posta adresini panoya kopyala" : "Copy email address to clipboard"}
+            data-email={SITE_META.email}
+          >
+            <span aria-hidden="true" class="text-xs">📋</span>
+            <span class="text-[11px] font-mono hidden sm:inline">{isTr ? 'Kopyala' : 'Copy'}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Telemetry Hardware Strip -->
+      <div class="mt-8 pt-4 border-t border-[var(--border)] flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-[var(--text-dim)]">
+        <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]" aria-hidden="true"></span>
+          <span>{isTr ? 'AKTİF HAT:' : 'ACTIVE PATH:'}</span>
+        </span>
+        <span class="text-[var(--text)] font-medium">ESP32</span>
+        <span class="text-[var(--border-strong)]">▸</span>
+        <span class="text-[var(--text)] font-medium">Modbus RTU</span>
+        <span class="text-[var(--border-strong)]">▸</span>
+        <span class="text-[var(--text)] font-medium">RabbitMQ</span>
+        <span class="text-[var(--border-strong)]">▸</span>
+        <span class="text-[var(--text)] font-medium">TimescaleDB</span>
+        <span class="text-[var(--border-strong)]">▸</span>
+        <span class="text-[var(--text)] font-medium">Arrow IPC</span>
       </div>
     </div>
 
-    <!-- Small Real Portrait Photo -->
+    <!-- Real Portrait Photo with Engineering Card Accents -->
     <div class="flex-shrink-0 self-start md:self-auto">
-      <div class="relative group">
-        <div class="w-32 sm:w-40 h-40 sm:h-48 overflow-hidden rounded-[3px] border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
+      <div class="relative group tech-corner-marks">
+        <div class="w-32 sm:w-40 h-40 sm:h-48 overflow-hidden rounded-[3px] border border-[var(--border-strong)] bg-[var(--bg-subtle)] p-1 shadow-sm">
           <picture>
             <source srcset="/profile.webp" type="image/webp" />
             <img
@@ -86,10 +117,30 @@ const nowLine = SITE_META.nowLine[lang];
             />
           </picture>
         </div>
-        <div class="font-mono text-[10px] text-[var(--text-dim)] mt-2 text-center">
-          Ahmet İhtiyar · {isTr ? 'İstanbul' : 'Istanbul'}
+        <div class="flex items-center justify-between font-mono text-[9px] text-[var(--text-dim)] mt-2 px-0.5">
+          <span class="uppercase tracking-wider">41.0082° N, 28.9784° E</span>
+          <span class="text-[#E8590C] font-semibold">● ONLINE</span>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<script is:inline>
+  (function() {
+    const copyBtn = document.getElementById('hero-copy-email-btn');
+    if (!copyBtn) return;
+    copyBtn.addEventListener('click', async () => {
+      const email = copyBtn.getAttribute('data-email') || 'ahmetihtiyar1453@gmail.com';
+      try {
+        await navigator.clipboard.writeText(email);
+        if (typeof window.showToast === 'function') {
+          const isTr = document.documentElement.lang === 'tr';
+          window.showToast(isTr ? `✓ E-posta kopyalandı: ${email}` : `✓ Email copied: ${email}`);
+        }
+      } catch (_) {
+        prompt('E-posta:', email);
+      }
+    });
+  })();
+</script>

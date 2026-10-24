@@ -58,10 +58,6 @@ const isTr = lang === 'tr';
                 <span class="font-serif text-lg sm:text-xl font-medium text-[var(--text)]">
                   {project.name}
                 </span>
-                <span class="text-[var(--text-dim)] hidden sm:inline" aria-hidden="true">·</span>
-                <span class="font-mono text-[10px] text-[#10B981] uppercase tracking-wider">
-                  {isTr ? 'OPERASYONEL' : 'OPERATIONAL'}
-                </span>
               </div>
               <p class="text-sm text-[var(--text)] font-sans leading-relaxed max-w-[65ch]">
                 {project.whatItDid[lang]}

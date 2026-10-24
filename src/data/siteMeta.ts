@@ -10,8 +10,8 @@ export const SITE_META = {
     en: "From raw sensor to signed audit report: engineering the entire path of data."
   },
   nowLine: {
-    tr: "Diverjans Bilgi Teknolojileri'nde tam zamanlı (Tem 2025 – günümüz) · Mimari danışmanlık & telemetri sistemleri için açık",
-    en: "Full-time at Diverjans IT (Jul 2025 – present) · Open for systems architecture & telemetry advisory"
+    tr: "Diverjans Bilgi Teknolojileri · Dağıtık Telemetri, Saha Donanımı ve Sistem Mimarisi",
+    en: "Diverjans IT · Distributed Telemetry, Embedded Edge & Systems Architecture"
   },
   bioShort: {
     tr: "Donanım kenarından (ESP32, Modbus) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) Apache Arrow sıfır kopyalama ve e-imza denetim raporlarına kadar verinin tüm yolunu kuruyorum.",

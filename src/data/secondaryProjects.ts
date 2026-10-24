@@ -48,10 +48,10 @@ export const SECONDARY_PROJECTS: SecondaryProject[] = [
     year: "2024"
   },
   {
-    id: "proxmox-homelab",
-    name: "Proxmox & Fedora Homelab",
+    id: "proxmox-hypervisor",
+    name: "Proxmox & Linux Hipervizör Altyapısı",
     whatItDid: {
-      tr: "Bare-metal KVM/LXC kümeleme, ZFS depolama havuzları, PBS otomatik artımlı yedeklemeler ve WireGuard ağ izolasyonu",
+      tr: "Bare-metal KVM/LXC sanallaştırma kümesi, ZFS depolama havuzları, PBS otomatik artımlı yedeklemeler ve WireGuard ağ izolasyonu",
       en: "Bare-metal KVM/LXC virtualization cluster, ZFS storage pools, automated PBS deduplicated backups, and WireGuard tunnels"
     },
     stack: "Proxmox VE 8, Fedora Linux, ZFS, PBS, Docker, Caddy",

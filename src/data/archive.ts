@@ -9,85 +9,61 @@ export const ARCHIVE_ITEMS: ArchiveItem[] = [
   {
     year: "2024",
     title: {
-      tr: "GDZ Elektrik Datathon",
-      en: "GDZ Electricity Datathon"
+      tr: "GDZ Elektrik Dağıtım Şebekesi Analitiği",
+      en: "GDZ Electricity Distribution Grid Analytics"
     },
-    category: { tr: "Zaman Serisi / Tahmin", en: "Time-Series / ML" },
+    category: { tr: "Zaman Serisi Modelleme", en: "Time-Series Modeling" },
     description: {
-      tr: "İzmir ve Manisa dağıtım bölgeleri için saatlik elektrik tüketim tahminleme modeli; LightGBM, hava durumu kovaryantları ve mevsimsellik özellikleri.",
-      en: "Hourly electricity consumption forecasting for regional distribution grid; LightGBM, meteorological covariates, and seasonality modeling."
+      tr: "İzmir ve Manisa dağıtım bölgeleri için saatlik elektrik tüketim profili tahminleme motoru; LightGBM, meteorolojik kovaryantlar ve yüksek frekanslı mevsimsellik mimarisi.",
+      en: "Hourly electricity consumption forecasting engine for regional power distribution grids; LightGBM, meteorological covariates, and multi-scale seasonality modeling."
     }
   },
   {
     year: "2024",
     title: {
-      tr: "Anadolu Hayat Emeklilik Datathon",
-      en: "Anadolu Hayat Pension Datathon"
+      tr: "Anadolu Hayat Emeklilik Risk Skorlama Motoru",
+      en: "Anadolu Hayat Pension Risk Scoring Engine"
     },
-    category: { tr: "Müşteri Terki / ML", en: "Customer Churn / ML" },
+    category: { tr: "Aktüeryal Analitik & Risk", en: "Actuarial Analytics & Risk" },
     description: {
-      tr: "Bireysel Emeklilik Sistemi (BES) müşterilerinin erken ayrılma (churn) olasılığını tespit eden sınıflandırma modeli ve risk skorlama motoru.",
-      en: "Predictive classification model and risk-scoring pipeline identifying early surrender risks for pension policyholders."
+      tr: "Bireysel Emeklilik Sistemi (BES) portföyünde erken ayrılma olasılıklarını gerçek zamanlı tespit eden sınıflandırma modeli ve dağıtık risk skorlama hattı.",
+      en: "Real-time surrender probability classification model and distributed risk scoring pipeline for pension policyholder portfolios."
     }
   },
   {
     year: "2023",
     title: {
-      tr: "ATP Tech & Alibaba Cloud Hackathon",
-      en: "ATP Tech & Alibaba Cloud Hackathon"
+      tr: "ATP Tech & Alibaba Cloud Dağıtık Katalog İndeksleme",
+      en: "ATP Tech & Alibaba Cloud Distributed Catalog Indexing"
     },
-    category: { tr: "Arama & Büyük Veri", en: "Search & Big Data" },
+    category: { tr: "Yüksek Eşzamanlı Arama", en: "High-Concurrency Search" },
     description: {
-      tr: "E-ticaret platformlarında yüksek eşzamanlı ürün arama, filtreleme gecikmesi optimizasyonu ve bulut ölçekli katalog indeksleme mimarisi.",
-      en: "High-concurrency e-commerce product search optimization, filter latency reduction, and cloud catalog indexing architecture."
-    }
-  },
-  {
-    year: "2023",
-    title: {
-      tr: "Techcareer PredictaThon",
-      en: "Techcareer PredictaThon"
-    },
-    category: { tr: "Tahminsel Analitik", en: "Predictive Analytics" },
-    description: {
-      tr: "Yapılandırılmış tablosal verilerde regresyon, öznitelik mühendisliği ve anomali tespiti modelleme yarışması.",
-      en: "Tabular data regression, advanced feature engineering, and anomaly detection modeling challenge."
+      tr: "Büyük ölçekli e-ticaret platformlarında yüksek eşzamanlı ürün arama, filtreleme gecikmesi optimizasyonu ve bulut ölçekli katalog indeksleme mimarisi.",
+      en: "High-concurrency product search optimization, multi-faceted filtering latency reduction, and cloud-scale catalog indexing architecture."
     }
   },
   {
     year: "2022–2023",
     title: {
-      tr: "ROTA Hyperloop Takımı",
-      en: "ROTA Hyperloop Team"
+      tr: "ROTA Hyperloop: Kapsül Telemetri & Gömülü Kontrol",
+      en: "ROTA Hyperloop: Pod Telemetry & Embedded Control"
     },
-    category: { tr: "Gömülü Sistemler & Robotik", en: "Embedded & Robotics" },
+    category: { tr: "Gömülü Sistemler & CAN Bus", en: "Embedded Systems & CAN Bus" },
     description: {
-      tr: "Hyperloop prototip kapsülü için gömülü kontrol yazılımları, ROS (Robot Operating System) entegrasyonu, C/C++ telemetri düğümleri ve CAN bus haberleşmesi.",
-      en: "Embedded control software for prototype Hyperloop pod, ROS integration, C/C++ telemetry publisher nodes, and CAN bus bus arbitration."
+      tr: "Hyperloop prototip kapsülü için gerçek zamanlı gömülü kontrol yazılımları, ROS (Robot Operating System) düğümleri, C/C++ telemetri yayıncıları ve deterministik CAN bus haberleşmesi.",
+      en: "Real-time embedded control software for prototype Hyperloop pod, ROS nodes, C/C++ telemetry publishers, and deterministic CAN bus arbitration."
     }
   },
   {
     year: "2022",
     title: {
-      tr: "EXEDRA & MK Hizmet",
-      en: "EXEDRA & MK Services"
+      tr: "EXEDRA & MK Hizmet: Saha Operasyon Altyapısı",
+      en: "EXEDRA & MK Services: Field Operations Infrastructure"
     },
-    category: { tr: "Saha & Arka Uç Sistemleri", en: "Field & Backend Systems" },
+    category: { tr: "Kurumsal Arka Uç & Telemetri", en: "Enterprise Backend & Telemetry" },
     description: {
-      tr: "Saha operasyonları, arıza bildirim altyapısı ve kurumsal arka uç servislerinin geliştirilmesi.",
-      en: "Field operations workflows, ticketing infrastructure, and backend service integrations."
-    }
-  },
-  {
-    year: "2021–2022",
-    title: {
-      tr: "Bitki Hastalığı Teşhisi (CV) & Sahte İçerik Tespiti (NLP)",
-      en: "Plant Disease Detection (CV) & Fake News NLP"
-    },
-    category: { tr: "Akademik / Yan Dal", en: "Academic / Exploratory" },
-    description: {
-      tr: "Tarım yaprak fotoğraflarından derin öğrenme ile hastalık tespiti (CNN / Transfer Learning) ve Türkçe metinlerde dezenformasyon tespiti (BERT).",
-      en: "Deep learning leaf pathology classification via CNNs and Turkish misinformation detection using fine-tuned BERT models."
+      tr: "Saha teknisyen iş akışları, anlık arıza bildirim altyapısı ve kurumsal arka uç servislerinin yüksek erişilebilirlikli dağıtımı.",
+      en: "Field operations dispatch workflows, real-time ticketing telemetry infrastructure, and high-availability enterprise backend deployments."
     }
   }
 ];

@@ -4,8 +4,8 @@
   "description": "Sensörden imzalı rapora, verinin yolunu baştan sona kuran mühendis.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F4F1EA",
-  "theme_color": "#E8590C",
+  "background_color": "#F4F6F9",
+  "theme_color": "#0284C7",
   "icons": [
     {
       "src": "/favicon.svg",

@@ -7,7 +7,7 @@ export const SITE_META = {
   },
   headline: {
     tr: "Sensörden imzalı rapora, verinin yolunu baştan sona kuran mühendis.",
-    en: "From raw sensor to signed audit report: the engineer engineering the entire path of data."
+    en: "From raw sensor to signed audit report: engineering the entire path of data."
   },
   nowLine: {
     tr: "Diverjans Bilgi Teknolojileri'nde tam zamanlı (Tem 2025 – günümüz) · Mimari danışmanlık & telemetri sistemleri için açık",

@@ -20,8 +20,8 @@ const isTr = lang === 'tr';
       <div class="lg:sticky lg:top-24 space-y-4">
         <!-- Section Number & Category -->
         <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-            01 // {isTr ? 'OMURGA MİMARİSİ' : 'BACKBONE ARCHITECTURE'}
+          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
+            01 · {isTr ? 'Omurga Mimarisi' : 'Backbone Architecture'}
           </span>
           <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
@@ -32,7 +32,7 @@ const isTr = lang === 'tr';
         </h2>
 
         <!-- Index & Flow Taxonomy -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
           {isTr ? 'Cihaz → Aktarım → Kuyruk → Depolama → Teslimat → Güven' : 'Device → Transport → Queue → Storage → Delivery → Trust'}
         </div>
 
@@ -48,12 +48,12 @@ const isTr = lang === 'tr';
           <button
             id="telemetry-ping-btn"
             type="button"
-            class="w-full px-3 py-2 bg-[var(--bg-subtle)] hover:bg-[var(--bg)] border border-[var(--border-strong)] hover:border-[#E8590C] text-[var(--text)] text-xs font-medium rounded-none inline-flex items-center justify-between cursor-pointer tactile-btn transition-colors"
+            class="w-full px-3 py-2 bg-[var(--bg-subtle)] hover:bg-[var(--bg)] border border-[var(--border-strong)] hover:border-[var(--accent)] text-[var(--text)] text-xs font-medium rounded-none inline-flex items-center justify-between cursor-pointer tactile-btn transition-colors"
             title={isTr ? "6 istasyon boyunca telemetri paket akışını simüle et (Kısayol: P veya Boşluk)" : "Simulate telemetry stream across all 6 stations (Shortcut: P or Space)"}
             aria-label={isTr ? "Telemetri ping simülasyonunu başlat" : "Fire telemetry ping simulation"}
           >
             <span class="inline-flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[#E8590C] animate-pulse" aria-hidden="true"></span>
+              <span class="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" aria-hidden="true"></span>
               <span id="ping-btn-label">{isTr ? 'Telemetri Pingi Ateşle' : 'Fire Telemetry Ping'}</span>
             </span>
             <kbd class="kbd-key text-[9px] px-1 py-0 bg-[var(--bg)] border-[var(--border)] text-[var(--text-dim)]">P</kbd>
@@ -99,14 +99,14 @@ const isTr = lang === 'tr';
               <line x1="16" y1="14" x2="calc(100% - 16px)" y2="14" stroke="var(--border-strong)" stroke-width="2" />
               
               <!-- Illuminated Segment Overlays -->
-              <line id="track-seg-0" x1="8.333%" y1="14" x2="25%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
-              <line id="track-seg-1" x1="25%" y1="14" x2="41.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-2" x1="41.667%" y1="14" x2="58.333%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-3" x1="58.333%" y1="14" x2="75%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-4" x1="75%" y1="14" x2="91.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-0" x1="8.333%" y1="14" x2="25%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
+              <line id="track-seg-1" x1="25%" y1="14" x2="41.667%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-2" x1="41.667%" y1="14" x2="58.333%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-3" x1="58.333%" y1="14" x2="75%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-4" x1="75%" y1="14" x2="91.667%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
 
               <!-- Vertical Drop Stubs connecting trunk to station cards -->
-              <line x1="8.333%" y1="14" x2="8.333%" y2="36" stroke="#E8590C" stroke-width="2" class="tap-stub tap-stub-0 transition-colors" />
+              <line x1="8.333%" y1="14" x2="8.333%" y2="36" stroke="var(--accent)" stroke-width="2" class="tap-stub tap-stub-0 transition-colors" />
               <line x1="25%" y1="14" x2="25%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-1 transition-colors" />
               <line x1="41.667%" y1="14" x2="41.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-2 transition-colors" />
               <line x1="58.333%" y1="14" x2="58.333%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-3 transition-colors" />
@@ -114,7 +114,7 @@ const isTr = lang === 'tr';
               <line x1="91.667%" y1="14" x2="91.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-5 transition-colors" />
 
               <!-- Station Nodes on trunk (Interactive Tap Terminals) -->
-              <circle cx="8.333%" cy="14" r="5.5" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[6.5px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" tabindex="0" />
+              <circle cx="8.333%" cy="14" r="5.5" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[6.5px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" tabindex="0" />
               <circle cx="25%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-1 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-1" role="button" aria-label="02 Transport / MQTT" tabindex="0" />
               <circle cx="41.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-2 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-2" role="button" aria-label="03 Queue / RabbitMQ" tabindex="0" />
               <circle cx="58.333%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-3 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-3" role="button" aria-label="04 Storage / TimescaleDB" tabindex="0" />
@@ -122,19 +122,19 @@ const isTr = lang === 'tr';
               <circle cx="91.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-5 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-5" role="button" aria-label="06 Trust / X.509" tabindex="0" />
 
               <!-- Shockwave Indicator Rings for Ping Simulation -->
-              <circle cx="8.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
-              <circle cx="25%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-1" />
-              <circle cx="41.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-2" />
-              <circle cx="58.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
-              <circle cx="75%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
-              <circle cx="91.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
+              <circle cx="8.333%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
+              <circle cx="25%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-1" />
+              <circle cx="41.667%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-2" />
+              <circle cx="58.333%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
+              <circle cx="75%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
+              <circle cx="91.667%" cy="14" r="5" fill="none" stroke="var(--accent)" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
 
               <!-- Dedicated Glowing Ping Packet -->
-              <circle id="svg-ping-packet" cx="8.333%" cy="14" r="5" fill="#E8590C" stroke="#FFFFFF" stroke-width="1.5" class="opacity-0 pointer-events-none transition-all duration-150" />
+              <circle id="svg-ping-packet" cx="8.333%" cy="14" r="5" fill="var(--accent)" stroke="#FFFFFF" stroke-width="1.5" class="opacity-0 pointer-events-none transition-all duration-150" />
             </svg>
 
             <!-- Ambient Traveling Packet (Desktop) -->
-            <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 14px;"></div>
+            <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[var(--accent)] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 14px;"></div>
           </div>
 
           <!-- 6 Hardware Bus Tap Stations -->
@@ -143,7 +143,7 @@ const isTr = lang === 'tr';
               <button
                 type="button"
                 role="tab"
-                class={`pipeline-stop-btn group text-left px-2.5 py-2.5 border-t-2 ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-transparent bg-transparent'} hover:border-[#E8590C]/60 focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
+                class={`pipeline-stop-btn group text-left px-2.5 py-2.5 border-t-2 ${idx === 0 ? 'border-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-transparent bg-transparent'} hover:border-[var(--accent)]/60 focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
                 data-stop-id={stop.id}
                 data-index={idx}
                 aria-selected={idx === 0 ? "true" : "false"}
@@ -154,14 +154,13 @@ const isTr = lang === 'tr';
                 <div class="flex items-center justify-between w-full mb-1">
                   <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium flex items-center gap-1 group-hover:text-[var(--text)]">
                     <span>{stop.order}</span>
-                    <kbd class="kbd-key text-[8px] px-1 py-0 hidden lg:inline-flex">{idx + 1}</kbd>
                   </span>
                   <span class="font-mono text-[9px] text-[var(--text-dim)] uppercase tracking-wider hidden sm:inline">
                     {stop.badge[lang].split(' ')[0]}
                   </span>
                 </div>
                 <div>
-                  <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-0.5 group-hover:text-[#E8590C] transition-colors">
+                  <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-0.5 group-hover:text-[var(--text-accent)] transition-colors">
                     {stop.name[lang]}
                   </div>
                   <div class="font-mono text-[10px] text-[var(--text-muted)] truncate">
@@ -181,20 +180,20 @@ const isTr = lang === 'tr';
           <div class="absolute left-[7px] bottom-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
 
           <!-- Mobile moving packet -->
-          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true"></div>
+          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[var(--accent)] rounded-full pointer-events-none" aria-hidden="true"></div>
 
           {PIPELINE_STOPS.map((stop, idx) => (
             <div class="mobile-stop-wrapper relative" data-stop-id={stop.id} data-index={idx}>
               <!-- Tap branch from vertical trunk to card -->
               <div class="absolute -left-8 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" aria-hidden="true">
-                <span class={`mobile-tap-node w-2 h-2 rounded-full border ${idx === 0 ? 'bg-[#E8590C] border-[#E8590C]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1.5 z-10`}></span>
-                <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[#E8590C]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
+                <span class={`mobile-tap-node w-2 h-2 rounded-full border ${idx === 0 ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1.5 z-10`}></span>
+                <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
               </div>
 
               <button
                 type="button"
                 role="tab"
-                class={`pipeline-stop-btn-mobile w-full text-left p-3 rounded-none border ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg)]'} hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-colors tactile-btn`}
+                class={`pipeline-stop-btn-mobile w-full text-left p-3 rounded-none border ${idx === 0 ? 'border-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg)]'} hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors tactile-btn`}
                 data-stop-id={stop.id}
                 data-index={idx}
                 aria-selected={idx === 0 ? "true" : "false"}
@@ -203,7 +202,7 @@ const isTr = lang === 'tr';
                 tabindex={idx === 0 ? "0" : "-1"}
               >
                 <div class="flex items-center justify-between mb-1">
-                  <span class="font-mono text-xs text-[#E8590C] font-semibold flex items-center gap-1.5">
+                  <span class="font-mono text-xs text-[var(--text-accent)] font-semibold flex items-center gap-1.5">
                     <span>{stop.order}</span>
                     <kbd class="kbd-key text-[9px] px-1">{idx + 1}</kbd>
                   </span>
@@ -231,7 +230,7 @@ const isTr = lang === 'tr';
               <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-3 pb-4 border-b border-[var(--border)]">
                 <div class="space-y-1">
                   <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs px-2 py-0.5 bg-[#E8590C] text-white rounded-none font-semibold">
+                    <span class="font-mono text-xs px-2 py-0.5 bg-[var(--accent)] text-white rounded-none font-semibold">
                       {stop.order}
                     </span>
                     <span class="font-mono text-xs text-[var(--text-dim)] uppercase tracking-wider">
@@ -252,11 +251,11 @@ const isTr = lang === 'tr';
 
               <!-- 4-Section Technical Specification Matrix -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm font-sans pt-1">
-                <!-- 01. Mühendislik Kapsamı -->
-                <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-none" aria-hidden="true"></span>
-                    <span>{isTr ? '01 // Mühendislik Kapsamı' : '01 // What I Engineered'}</span>
+                <!-- 01. Ne Yaptım -->
+                <div class="space-y-1.5 border-l-2 border-[var(--accent)] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
+                    <span>{isTr ? 'Ne Yaptım' : 'What I Engineered'}</span>
                   </div>
                   <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
                     {stop.whatIDid[lang]}
@@ -267,7 +266,7 @@ const isTr = lang === 'tr';
                 <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
                   <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-none" aria-hidden="true"></span>
-                    <span>{isTr ? '02 // Karar Gerekçesi' : '02 // Architectural Rationale'}</span>
+                    <span>{isTr ? 'Karar Gerekçesi' : 'Architectural Rationale'}</span>
                   </div>
                   <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
                     {stop.whyDecision[lang]}
@@ -278,18 +277,18 @@ const isTr = lang === 'tr';
                 <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
                   <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
                     <span class="text-[var(--text-dim)]" aria-hidden="true">✕</span>
-                    <span>{isTr ? '03 // Elenen Alternatif' : '03 // Alternative Eliminated'}</span>
+                    <span>{isTr ? 'Elenen Alternatif' : 'Alternative Eliminated'}</span>
                   </div>
                   <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
                     {stop.alternativeEliminated[lang]}
                   </p>
                 </div>
 
-                <!-- 04. Darboğaz & Çözüm -->
-                <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="text-[#E8590C]" aria-hidden="true">▲</span>
-                    <span>{isTr ? '04 // Darboğaz & Çözüm' : '04 // Challenge & Mitigation'}</span>
+                <!-- 04. Zorlayan Nokta & Çözüm -->
+                <div class="space-y-1.5 border-l-2 border-[var(--accent)] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="text-[var(--text-accent)]" aria-hidden="true">⚡</span>
+                    <span>{isTr ? 'Zorlayan Nokta & Çözüm' : 'Challenge & Mitigation'}</span>
                   </div>
                   <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
                     {stop.challenge[lang]}
@@ -301,7 +300,7 @@ const isTr = lang === 'tr';
               <div class="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
                 <button
                   type="button"
-                  class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2.5 py-1 rounded-none bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C]"
+                  class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[var(--text-accent)] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2.5 py-1 rounded-none bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)]"
                   data-stop-name={stop.name[lang]}
                   data-stop-summary={`${stop.order}. ${stop.name[lang]}: ${stop.whatIDid[lang]}`}
                 >
@@ -314,7 +313,7 @@ const isTr = lang === 'tr';
 
                 <a
                   href={stop.caseLink.href}
-                  class="text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group tactile-btn"
+                  class="text-[var(--text-accent)] hover:text-[var(--accent)] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group tactile-btn"
                 >
                   <span>{stop.caseLink.text[lang]}</span>
                   <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
@@ -329,14 +328,14 @@ const isTr = lang === 'tr';
       <div class="border border-[var(--border)] bg-[var(--bg)] rounded-none px-4 py-3">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-full inline-block"></span>
+            <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-full inline-block"></span>
             <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
               {isTr ? 'Altyapı Zemini (Infrastructure Ground)' : 'Infrastructure Ground Plane'}
             </span>
           </div>
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[var(--text-muted)]">
             {INFRASTRUCTURE_STRIP.map((infra) => (
-              <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc}>
+              <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc[lang]}>
                 <span class="text-[var(--text-dim)]">·</span>
                 <span class="font-medium text-[var(--text)]">{infra.name}</span>
               </span>
@@ -394,10 +393,10 @@ const isTr = lang === 'tr';
           if (!seg) return;
           if (sIdx < activeIdx) {
             seg.setAttribute('opacity', '0.9');
-            seg.setAttribute('stroke', '#E8590C');
+            seg.setAttribute('stroke', 'var(--accent)');
           } else if (sIdx === activeIdx) {
             seg.setAttribute('opacity', '0.5');
-            seg.setAttribute('stroke', '#E8590C');
+            seg.setAttribute('stroke', 'var(--accent)');
           } else {
             seg.setAttribute('opacity', '0.15');
             seg.setAttribute('stroke', 'var(--border-strong)');
@@ -410,7 +409,7 @@ const isTr = lang === 'tr';
           const stubs = document.querySelectorAll(`.tap-stub-${i}`);
           stubs.forEach(stub => {
             if (i === activeIdx) {
-              stub.setAttribute('stroke', '#E8590C');
+              stub.setAttribute('stroke', 'var(--accent)');
               stub.setAttribute('stroke-width', '2');
             } else {
               stub.setAttribute('stroke', 'var(--border-strong)');
@@ -443,11 +442,11 @@ const isTr = lang === 'tr';
           btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
           btn.tabIndex = isSelected ? 0 : -1;
           if (isSelected) {
-            btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+            btn.classList.add('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
             btn.classList.remove('border-transparent', 'bg-transparent');
             if (shouldFocus) btn.focus();
           } else {
-            btn.classList.remove('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+            btn.classList.remove('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
             btn.classList.add('border-transparent', 'bg-transparent');
           }
         });
@@ -460,19 +459,19 @@ const isTr = lang === 'tr';
           const btn = wrap.querySelector('.pipeline-stop-btn-mobile');
 
           if (node) {
-            node.className = `mobile-tap-node w-2 h-2 rounded-full border transition-colors ml-1.5 z-10 ${isSelected ? 'bg-[#E8590C] border-[#E8590C]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
+            node.className = `mobile-tap-node w-2 h-2 rounded-full border transition-colors ml-1.5 z-10 ${isSelected ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
           }
           if (stub) {
-            stub.className = `mobile-tap-stub w-5 h-0.5 transition-colors ${isSelected ? 'bg-[#E8590C]' : 'bg-[var(--border-strong)]'}`;
+            stub.className = `mobile-tap-stub w-5 h-0.5 transition-colors ${isSelected ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'}`;
           }
           if (btn) {
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
             btn.tabIndex = isSelected ? 0 : -1;
             if (isSelected) {
-              btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+              btn.classList.add('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
               btn.classList.remove('border-[var(--border)]', 'bg-[var(--bg)]');
             } else {
-              btn.classList.remove('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
+              btn.classList.remove('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
               btn.classList.add('border-[var(--border)]', 'bg-[var(--bg)]');
             }
           }
@@ -481,8 +480,8 @@ const isTr = lang === 'tr';
         // SVG Nodes on Desktop Track
         svgNodes.forEach((node, idx) => {
           if (idx === activeIdx) {
-            node.setAttribute('fill', '#E8590C');
-            node.setAttribute('stroke', '#E8590C');
+            node.setAttribute('fill', 'var(--accent)');
+            node.setAttribute('stroke', 'var(--accent)');
             node.setAttribute('r', '6');
           } else {
             node.setAttribute('fill', 'var(--bg)');

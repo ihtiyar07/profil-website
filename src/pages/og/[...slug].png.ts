@@ -42,38 +42,38 @@ function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
     .join('');
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1200" height="630" fill="#14130F" />
+  <rect width="1200" height="630" fill="#0A0F1D" />
   
   <!-- Subtle border grid -->
-  <rect x="36" y="36" width="1128" height="558" fill="none" stroke="#2C2A24" stroke-width="2" />
+  <rect x="36" y="36" width="1128" height="558" fill="none" stroke="#1E293B" stroke-width="2" />
   
   <!-- Top brand bar -->
-  <line x1="36" y1="120" x2="1164" y2="120" stroke="#2C2A24" stroke-width="1.5" />
-  <rect x="76" y="68" width="10" height="24" fill="#E8590C" />
-  <text x="96" y="86" fill="#EDE9DF" font-family="monospace, ui-monospace, sans-serif" font-size="18" font-weight="700" letter-spacing="2">AHMET İHTİYAR</text>
-  <text x="270" y="86" fill="#787366" font-family="monospace, ui-monospace, sans-serif" font-size="16">·</text>
-  <text x="290" y="86" fill="#9E988A" font-family="monospace, ui-monospace, sans-serif" font-size="16">MÜHENDİSLİK DOSYASI</text>
+  <line x1="36" y1="120" x2="1164" y2="120" stroke="#1E293B" stroke-width="1.5" />
+  <rect x="76" y="68" width="10" height="24" fill="#38BDF8" />
+  <text x="96" y="86" fill="#F1F5F9" font-family="monospace, ui-monospace, sans-serif" font-size="18" font-weight="700" letter-spacing="2">AHMET İHTİYAR</text>
+  <text x="270" y="86" fill="#64748B" font-family="monospace, ui-monospace, sans-serif" font-size="16">·</text>
+  <text x="290" y="86" fill="#94A3B8" font-family="monospace, ui-monospace, sans-serif" font-size="16">MÜHENDİSLİK DOSYASI</text>
   
   <!-- Badge -->
-  <rect x="96" y="168" width="${Math.max(120, badge.length * 11 + 24)}" height="32" rx="2" fill="#E8590C" fill-opacity="0.16" stroke="#E8590C" stroke-width="1.5" />
-  <text x="108" y="190" fill="#E8590C" font-family="monospace, ui-monospace, sans-serif" font-size="13" font-weight="700" letter-spacing="1.5">${escapeXml(badge.toUpperCase())}</text>
+  <rect x="96" y="168" width="${Math.max(120, badge.length * 11 + 24)}" height="32" rx="2" fill="#38BDF8" fill-opacity="0.16" stroke="#38BDF8" stroke-width="1.5" />
+  <text x="108" y="190" fill="#38BDF8" font-family="monospace, ui-monospace, sans-serif" font-size="13" font-weight="700" letter-spacing="1.5">${escapeXml(badge.toUpperCase())}</text>
   
   <!-- Title -->
-  <text x="96" y="275" fill="#EDE9DF" font-family="Georgia, serif" font-size="44" font-weight="500" letter-spacing="-0.5">
+  <text x="96" y="275" fill="#F1F5F9" font-family="Georgia, serif" font-size="44" font-weight="500" letter-spacing="-0.5">
     ${tspans}
   </text>
   
   <!-- Subtitle -->
-  <text x="96" y="460" fill="#9E988A" font-family="sans-serif, -apple-system, BlinkMacSystemFont" font-size="22" font-weight="400">
+  <text x="96" y="460" fill="#94A3B8" font-family="sans-serif, -apple-system, BlinkMacSystemFont" font-size="22" font-weight="400">
     ${escapeXml(subtitle)}
   </text>
   
   <!-- Bottom footer -->
-  <line x1="36" y1="510" x2="1164" y2="510" stroke="#2C2A24" stroke-width="1.5" />
-  <text x="96" y="555" fill="#787366" font-family="monospace, ui-monospace, sans-serif" font-size="15">
+  <line x1="36" y1="510" x2="1164" y2="510" stroke="#1E293B" stroke-width="1.5" />
+  <text x="96" y="555" fill="#64748B" font-family="monospace, ui-monospace, sans-serif" font-size="15">
     ahmetihtiyar.com ${meta ? `· ${escapeXml(meta)}` : '· Sensörden imzalı rapora verinin yolu'}
   </text>
-  <circle cx="1100" cy="550" r="5" fill="#E8590C" />
+  <circle cx="1100" cy="550" r="5" fill="#38BDF8" />
 </svg>`;
 }
 

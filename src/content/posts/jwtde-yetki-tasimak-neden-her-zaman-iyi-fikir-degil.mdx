@@ -44,7 +44,7 @@ Bu yaklaşım iki açıdan kusurludur:
 
 ## 3. Daha Temiz Bir Yol: Versiyonlanmış Haklar (Versioned Claims)
 
-Bizim Plasmon ve Diventra projelerinde uyguladığımız çözüm, JWT'yi yalnızca **değişmez kimlik bilgisi** için kullanmak, dinamik yetkileri ise **in-memory versiyonlanmış kayıt** ile eşleştirmektir.
+Plasmon ve Diventra projelerinde uyguladığım çözüm, JWT'yi yalnızca **değişmez kimlik bilgisi** için kullanmak, dinamik yetkileri ise **in-memory versiyonlanmış kayıt** ile eşleştirmektir.
 
 1. JWT içine sadece kullanıcı kimliği (`sub`) ve token üretim versiyonu (`ver: 3`) konur.
 2. Yetki listesi JWT'ye gömülmez; Redis üzerinde `auth:user:{id}` anahtarında tutulur.

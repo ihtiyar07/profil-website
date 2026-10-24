@@ -43,7 +43,7 @@ This introduces two flaws:
 
 ## 3. A Cleaner Strategy: Versioned Claims
 
-Across our Plasmon and Diventra deployments, we decoupled immutable identity from dynamic operational rights:
+Across the Plasmon and Diventra deployments, I decoupled immutable identity from dynamic operational rights:
 
 1. The JWT contains only immutable identity claims (`sub`) and a token creation generation version (`ver: 3`).
 2. Granular permissions are stored in Redis under `auth:user:{id}`.

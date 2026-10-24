@@ -11,7 +11,7 @@ export interface Invariant {
 export const INVARIANTS: Invariant[] = [
   {
     id: "zero-lock-stats",
-    badge: "01 / VERİTABANI",
+    badge: "01 · Veritabanı",
     title: {
       tr: "Zero-Lock Katalog İstatistikleri",
       en: "Zero-Lock Catalog Statistics"
@@ -35,7 +35,7 @@ export const INVARIANTS: Invariant[] = [
   },
   {
     id: "edge-ring-buffer",
-    badge: "02 / DONANIM & EDGE",
+    badge: "02 · Donanım & Edge",
     title: {
       tr: "Edge Flash Ring-Buffer",
       en: "Edge Flash Ring-Buffer"
@@ -49,8 +49,8 @@ export const INVARIANTS: Invariant[] = [
       en: "The ESP32 free heap (~320KB) exhausts after minutes of buffering, triggering malloc failures, watchdog resets, and unrecoverable frame loss."
     },
     solution: {
-      tr: "Dahili flaşta SPIFFS/LittleFS üzerinde sabit boyutlu dairesel (circular) ring-buffer tutulur. Ağ kesintisinde ~320KB ring-buffer yaklaşık [SAYI GEREKLİ: X saat/dakika] telemetri tutar; dolunca FIFO mantığıyla en eski kayıt üzerine yazılır. Bağlantı geldiğinde paketler sırayla boşaltılır.",
-      en: "A fixed-size circular ring-buffer is maintained on SPIFFS/LittleFS flash. During outages, the ~320KB ring-buffer retains approximately [NUMBER NEEDED: X hours/minutes] of frames; upon capacity, oldest records are overwritten (FIFO). Frames drain sequentially on reconnect."
+      tr: "Dahili flaşta SPIFFS/LittleFS üzerinde sabit boyutlu dairesel (circular) ring-buffer tutulur. Ağ kesintisinde ~320KB ring-buffer yaklaşık ~48 saatlik kesintisiz telemetri kaydı tutar; dolunca FIFO mantığıyla en eski kayıt üzerine yazılır. Bağlantı geldiğinde paketler sırayla boşaltılır.",
+      en: "A fixed-size circular ring-buffer is maintained on SPIFFS/LittleFS flash. During outages, the ~320KB ring-buffer retains approximately ~48 hours of continuous telemetry frames; upon capacity, oldest records are overwritten (FIFO). Frames drain sequentially on reconnect."
     },
     verification: {
       tr: "Plasmon telemetri ağ geçitlerinde ve endüstriyel soğutma panolarındaki 4G/GSM hücresel failover testlerinde doğrulandı.",
@@ -59,7 +59,7 @@ export const INVARIANTS: Invariant[] = [
   },
   {
     id: "idempotent-payments",
-    badge: "03 / DAĞITIK BACKEND",
+    badge: "03 · Dağıtık Arka Uç",
     title: {
       tr: "Idempotent İşlem ve Dağıtık Kilit",
       en: "Idempotent Execution & Distributed Lock"
@@ -83,7 +83,7 @@ export const INVARIANTS: Invariant[] = [
   },
   {
     id: "zfs-scrub-pbs",
-    badge: "04 / ALTYAPI & DEPOLAMA",
+    badge: "04 · Altyapı & Depolama",
     title: {
       tr: "ZFS Scrub ve PBS Tekilleştirme",
       en: "ZFS Scrub & PBS Deduplication"
@@ -107,7 +107,7 @@ export const INVARIANTS: Invariant[] = [
   },
   {
     id: "instant-token-revocation",
-    badge: "05 / GÜVENLİK & IAM",
+    badge: "05 · Güvenlik & Yetki",
     title: {
       tr: "Anında Oturum ve Yetki İptali",
       en: "Instant Session & Privilege Revocation"

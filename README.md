@@ -8,8 +8,8 @@ Bu depo, **Ahmet İhtiyar**'ın kişisel mühendislik sitesinin kaynak kodların
 
 ## 🏛️ Mimari ve Tasarım Sistemi
 
-- **Varsayılan Tema (Kağıt / Paper):** Zemin `#F4F1EA`, metin `#14130F`, ikincil metin `#5B574E`, çizgiler `#D9D4C7`, tek vurgu rengi `#E8590C` (yanık turuncu). Gradyan, buzlu cam ve kart gölgesi yoktur.
-- **Koyu Tema (Sıcak Neredeyse-Siyah):** Lacivert yerine sıcak zemin `#14130F`, metin `#EDE9DF`, çizgiler `#2C2A24`, aynı vurgu rengi `#E8590C`. Sistem tercihine göre otomatik + anında manuel geçiş.
+- **Varsayılan Tema (Blueprint Vellum / Teknik Parşömen):** Zemin `#F4F6F9`, kartlar `#FFFFFF`, metin `#0F172A`, ikincil metin `#475569`, çizgiler `#D8E2EC`, tek vurgu rengi `#0284C7` (Telemetri Kobaltı / Endüstriyel Mavi). Gradyan, buzlu cam ve yapay kart gölgesi yoktur.
+- **Koyu Tema (Derin Teknik Lacivert-Siyah):** Zemin `#0A0F1D`, kartlar `#0F172A`, metin `#F1F5F9`, çizgiler `#1E293B`, vurgu rengi `#38BDF8`. Sistem tercihine göre otomatik + anında manuel geçiş.
 - **Tipografi Üçlüsü (Self-hosted WOFF2):**
   - **Başlıklar:** `Newsreader` (karakterli editoryal serif)
   - **Gövde:** `Geist Sans` (sakin, okunabilir sans-serif)

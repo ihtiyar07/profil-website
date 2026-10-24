@@ -40,11 +40,11 @@ Bu sorgu, o 10 dakikalık kriz anında en çok bekleme üreten `SQL_ID` değerin
 
 ## 3. Gerçek Bir Örnek: `cursor_sharing` ve Plan Flip
 
-MetaDB entegrasyonu sırasında karşılaştığımız bir vakada, normalde 20ms süren bir fatura sorgusu aniden 45 saniyeye fırlamıştı.
+MetaDB entegrasyonu sırasında karşılaştığım bir vakada, normalde 20ms süren bir fatura sorgusu aniden 45 saniyeye fırlamıştı.
 
 AWR raporunda `SQL_ID 8b9f0d11` için `Executions: 4,000`, `Elapsed per Exec: 42.1s` görünüyordu.
 
-`dbms_xplan.display_awr` ile sorgunun geçmiş yürütme planlarını incelediğimizde:
+`dbms_xplan.display_awr` ile sorgunun geçmiş yürütme planlarını incelediğimde:
 - `Plan Hash Value A`: `INDEX RANGE SCAN` kullanıyor, 20ms'de bitiyor.
 - `Plan Hash Value B`: Yeni üretilmiş plan, histogram çarpıklığı yüzünden `TABLE ACCESS FULL` yapıyor ve 80GB'lık tabloyu diskten tarıyor.
 

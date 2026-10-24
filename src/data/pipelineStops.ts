@@ -212,12 +212,17 @@ export const PIPELINE_STOPS: PipelineStop[] = [
   }
 ];
 
-export const INFRASTRUCTURE_STRIP = [
-  { name: "Proxmox VE 8", desc: "KVM & LXC Sanallaştırma" },
-  { name: "ZFS RAID-Z", desc: "Scrub & Blok Bütünlüğü" },
-  { name: "PBS", desc: "Tekilleştirilmiş Artımlı Yedek" },
-  { name: "Docker", desc: "İzole Servis Dağıtımı" },
-  { name: "Nginx / Caddy", desc: "Statik & TLS Ters Vekil" },
-  { name: "Prometheus / Grafana", desc: "Altyapı Metrikleri" },
-  { name: "Oracle Database", desc: "AWR / ASH Analitiği" }
+export interface InfrastructureItem {
+  name: string;
+  desc: { tr: string; en: string };
+}
+
+export const INFRASTRUCTURE_STRIP: InfrastructureItem[] = [
+  { name: "Proxmox VE 8", desc: { tr: "KVM & LXC Sanallaştırma", en: "KVM & LXC Virtualization" } },
+  { name: "ZFS RAID-Z", desc: { tr: "Scrub & Blok Bütünlüğü", en: "Scrub & Block Parity Integrity" } },
+  { name: "PBS", desc: { tr: "Tekilleştirilmiş Artımlı Yedek", en: "Deduplicated Incremental Backup" } },
+  { name: "Docker", desc: { tr: "İzole Servis Dağıtımı", en: "Isolated Container Deployment" } },
+  { name: "Nginx / Caddy", desc: { tr: "Statik & TLS Ters Vekil", en: "Static & TLS Reverse Proxy" } },
+  { name: "Prometheus / Grafana", desc: { tr: "Altyapı Metrikleri", en: "Infrastructure Metrics & Dashboards" } },
+  { name: "Oracle Database", desc: { tr: "AWR / ASH Analitiği", en: "AWR & ASH Diagnostics" } }
 ];

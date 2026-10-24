@@ -21,8 +21,8 @@ const nowLine = SITE_META.nowLine[lang];
     <div class="lg:col-span-8 space-y-6">
       <!-- Monospace Section Tag -->
       <div class="flex items-center gap-2">
-        <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-          00 // {isTr ? 'GİRİŞ & KONUMLANDIRMA' : 'POSITIONING & DOSSIER'}
+        <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
+          00 · {isTr ? 'GİRİŞ & KONUMLANDIRMA' : 'POSITIONING & DOSSIER'}
         </span>
         <span class="h-px w-8 bg-[var(--border-strong)]"></span>
       </div>
@@ -41,9 +41,9 @@ const nowLine = SITE_META.nowLine[lang];
       </h1>
 
       <!-- "Now" Line -->
-      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] border-l-2 border-[#E8590C] pl-3.5 py-1 leading-relaxed bg-[var(--bg-subtle)]/40">
+      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] border-l-2 border-[var(--accent)] pl-3.5 py-1 leading-relaxed bg-[var(--bg-subtle)]/40">
         <div class="flex items-start gap-2">
-          <span class="text-[#E8590C] select-none font-bold" aria-hidden="true">▸</span>
+          <span class="text-[var(--text-accent)] select-none font-bold" aria-hidden="true">▸</span>
           <span>{nowLine}</span>
         </div>
       </div>
@@ -75,7 +75,7 @@ const nowLine = SITE_META.nowLine[lang];
         <!-- Secondary Industrial Mail CTA -->
         <a
           href={`mailto:${SITE_META.email}`}
-          class="px-5 py-3 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-2 tactile-btn"
+          class="px-5 py-3 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-2 tactile-btn"
         >
           <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
@@ -102,10 +102,10 @@ const nowLine = SITE_META.nowLine[lang];
         </div>
 
         <!-- Clean Location & Status Footer -->
-        <div class="px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between mt-1">
+        <div class="px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between gap-2 mt-1">
           <div class="flex items-center gap-1.5 font-medium tracking-wide">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#E8590C]" aria-hidden="true"></span>
-            <span>{isTr ? 'İstanbul, Türkiye' : 'Istanbul, Turkey'}</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+            <span>{isTr ? 'İstanbul' : 'Istanbul'}</span>
           </div>
           <span class="text-[var(--text-dim)]">Diverjans IT</span>
         </div>

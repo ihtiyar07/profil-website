@@ -30,7 +30,7 @@ const shortcuts = [
     <!-- Header -->
     <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">
       <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-[1px] bg-[#E8590C]" aria-hidden="true"></span>
+        <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)]" aria-hidden="true"></span>
         <h3 id="shortcuts-title" class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
           {isTr ? 'Klavye Komut Paleti & Kısayollar' : 'Command Palette & Keyboard Shortcuts'}
         </h3>
@@ -38,7 +38,7 @@ const shortcuts = [
       <button
         id="shortcuts-close-btn"
         type="button"
-        class="font-mono text-xs text-[var(--text-dim)] hover:text-[#E8590C] px-1.5 py-0.5 rounded-[2px] border border-transparent hover:border-[var(--border)] cursor-pointer tactile-btn"
+        class="font-mono text-xs text-[var(--text-dim)] hover:text-[var(--accent)] px-1.5 py-0.5 rounded-[2px] border border-transparent hover:border-[var(--border)] cursor-pointer tactile-btn"
         aria-label={isTr ? "Kapat" : "Close"}
       >
         ✕

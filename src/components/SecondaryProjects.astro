@@ -20,8 +20,8 @@ const isTr = lang === 'tr';
       <div class="lg:sticky lg:top-24 space-y-4">
         <!-- Section Number -->
         <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-            03 // {isTr ? 'İKİNCİL İŞLER' : 'SECONDARY WORKS'}
+          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
+            03 · {isTr ? 'İKİNCİL İŞLER' : 'SECONDARY WORKS'}
           </span>
           <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
@@ -32,8 +32,8 @@ const isTr = lang === 'tr';
         </h2>
 
         <!-- Index / Tag -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
-          {isTr ? '5 SİSTEM // OPERASYONEL ALTYAPI' : '5 SYSTEMS // OPERATIONAL INFRASTRUCTURE'}
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
+          {isTr ? '5 Sistem · Operasyonel Altyapı' : '5 Systems · Operational Infrastructure'}
         </div>
 
         <!-- Short Description -->
@@ -49,10 +49,10 @@ const isTr = lang === 'tr';
     <div class="lg:col-span-8">
       <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
         {SECONDARY_PROJECTS.map((project, idx) => (
-          <div class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-none border-l-2 border-transparent hover:border-[#E8590C]">
+          <div class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-none border-l-2 border-transparent hover:border-[var(--accent)]">
             <div class="flex-1 space-y-2">
               <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span class="font-mono text-[11px] text-[#E8590C] font-semibold tracking-wider">
+                <span class="font-mono text-[11px] text-[var(--text-accent)] font-semibold tracking-wider">
                   REG-{String(idx + 1).padStart(2, '0')}
                 </span>
                 <span class="font-serif text-lg sm:text-xl font-medium text-[var(--text)]">

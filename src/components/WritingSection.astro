@@ -28,8 +28,8 @@ const posts = allPosts
         <div class="lg:sticky lg:top-24 space-y-4">
           <!-- Section Number -->
           <div class="flex items-center gap-2">
-            <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-              05 // {isTr ? 'YAZILAR' : 'TECHNICAL WRITING'}
+            <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
+              05 · {isTr ? 'YAZILAR' : 'TECHNICAL WRITING'}
             </span>
             <span class="h-px w-6 bg-[var(--border-strong)]"></span>
           </div>
@@ -40,8 +40,8 @@ const posts = allPosts
           </h2>
 
           <!-- Index / Tag -->
-          <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
-            {posts.length} {isTr ? 'MAKALE // DERİNLEMESİNE İNCELEME' : 'ARTICLES // IN-DEPTH DIAGNOSTICS'}
+          <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
+            {posts.length} {isTr ? 'Makale · Mühendislik Notları' : 'Articles · Technical Notes'}
           </div>
 
           <!-- Short Description -->
@@ -61,7 +61,7 @@ const posts = allPosts
             const postUrl = isTr ? `/posts/${cleanSlug}` : `/en/posts/${cleanSlug}`;
 
             return (
-              <article class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-none border-l-2 border-transparent hover:border-[#E8590C]">
+              <article class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-none border-l-2 border-transparent hover:border-[var(--accent)]">
                 <div class="space-y-2 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="font-mono text-[11px] text-[var(--text-dim)]">
@@ -77,7 +77,7 @@ const posts = allPosts
                     </span>
                   </div>
 
-                  <h3 class="text-lg sm:text-xl font-serif text-[var(--text)] group-hover:text-[#E8590C] transition-colors leading-snug">
+                  <h3 class="text-lg sm:text-xl font-serif text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
                     <a href={postUrl} class="focus:outline-none block">
                       {post.data.title}
                     </a>
@@ -88,7 +88,7 @@ const posts = allPosts
                   </p>
                 </div>
 
-                <div class="shrink-0 self-start md:self-center font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                <div class="shrink-0 self-start md:self-center font-mono text-xs text-[var(--text-accent)] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   <span>{isTr ? 'Yazıyı Oku' : 'Read Article'}</span>
                   <span aria-hidden="true">→</span>
                 </div>

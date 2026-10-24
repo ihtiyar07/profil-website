@@ -45,9 +45,9 @@ const isTr = lang === 'tr';
       </div>
     </div>
 
-    <!-- Right 8 Columns: 2x2 Technical Channel Cards -->
+    <!-- Right 8 Columns: 3 Technical Channel Cards -->
     <div class="lg:col-span-8">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Email Card with Copy Action -->
         <div class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4">
           <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
@@ -129,31 +129,6 @@ const isTr = lang === 'tr';
           <div class="font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 font-medium">
             <span>{isTr ? 'Ağa Bağlan' : 'Connect on LinkedIn'}</span>
             <span aria-hidden="true">↗</span>
-          </div>
-        </a>
-
-        <!-- Resume / CV PDF -->
-        <a
-          href={SITE_META.cvPath}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
-        >
-          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-              <span>{isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}</span>
-              <span class="text-[10px] text-[var(--text-dim)]">PDF · 142 KB</span>
-            </div>
-            <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-              Ahmet_Ihtiyar_CV.pdf
-            </div>
-          </div>
-          <div class="font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 font-medium">
-            <span>{isTr ? 'Dosyayı İndir' : 'Download Document'}</span>
-            <span aria-hidden="true">↓</span>
           </div>
         </a>
       </div>

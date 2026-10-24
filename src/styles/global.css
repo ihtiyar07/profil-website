@@ -168,11 +168,12 @@ section[id], article[id], div[id] {
 
 /* Tactile Micro-Interactions */
 .tactile-btn {
-  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
 }
 
 .tactile-btn:active {
-  transform: scale(0.975) translateY(1px);
+  transform: translateY(1.5px);
 }
 
 /* Hardware Keyboard Keycap Token */
@@ -224,17 +225,17 @@ section[id], article[id], div[id] {
 
 /* Pipeline packet pulse animation: moves from 0% to 100% along the track */
 @keyframes pipeline-pulse-x {
-  0% { left: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  96% { opacity: 1; }
-  100% { left: 100%; opacity: 0; }
+  0% { left: 4%; opacity: 0; }
+  6% { opacity: 1; }
+  94% { opacity: 1; }
+  100% { left: 96%; opacity: 0; }
 }
 
 @keyframes pipeline-pulse-y {
-  0% { top: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  96% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% { top: 2%; opacity: 0; }
+  6% { opacity: 1; }
+  94% { opacity: 1; }
+  100% { top: 98%; opacity: 0; }
 }
 
 .pipeline-packet-desktop {
@@ -255,14 +256,46 @@ section[id], article[id], div[id] {
   box-shadow: 0 0 8px #E8590C;
 }
 
-/* Ping Shockwave Ring */
+/* Ping Shockwave Ring - strictly centered in SVG element coords */
 @keyframes ping-shockwave-anim {
-  0% { transform: scale(1); opacity: 0.9; }
-  100% { transform: scale(3.2); opacity: 0; }
+  0% { transform: scale(1); opacity: 0.95; }
+  100% { transform: scale(3.5); opacity: 0; }
 }
 
 .ping-shockwave {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: ping-shockwave-anim 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Code Kernel Terminal Line Numbers */
+.code-line-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.code-line-table td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.code-line-num {
+  user-select: none;
+  text-align: right;
+  padding-right: 1.25rem;
+  color: var(--text-dim);
+  opacity: 0.55;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.code-line-content {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -75,8 +75,22 @@ const targetLangUrl = isTr ? '/en' : '/';
           aria-label={isTr ? "Temayı Değiştir (Açık/Koyu) - Kısayol: T" : "Toggle theme (Light/Dark) - Shortcut: T"}
           title={isTr ? "Temayı Değiştir (Kısayol: T)" : "Toggle Theme (Shortcut: T)"}
         >
-          <span class="theme-icon-light hidden" aria-hidden="true">☼</span>
-          <span class="theme-icon-dark hidden" aria-hidden="true">☾</span>
+          <!-- Sun Icon (in dark mode) -->
+          <svg id="theme-icon-sun" class="w-3.5 h-3.5 hidden text-[#E8590C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <!-- Moon Icon (in light mode) -->
+          <svg id="theme-icon-moon" class="w-3.5 h-3.5 hidden text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
           <span id="theme-label" class="text-[11px] uppercase tracking-wider">{isTr ? 'Koyu' : 'Dark'}</span>
           <kbd class="kbd-key hidden sm:inline-flex text-[9px] px-1 py-0">T</kbd>
         </button>
@@ -101,14 +115,19 @@ const targetLangUrl = isTr ? '/en' : '/';
   (function() {
     const btn = document.getElementById('theme-toggle-btn');
     const label = document.getElementById('theme-label');
+    const sunIcon = document.getElementById('theme-icon-sun');
+    const moonIcon = document.getElementById('theme-icon-moon');
     const isTurkish = document.documentElement.lang === 'tr';
 
     function updateThemeUI(theme) {
-      if (!label) return;
       if (theme === 'dark') {
-        label.textContent = isTurkish ? 'Açık' : 'Light';
+        if (label) label.textContent = isTurkish ? 'Açık' : 'Light';
+        sunIcon?.classList.remove('hidden');
+        moonIcon?.classList.add('hidden');
       } else {
-        label.textContent = isTurkish ? 'Koyu' : 'Dark';
+        if (label) label.textContent = isTurkish ? 'Koyu' : 'Dark';
+        moonIcon?.classList.remove('hidden');
+        sunIcon?.classList.add('hidden');
       }
     }
 

@@ -8,7 +8,7 @@ const isTr = lang === 'tr';
 
 const shortcuts = [
   { key: '1 – 6', desc: isTr ? 'Veri Hattı Durakları (01 Edge - 06 Trust)' : 'Data Pipeline Stops (01 Edge - 06 Trust)' },
-  { key: 'Space / P', desc: isTr ? 'Telemetri Ping Simülasyonu Ateşle' : 'Fire Telemetry Ping Simulator' },
+  { key: 'P', desc: isTr ? 'Telemetri Ping Simülasyonu Ateşle' : 'Fire Telemetry Ping Simulator' },
   { key: 'T', desc: isTr ? 'Koyu / Açık Tema Değiştir' : 'Toggle Dark / Light Theme' },
   { key: 'C', desc: isTr ? 'Vaka Çalışmalarına Git (#cases)' : 'Jump to Case Studies (#cases)' },
   { key: 'I', desc: isTr ? 'Mimari Değişmezlere Git (#invariants)' : 'Jump to Invariants (#invariants)' },
@@ -86,8 +86,11 @@ const shortcuts = [
     const modalCard = document.getElementById('shortcuts-modal-card');
     const closeBtn = document.getElementById('shortcuts-close-btn');
 
+    let lastFocusedElement = null;
+
     function openModal() {
       if (!modal) return;
+      lastFocusedElement = document.activeElement;
       modal.classList.remove('opacity-0', 'pointer-events-none');
       modalCard?.classList.remove('scale-95');
       modalCard?.classList.add('scale-100');
@@ -99,7 +102,11 @@ const shortcuts = [
       modal.classList.add('opacity-0', 'pointer-events-none');
       modalCard?.classList.remove('scale-100');
       modalCard?.classList.add('scale-95');
-      toggleBtn?.focus();
+      if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+      } else {
+        toggleBtn?.focus();
+      }
     }
 
     toggleBtn?.addEventListener('click', () => {
@@ -116,22 +123,39 @@ const shortcuts = [
 
     // Global Key Listener
     window.addEventListener('keydown', (e) => {
+      // CRITICAL: Never intercept modifier keys (Ctrl, Meta, Alt) to preserve browser shortcuts (Ctrl+C, Ctrl+W, Ctrl+T, etc.)
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
       // Don't intercept when user is typing in forms or input fields
       const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
       if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
         return;
       }
 
-      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
-        e.preventDefault();
-        const isOpen = !modal?.classList.contains('pointer-events-none');
-        if (isOpen) closeModal();
-        else openModal();
-        return;
+      const isOpen = !modal?.classList.contains('pointer-events-none');
+
+      // Modal focus trap on Tab
+      if (isOpen && e.key === 'Tab') {
+        const focusable = modalCard?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable && focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+            return;
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+            return;
+          }
+        }
       }
 
+      // Close modal on Escape
       if (e.key === 'Escape') {
-        const isOpen = !modal?.classList.contains('pointer-events-none');
         if (isOpen) {
           e.preventDefault();
           closeModal();
@@ -139,17 +163,34 @@ const shortcuts = [
         }
       }
 
-      // Quick jumps
+      // Toggle modal on '?'
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        if (isOpen) closeModal();
+        else openModal();
+        return;
+      }
+
+      // If modal is currently open, DO NOT trigger underlying page jumps
+      if (isOpen) {
+        return;
+      }
+
+      // Quick jumps (only single keys when not in modal)
       if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
         const themeBtn = document.getElementById('theme-toggle-btn');
         themeBtn?.click();
       } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
         const cases = document.getElementById('cases');
         cases?.scrollIntoView({ behavior: 'smooth' });
       } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
         const inv = document.getElementById('invariants');
         inv?.scrollIntoView({ behavior: 'smooth' });
       } else if (e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
         const writing = document.getElementById('writing');
         writing?.scrollIntoView({ behavior: 'smooth' });
       }

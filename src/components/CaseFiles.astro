@@ -11,6 +11,7 @@ const caseDossiers = [
     anchorId: "case-plasmon",
     fileNo: isTr ? "Dosya 01" : "Case 01",
     slug: "plasmon",
+    fileName: "ring_buffer.c",
     title: isTr 
       ? "Plasmon: 100K+ Edge Cihaz İçin Telemetri Mimarisi" 
       : "Plasmon: Telemetry Architecture Designed for 100K+ Edge Devices",
@@ -61,6 +62,7 @@ esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
     anchorId: "case-sapmapayi",
     fileNo: isTr ? "Dosya 02" : "Case 02",
     slug: "sapmapayi",
+    fileName: "ArrowStreamWriter.cs",
     title: isTr 
       ? "Sapmapayı: Soğuk Zincir Uyum Takibi ve Sıfır Kopyalama Raporlama"
       : "Sapmapayı: Cold-Chain Compliance & Zero-Copy Reporting",
@@ -106,6 +108,7 @@ await outputWriter.FlushAsync(ct);`,
     anchorId: "case-auth",
     fileNo: isTr ? "Dosya 03" : "Case 03",
     slug: "auth-servisi",
+    fileName: "InstantRevocationFilter.cs",
     title: isTr 
       ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali"
       : "Common Auth Service: Instant Revocation in Distributed Microservices",
@@ -273,25 +276,37 @@ public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionE
             <div class="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-subtle)] border-b border-[var(--border)]">
               <div class="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
                 <div class="flex items-center gap-1.5" aria-hidden="true">
-                  <span class="w-2.5 h-2.5 rounded-full bg-[#E8590C]/40 border border-[#E8590C]"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-[#E8590C]/60 border border-[#E8590C]"></span>
                   <span class="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]"></span>
                   <span class="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]"></span>
                 </div>
-                <span class="ml-1 text-[var(--text)] font-semibold">{item.slug}.c</span>
+                <span class="ml-1 text-[var(--text)] font-semibold">{item.fileName}</span>
               </div>
               <button
                 type="button"
-                class="copy-case-code-btn font-mono text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] cursor-pointer tactile-btn"
+                class="copy-case-code-btn font-mono text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] cursor-pointer tactile-btn shadow-xs"
                 data-code={item.codeSnippet}
                 title={isTr ? "Kodu panoya kopyala" : "Copy code snippet to clipboard"}
               >
-                <span>📋</span>
+                <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
                 <span class="copy-label">{isTr ? 'Kodu Kopyala' : 'Copy Code'}</span>
               </button>
             </div>
-            <!-- Code Body -->
-            <div class="p-4 overflow-x-auto">
-              <pre class="font-mono text-xs text-[var(--text)] leading-relaxed"><code>{item.codeSnippet}</code></pre>
+            <!-- Code Body with Line Numbers -->
+            <div class="p-3 sm:p-4 overflow-x-auto">
+              <table class="code-line-table">
+                <tbody>
+                  {item.codeSnippet.split('\n').map((line, lIdx) => (
+                    <tr>
+                      <td class="code-line-num">{String(lIdx + 1).padStart(2, '0')}</td>
+                      <td class="code-line-content">{line}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

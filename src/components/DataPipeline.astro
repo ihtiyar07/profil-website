@@ -85,13 +85,13 @@ const isTr = lang === 'tr';
           <path d="M670 16 L680 20 L670 24" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           <path d="M830 16 L840 20 L830 24" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 
-          <!-- Station Nodes on track -->
-          <circle cx="83" cy="20" r="6" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200" id="svg-node-0" />
-          <circle cx="250" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1 transition-all duration-200" id="svg-node-1" />
-          <circle cx="417" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2 transition-all duration-200" id="svg-node-2" />
-          <circle cx="583" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3 transition-all duration-200" id="svg-node-3" />
-          <circle cx="750" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4 transition-all duration-200" id="svg-node-4" />
-          <circle cx="917" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5 transition-all duration-200" id="svg-node-5" />
+          <!-- Station Nodes on track (Interactive) -->
+          <circle cx="83" cy="20" r="6" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" />
+          <circle cx="250" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-1" role="button" aria-label="02 Transport / MQTT" />
+          <circle cx="417" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-2" role="button" aria-label="03 Queue / RabbitMQ" />
+          <circle cx="583" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-3" role="button" aria-label="04 Storage / TimescaleDB" />
+          <circle cx="750" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-4" role="button" aria-label="05 Delivery / Apache Arrow" />
+          <circle cx="917" cy="20" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5 transition-all duration-200 cursor-pointer hover:r-[7px]" id="svg-node-5" role="button" aria-label="06 Trust / X.509" />
 
           <!-- Shockwave Indicator Rings for Ping Simulation -->
           <circle cx="83" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
@@ -100,10 +100,13 @@ const isTr = lang === 'tr';
           <circle cx="583" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
           <circle cx="750" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
           <circle cx="917" cy="20" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
+
+          <!-- Dedicated Glowing Ping Packet -->
+          <circle id="svg-ping-packet" cx="83" cy="20" r="5.5" fill="#E8590C" stroke="#FFFFFF" stroke-width="1.5" class="opacity-0 pointer-events-none transition-all duration-150" />
         </svg>
 
-        <!-- The Single Decorative Animated Packet (Desktop) -->
-        <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet"></div>
+        <!-- Ambient Traveling Packet (Desktop) -->
+        <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet"></div>
       </div>
 
       <!-- 6 Interactive Horizontal Station Cards with Keyboard Hints -->
@@ -252,11 +255,15 @@ const isTr = lang === 'tr';
           <div class="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
             <button
               type="button"
-              class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 text-[11px] cursor-pointer tactile-btn"
+              class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2 py-1 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]"
               data-stop-name={stop.name[lang]}
               data-stop-summary={`${stop.order}. ${stop.name[lang]}: ${stop.whatIDid[lang]}`}
             >
-              <span>📋 {isTr ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary'}</span>
+              <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span class="copy-note-text">{isTr ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary'}</span>
             </button>
 
             <a
@@ -465,8 +472,19 @@ const isTr = lang === 'tr';
         });
       });
 
+      // SVG schematic nodes click listeners
+      svgNodes.forEach((node, idx) => {
+        node.addEventListener('click', () => {
+          const stopId = STOP_IDS[idx];
+          if (stopId) activateStop(stopId);
+        });
+      });
+
       // Telemetry Ping Simulation
       let isPinging = false;
+      const NODE_X_COORDS = [83, 250, 417, 583, 750, 917];
+      const svgPingPacket = document.getElementById('svg-ping-packet');
+
       function runTelemetryPing() {
         if (isPinging) return;
         isPinging = true;
@@ -479,12 +497,22 @@ const isTr = lang === 'tr';
           pingBtnLabel.textContent = isTurkish ? 'Ping İletiliyor...' : 'Transmitting Ping...';
         }
 
-        const delays = [0, 220, 440, 660, 880, 1100];
+        if (svgPingPacket) {
+          svgPingPacket.setAttribute('cx', String(NODE_X_COORDS[0]));
+          svgPingPacket.classList.remove('opacity-0');
+        }
+
+        const delays = [0, 200, 400, 600, 800, 1000];
         delays.forEach((delay, hopIdx) => {
           setTimeout(() => {
             const stopId = STOP_IDS[hopIdx];
             activateStop(stopId);
             flashRing(hopIdx);
+
+            if (svgPingPacket) {
+              svgPingPacket.setAttribute('cx', String(NODE_X_COORDS[hopIdx]));
+            }
+
             if (telemetryLog) {
               telemetryLog.textContent = PING_TELEMETRY_LOGS[hopIdx];
             }
@@ -494,6 +522,9 @@ const isTr = lang === 'tr';
         // Complete Ping
         setTimeout(() => {
           isPinging = false;
+          if (svgPingPacket) {
+            svgPingPacket.classList.add('opacity-0');
+          }
           if (pingBtn) {
             pingBtn.removeAttribute('disabled');
             pingBtn.classList.remove('opacity-75');
@@ -509,13 +540,18 @@ const isTr = lang === 'tr';
           if (typeof window.showToast === 'function') {
             window.showToast(isTurkish ? '✓ Telemetri hattı uçtan uca doğrulandı (13.6ms)' : '✓ Telemetry pipeline verified end-to-end (13.6ms)');
           }
-        }, 1400);
+        }, 1300);
       }
 
       pingBtn?.addEventListener('click', runTelemetryPing);
 
-      // Keyboard numbers 1 to 6 to switch stops, and P / Space for ping
+      // Keyboard numbers 1 to 6 to switch stops, and P for ping
       window.addEventListener('keydown', (e) => {
+        // CRITICAL: Ignore modifier keys so browser tab switching (Ctrl+1..6) and Print (Ctrl+P) remain untouched
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+          return;
+        }
+
         const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
         if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
           return;
@@ -536,11 +572,16 @@ const isTr = lang === 'tr';
       document.querySelectorAll('.copy-stop-note-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const summary = btn.getAttribute('data-stop-summary') || '';
+          const label = btn.querySelector('.copy-note-text');
           try {
             await navigator.clipboard.writeText(summary);
+            if (label) label.textContent = isTurkish ? '✓ Kopyalandı!' : '✓ Copied!';
             if (typeof window.showToast === 'function') {
               window.showToast(isTurkish ? '✓ Katman özeti kopyalandı' : '✓ Stop summary copied');
             }
+            setTimeout(() => {
+              if (label) label.textContent = isTurkish ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary';
+            }, 2000);
           } catch (_) {
             prompt('Özet:', summary);
           }

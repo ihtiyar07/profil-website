@@ -10,8 +10,8 @@ export const SITE_META = {
     en: "From raw sensor to signed audit report: the engineer engineering the entire path of data."
   },
   nowLine: {
-    tr: "Diverjans Bilgi Teknolojileri'nde tam zamanlı (Tem 2025 – günümüz) · Mimari danışmanlık & telemetri sistemleri için açık · Son güncelleme: 23 Ekim 2026",
-    en: "Full-time at Diverjans IT (Jul 2025 – present) · Open for systems architecture & telemetry advisory · Last updated: October 23, 2026"
+    tr: "Diverjans Bilgi Teknolojileri'nde tam zamanlı (Tem 2025 – günümüz) · Mimari danışmanlık & telemetri sistemleri için açık",
+    en: "Full-time at Diverjans IT (Jul 2025 – present) · Open for systems architecture & telemetry advisory"
   },
   bioShort: {
     tr: "Donanım kenarından (ESP32, Modbus) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) Apache Arrow sıfır kopyalama ve e-imza denetim raporlarına kadar verinin tüm yolunu kuruyorum.",
@@ -20,11 +20,6 @@ export const SITE_META = {
   email: "ahmetihtiyar1453@gmail.com",
   github: "https://github.com/ihtiyar07",
   linkedin: "https://linkedin.com/in/ahmet-ihtiyar",
-  lastUpdatedDate: "2026-10-23",
-  lastUpdatedFormatted: {
-    tr: "23 Ekim 2026",
-    en: "October 23, 2026"
-  },
   fontsNote: {
     tr: "Tipografi: Newsreader (başlıklar), Geist (gövde), JetBrains Mono (kod). Barındırma: Kendi Proxmox VE sunucusu / Caddy.",
     en: "Typography: Newsreader (headings), Geist (body), JetBrains Mono (code). Hosted on personal Proxmox VE server / Caddy."

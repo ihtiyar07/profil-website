@@ -239,51 +239,6 @@ section[id], article[id], div[id] {
   box-shadow: 0 0 8px var(--accent);
 }
 
-/* Ping Shockwave Ring - strictly centered in SVG element coords */
-@keyframes ping-shockwave-anim {
-  0% { transform: scale(1); opacity: 0.95; }
-  100% { transform: scale(3.5); opacity: 0; }
-}
-
-.ping-shockwave {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ping-shockwave-anim 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Code Publication Listing & Line Numbers */
-.code-line-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.code-line-table td {
-  padding: 0;
-  vertical-align: top;
-}
-
-.code-line-num {
-  user-select: none;
-  text-align: right;
-  padding: 0 0.85rem 0 0.5rem;
-  color: var(--text-dim);
-  opacity: 0.5;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  line-height: 1.65;
-  border-right: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.code-line-content {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  line-height: 1.65;
-  color: var(--text);
-  white-space: pre;
-  padding-left: 0.85rem;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;

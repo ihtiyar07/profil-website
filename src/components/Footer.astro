@@ -21,15 +21,6 @@ const isTr = lang === 'tr';
 
       <div class="flex items-center gap-3 text-[var(--text-dim)]">
         <span>{SITE_META.fontsNote[lang]}</span>
-        <span>·</span>
-        <button
-          type="button"
-          class="shortcuts-trigger hover:text-[var(--accent)] inline-flex items-center gap-1 cursor-pointer transition-colors"
-          aria-label={isTr ? "Klavye kısayolları rehberini aç" : "Open keyboard shortcuts guide"}
-        >
-          <kbd class="kbd-key text-[9px] px-1 py-0">?</kbd>
-          <span class="text-[11px]">{isTr ? 'Kısayollar' : 'Shortcuts'}</span>
-        </button>
       </div>
     </div>
 

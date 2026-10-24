@@ -41,7 +41,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Electromagnetic interference (EMI) from heavy industrial compressors inducing RS-485 CRC corruptions; solved via optical isolation and sliding-window retries."
     },
     caseLink: {
-      text: { tr: "Dosya 01: Plasmon Vaka Çalışması →", en: "Case 01: Plasmon Case Study →" },
+      text: { tr: "Dosya 01: Plasmon Vaka Çalışması", en: "Case 01: Plasmon Case Study" },
       href: "#case-plasmon"
     }
   },
@@ -74,7 +74,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Cellular modems hanging in AT command states during rural tower handoffs; solved by engineering a hardware transistor power-cycle circuit controlled by GPIO."
     },
     caseLink: {
-      text: { tr: "Dosya 01: Plasmon Vaka Çalışması →", en: "Case 01: Plasmon Case Study →" },
+      text: { tr: "Dosya 01: Plasmon Vaka Çalışması", en: "Case 01: Plasmon Case Study" },
       href: "#case-plasmon"
     }
   },
@@ -107,7 +107,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Corrupted frames stalling consumer workers; resolved by routing unparseable payloads into isolated Dead Letter Exchanges (DLX) with exponential retry policies."
     },
     caseLink: {
-      text: { tr: "Dosya 01: Plasmon Vaka Çalışması →", en: "Case 01: Plasmon Case Study →" },
+      text: { tr: "Dosya 01: Plasmon Vaka Çalışması", en: "Case 01: Plasmon Case Study" },
       href: "#case-plasmon"
     }
   },
@@ -140,7 +140,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Uncompressed disk growth exploding across historical hypertables; resolved by applying TimescaleDB columnar compression on chunks older than 7 days, cutting disk size by 90%."
     },
     caseLink: {
-      text: { tr: "Dosya 02: Sapmapayı Vaka Çalışması →", en: "Case 02: Sapmapayı Case Study →" },
+      text: { tr: "Dosya 02: Sapmapayı Vaka Çalışması", en: "Case 02: Sapmapayı Case Study" },
       href: "#case-sapmapayi"
     }
   },
@@ -173,7 +173,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Standard charting packages failing to ingest columnar buffers; engineered a lightweight bridge mapping Arrow TypedArrays straight into Canvas/WebGL render passes."
     },
     caseLink: {
-      text: { tr: "Dosya 02: Sapmapayı Vaka Çalışması →", en: "Case 02: Sapmapayı Case Study →" },
+      text: { tr: "Dosya 02: Sapmapayı Vaka Çalışması", en: "Case 02: Sapmapayı Case Study" },
       href: "#case-sapmapayi"
     }
   },
@@ -206,7 +206,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Cryptographic hardware security modules (HSMs) causing 500ms blocking latency; designed an asynchronous PKCS#11 worker pool handling background batch notarization."
     },
     caseLink: {
-      text: { tr: "Dosya 03: Ortak Auth Servisi Vaka Çalışması →", en: "Case 03: Common Auth Service →" },
+      text: { tr: "Dosya 03: Ortak Auth Servisi Vaka Çalışması", en: "Case 03: Common Auth Service" },
       href: "#case-auth"
     }
   }

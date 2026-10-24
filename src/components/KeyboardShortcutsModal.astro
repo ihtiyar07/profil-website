@@ -18,27 +18,15 @@ const shortcuts = [
 ];
 ---
 
-<!-- Floating Trigger Pill -->
-<button
-  id="shortcuts-toggle-btn"
-  type="button"
-  class="fixed bottom-4 left-4 z-40 font-mono text-[11px] px-2.5 py-1.5 rounded-[2px] bg-[var(--bg-card)] border border-[var(--border)] hover:border-[#E8590C] text-[var(--text-muted)] hover:text-[#E8590C] shadow-sm transition-all tactile-btn flex items-center gap-1.5 cursor-pointer"
-  aria-label={isTr ? "Klavye kısayolları rehberini aç" : "Open keyboard shortcuts guide"}
-  aria-haspopup="dialog"
->
-  <span class="kbd-key text-[9px] px-1 py-0.2">?</span>
-  <span class="hidden sm:inline">{isTr ? 'Kısayollar' : 'Shortcuts'}</span>
-</button>
-
 <!-- Accessible Modal Backdrop & Dialog -->
 <div
   id="shortcuts-modal"
-  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-[2px] opacity-0 pointer-events-none transition-opacity duration-200"
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px] opacity-0 pointer-events-none transition-opacity duration-200"
   role="dialog"
   aria-modal="true"
   aria-labelledby="shortcuts-title"
 >
-  <div class="relative w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-[3px] p-6 shadow-2xl tech-corner-marks transform scale-95 transition-transform duration-200" id="shortcuts-modal-card">
+  <div class="relative w-full max-w-md bg-[var(--bg-card)] border border-[var(--border)] rounded-[3px] p-6 shadow-xl transform scale-95 transition-transform duration-200" id="shortcuts-modal-card">
     <!-- Header -->
     <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">
       <div class="flex items-center gap-2">
@@ -50,7 +38,7 @@ const shortcuts = [
       <button
         id="shortcuts-close-btn"
         type="button"
-        class="font-mono text-xs text-[var(--text-dim)] hover:text-[#E8590C] px-1.5 py-0.5 rounded-[2px] border border-transparent hover:border-[var(--border)] cursor-pointer"
+        class="font-mono text-xs text-[var(--text-dim)] hover:text-[#E8590C] px-1.5 py-0.5 rounded-[2px] border border-transparent hover:border-[var(--border)] cursor-pointer tactile-btn"
         aria-label={isTr ? "Kapat" : "Close"}
       >
         ✕
@@ -81,7 +69,6 @@ const shortcuts = [
 
 <script is:inline>
   (function() {
-    const toggleBtn = document.getElementById('shortcuts-toggle-btn');
     const modal = document.getElementById('shortcuts-modal');
     const modalCard = document.getElementById('shortcuts-modal-card');
     const closeBtn = document.getElementById('shortcuts-close-btn');
@@ -104,16 +91,27 @@ const shortcuts = [
       modalCard?.classList.add('scale-95');
       if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
         lastFocusedElement.focus();
-      } else {
-        toggleBtn?.focus();
       }
     }
 
-    toggleBtn?.addEventListener('click', () => {
-      const isOpen = !modal?.classList.contains('pointer-events-none');
-      if (isOpen) closeModal();
-      else openModal();
-    });
+    // Attach to any shortcut trigger buttons (in header, footer, etc.)
+    function attachTriggers() {
+      const triggers = document.querySelectorAll('#shortcuts-toggle-btn, [data-shortcuts-trigger], .shortcuts-trigger');
+      triggers.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const isOpen = !modal?.classList.contains('pointer-events-none');
+          if (isOpen) closeModal();
+          else openModal();
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachTriggers);
+    } else {
+      attachTriggers();
+    }
 
     closeBtn?.addEventListener('click', closeModal);
 
@@ -184,15 +182,30 @@ const shortcuts = [
       } else if (e.key === 'c' || e.key === 'C') {
         e.preventDefault();
         const cases = document.getElementById('cases');
-        cases?.scrollIntoView({ behavior: 'smooth' });
+        if (cases) {
+          cases.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          const isTr = document.documentElement.lang === 'tr';
+          window.location.href = (isTr ? '/' : '/en') + '#cases';
+        }
       } else if (e.key === 'i' || e.key === 'I') {
         e.preventDefault();
         const inv = document.getElementById('invariants');
-        inv?.scrollIntoView({ behavior: 'smooth' });
+        if (inv) {
+          inv.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          const isTr = document.documentElement.lang === 'tr';
+          window.location.href = (isTr ? '/' : '/en') + '#invariants';
+        }
       } else if (e.key === 'w' || e.key === 'W') {
         e.preventDefault();
         const writing = document.getElementById('writing');
-        writing?.scrollIntoView({ behavior: 'smooth' });
+        if (writing) {
+          writing.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          const isTr = document.documentElement.lang === 'tr';
+          window.location.href = (isTr ? '/' : '/en') + '#writing';
+        }
       }
     });
   })();

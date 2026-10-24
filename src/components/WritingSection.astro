@@ -58,13 +58,10 @@ const posts = allPosts
                 <span class="font-mono text-[11px] text-[var(--text-dim)]">
                   {post.data.readingTime}
                 </span>
-                <div class="flex gap-1.5 ml-2">
-                  {post.data.tags.map((tag) => (
-                    <span class="font-mono text-[10px] px-1.5 py-0.2 bg-[var(--bg-code)] text-[var(--text-muted)] border border-[var(--border)] rounded-[2px]">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
+                <span class="font-mono text-[11px] text-[var(--text-dim)]">
+                  {post.data.tags.join(' · ')}
+                </span>
               </div>
 
               <h3 class="text-lg sm:text-xl font-serif text-[var(--text)] group-hover:text-[#E8590C] transition-colors leading-snug">
@@ -73,7 +70,7 @@ const posts = allPosts
                 </a>
               </h3>
 
-              <p class="text-xs sm:text-[13px] text-[var(--text-muted)] font-sans line-clamp-2 leading-relaxed">
+              <p class="text-xs sm:text-[13px] text-[var(--text-muted)] font-sans line-clamp-2 leading-relaxed max-w-[65ch]">
                 {post.data.summary}
               </p>
             </div>

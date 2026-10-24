@@ -48,12 +48,8 @@ const { Content } = await render(entry);
         {entry.data.summary}
       </p>
 
-      <div class="flex flex-wrap gap-1.5 pt-1">
-        {entry.data.tags.map((tag) => (
-          <span class="font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-code)] text-[var(--text-muted)] border border-[var(--border)] rounded-[2px]">
-            #{tag}
-          </span>
-        ))}
+      <div class="font-mono text-xs text-[var(--text-dim)] pt-1">
+        {entry.data.tags.map((tag) => `#${tag}`).join(' · ')}
       </div>
     </div>
 

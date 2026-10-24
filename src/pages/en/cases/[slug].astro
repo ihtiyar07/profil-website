@@ -45,12 +45,9 @@ const { Content } = await render(entry);
         {entry.data.testedScale}
       </div>
 
-      <div class="flex flex-wrap gap-1.5 pt-2">
-        {entry.data.stack.map((tech) => (
-          <span class="font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-code)] text-[var(--text)] border border-[var(--border)] rounded-[2px]">
-            {tech}
-          </span>
-        ))}
+      <div class="font-mono text-xs text-[var(--text-muted)] pt-1">
+        <span class="text-[var(--text-dim)]">Stack: </span>
+        <span class="text-[var(--text)]">{entry.data.stack.join(' · ')}</span>
       </div>
     </div>
 

@@ -37,10 +37,6 @@ const targetLangUrl = isTr ? '/en' : '/';
       <span class="hidden md:inline font-mono text-xs text-[var(--text-dim)] border-l border-[var(--border)] pl-2">
         {isTr ? 'Mühendislik Dosyası' : 'Engineering Dossier'}
       </span>
-      <span class="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] text-[var(--text-dim)] ml-1 px-1.5 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]" title="System Status: Nominal">
-        <span class="led-status led-green" aria-hidden="true"></span>
-        <span>SYS_NOMINAL</span>
-      </span>
     </a>
 
     <!-- Nav & Actions -->
@@ -56,7 +52,19 @@ const targetLangUrl = isTr ? '/en' : '/';
         ))}
       </nav>
 
-      <div class="flex items-center gap-2 sm:gap-2.5 pl-2 border-l border-[var(--border)]">
+      <div class="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-[var(--border)]">
+        <!-- Shortcuts Guide Modal Trigger Button -->
+        <button
+          id="shortcuts-toggle-btn"
+          type="button"
+          class="font-mono text-xs px-2 py-1 border border-[var(--border)] rounded-[2px] text-[var(--text-muted)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors flex items-center gap-1.5 cursor-pointer tactile-btn"
+          aria-label={isTr ? "Klavye kısayolları (?)" : "Keyboard shortcuts (?)"}
+          title={isTr ? "Klavye Kısayolları (Kısayol: ?)" : "Keyboard Shortcuts (Shortcut: ?)"}
+        >
+          <span class="text-[11px] hidden sm:inline">{isTr ? 'Kısayollar' : 'Shortcuts'}</span>
+          <kbd class="kbd-key text-[9px] px-1 py-0">?</kbd>
+        </button>
+
         <!-- Language Switcher -->
         <a
           href={targetLangUrl}

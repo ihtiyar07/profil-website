@@ -45,13 +45,9 @@ const isTr = lang === 'tr';
               {project.whatItDid[lang]}
             </span>
           </div>
-          <div class="font-mono text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5 pt-0.5">
-            <span class="text-[#E8590C] text-[10px] font-semibold uppercase tracking-wider">Stack:</span>
-            {project.stack.split(',').map((item) => (
-              <span class="px-1.5 py-0.2 bg-[var(--bg-code)] text-[var(--text-muted)] border border-[var(--border)] rounded-[2px] text-[10px]">
-                {item.trim()}
-              </span>
-            ))}
+          <div class="font-mono text-xs text-[var(--text-muted)] pt-0.5">
+            <span class="text-[var(--text-dim)]">Stack: </span>
+            <span>{project.stack.split(',').map((item) => item.trim()).join(' · ')}</span>
           </div>
         </div>
         <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto flex items-center gap-2">

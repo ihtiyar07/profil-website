@@ -1,5 +1,6 @@
 ---
 import { PIPELINE_STOPS, INFRASTRUCTURE_STRIP } from '../data/pipelineStops';
+import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -9,317 +10,339 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="pipeline" class="py-12 sm:py-16 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <!-- Section Title -->
-  <div class="mb-8">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-        01 — {isTr ? 'Omurga Mimarisi' : 'Backbone Architecture'}
-      </span>
-      <span class="h-px w-8 bg-[var(--border)]"></span>
-    </div>
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
-      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-        {isTr ? 'Verinin Yolu' : 'The Path of Data'}
-      </h2>
-      <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Cihaz → Aktarım → Kuyruk → Depolama → Teslimat → Güven' : 'Device → Transport → Queue → Storage → Delivery → Trust'}
-      </p>
-    </div>
-  </div>
+<section id="pipeline" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+  <BlueprintCrosshairs bottom={true} />
 
-  <!-- The Pipeline Stage (Authentic Hardware Bus Schematic Flow) -->
-  <div class="relative bg-[var(--bg)] border border-[var(--border)] rounded-[3px] p-4 sm:p-6 mb-6">
-    <!-- Telemetry Ping Simulator Control Strip -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-[2px]">
-      <div class="flex items-center gap-3">
-        <button
-          id="telemetry-ping-btn"
-          type="button"
-          class="px-3 py-1.5 bg-[var(--bg-subtle)] hover:bg-[var(--bg)] border border-[var(--border-strong)] hover:border-[#E8590C] text-[var(--text)] text-xs font-mono font-medium rounded-[2px] inline-flex items-center gap-2 cursor-pointer tactile-btn transition-colors"
-          title={isTr ? "6 istasyon boyunca telemetri paket akışını simüle et (Kısayol: P veya Boşluk)" : "Simulate telemetry stream across all 6 stations (Shortcut: P or Space)"}
-          aria-label={isTr ? "Telemetri ping simülasyonunu başlat" : "Fire telemetry ping simulation"}
-        >
-          <span class="w-2 h-2 rounded-full bg-[#E8590C] animate-pulse" aria-hidden="true"></span>
-          <span id="ping-btn-label">{isTr ? 'Telemetri Pingi Ateşle' : 'Fire Telemetry Ping'}</span>
-          <kbd class="kbd-key text-[9px] px-1 py-0 bg-[var(--bg)] border-[var(--border)] text-[var(--text-dim)] hidden sm:inline-flex">P</kbd>
-        </button>
-        <div class="hidden sm:flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-dim)]">
-          <span>{isTr ? 'Kısayol:' : 'Shortcut:'}</span>
-          <kbd class="kbd-key">1–6</kbd>
-          <span>{isTr ? 'ile durak seç' : 'select station'}</span>
-        </div>
-      </div>
-
-      <!-- Telemetry Live Monitor Feed Ticker -->
-      <div class="flex items-center gap-2 font-mono text-xs overflow-hidden max-w-full">
-        <span class="led-status led-green shrink-0" id="pipeline-status-led" aria-hidden="true"></span>
-        <div class="truncate text-[11px]" id="pipeline-telemetry-feed">
-          <span class="text-[var(--text-dim)]">[MONITOR]:</span>
-          <span class="text-[var(--text-muted)]" id="telemetry-log-text">
-            {isTr ? 'Hattaki tüm istasyonlar senkronize · Hazır' : 'All stations synchronized · Ready for ingestion'}
+  <!-- 12-Column Swiss Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+    <!-- Left 4 Columns: Sticky Section Header & Engineering Console -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="lg:sticky lg:top-24 space-y-4">
+        <!-- Section Number & Category -->
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+            01 // {isTr ? 'OMURGA MİMARİSİ' : 'BACKBONE ARCHITECTURE'}
           </span>
+          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
-      </div>
-    </div>
 
-    <!-- Desktop Flow Schematic (Authentic Hardware Bus Track & Tap Nodes) -->
-    <div class="hidden md:block relative mb-6">
-      <div class="relative h-9 w-full">
-        <svg class="w-full h-full block" fill="none" aria-hidden="true">
-          <!-- Termination markers on bus ends (120Ω characteristic impedance) -->
-          <rect x="4" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="1" />
-          <line x1="10" y1="5" x2="10" y2="23" stroke="var(--text-dim)" stroke-width="1" />
-          
-          <rect x="calc(100% - 16px)" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="1" />
-          <line x1="calc(100% - 10px)" y1="5" x2="calc(100% - 10px)" y2="23" stroke="var(--text-dim)" stroke-width="1" />
+        <!-- Editorial Section Title -->
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+          {isTr ? 'Verinin Yolu' : 'The Path of Data'}
+        </h2>
 
-          <!-- Main Bus Line (Base Trunk) -->
-          <line x1="16" y1="14" x2="calc(100% - 16px)" y2="14" stroke="var(--border-strong)" stroke-width="2" />
-          
-          <!-- Illuminated Segment Overlays -->
-          <line id="track-seg-0" x1="8.333%" y1="14" x2="25%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
-          <line id="track-seg-1" x1="25%" y1="14" x2="41.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-          <line id="track-seg-2" x1="41.667%" y1="14" x2="58.333%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-          <line id="track-seg-3" x1="58.333%" y1="14" x2="75%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-          <line id="track-seg-4" x1="75%" y1="14" x2="91.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+        <!-- Index & Flow Taxonomy -->
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
+          {isTr ? 'Cihaz → Aktarım → Kuyruk → Depolama → Teslimat → Güven' : 'Device → Transport → Queue → Storage → Delivery → Trust'}
+        </div>
 
-          <!-- Vertical Drop Stubs connecting trunk to station cards -->
-          <line x1="8.333%" y1="14" x2="8.333%" y2="36" stroke="#E8590C" stroke-width="2" class="tap-stub tap-stub-0 transition-colors" />
-          <line x1="25%" y1="14" x2="25%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-1 transition-colors" />
-          <line x1="41.667%" y1="14" x2="41.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-2 transition-colors" />
-          <line x1="58.333%" y1="14" x2="58.333%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-3 transition-colors" />
-          <line x1="75%" y1="14" x2="75%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-4 transition-colors" />
-          <line x1="91.667%" y1="14" x2="91.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-5 transition-colors" />
+        <!-- Editorial Description -->
+        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
+          {isTr 
+            ? "Sensörden resmi e-imzalı rapora kadar uzanan 6 istasyonlu telemetri omurgası. Saha kısıtlarına ve ağ kesintilerine karşı geliştirilen donanım ve yazılım savunma katmanları." 
+            : "A 6-station telemetry and data processing backbone from physical sensor to signed audit report. Hardened against industrial field dropouts and network partitions."}
+        </p>
 
-          <!-- Station Nodes on trunk (Interactive Tap Terminals) -->
-          <circle cx="8.333%" cy="14" r="5.5" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[6.5px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" tabindex="0" />
-          <circle cx="25%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-1 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-1" role="button" aria-label="02 Transport / MQTT" tabindex="0" />
-          <circle cx="41.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-2 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-2" role="button" aria-label="03 Queue / RabbitMQ" tabindex="0" />
-          <circle cx="58.333%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-3 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-3" role="button" aria-label="04 Storage / TimescaleDB" tabindex="0" />
-          <circle cx="75%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-4 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-4" role="button" aria-label="05 Delivery / Apache Arrow" tabindex="0" />
-          <circle cx="91.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-5 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-5" role="button" aria-label="06 Trust / X.509" tabindex="0" />
-
-          <!-- Shockwave Indicator Rings for Ping Simulation -->
-          <circle cx="8.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
-          <circle cx="25%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-1" />
-          <circle cx="41.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-2" />
-          <circle cx="58.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
-          <circle cx="75%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
-          <circle cx="91.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
-
-          <!-- Dedicated Glowing Ping Packet -->
-          <circle id="svg-ping-packet" cx="8.333%" cy="14" r="5" fill="#E8590C" stroke="#FFFFFF" stroke-width="1.5" class="opacity-0 pointer-events-none transition-all duration-150" />
-        </svg>
-
-        <!-- Ambient Traveling Packet (Desktop) -->
-        <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 14px;"></div>
-      </div>
-
-      <!-- 6 Hardware Bus Tap Stations -->
-      <div class="relative z-10 grid grid-cols-6 border border-[var(--border)] divide-x divide-[var(--border)] rounded-[2px] bg-[var(--bg)]" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
-        {PIPELINE_STOPS.map((stop, idx) => (
+        <!-- Interactive Telemetry Console Strip (Integrated into Sidebar) -->
+        <div class="pt-3 border-t border-[var(--border)] space-y-3 font-mono">
           <button
+            id="telemetry-ping-btn"
             type="button"
-            role="tab"
-            class={`pipeline-stop-btn group text-left px-2.5 py-2.5 border-t-2 ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-transparent bg-transparent'} hover:border-[#E8590C]/60 focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between tactile-btn`}
-            data-stop-id={stop.id}
-            data-index={idx}
-            aria-selected={idx === 0 ? "true" : "false"}
-            aria-controls={`panel-${stop.id}`}
-            id={`btn-${stop.id}`}
-            tabindex={idx === 0 ? "0" : "-1"}
+            class="w-full px-3 py-2 bg-[var(--bg-subtle)] hover:bg-[var(--bg)] border border-[var(--border-strong)] hover:border-[#E8590C] text-[var(--text)] text-xs font-medium rounded-none inline-flex items-center justify-between cursor-pointer tactile-btn transition-colors"
+            title={isTr ? "6 istasyon boyunca telemetri paket akışını simüle et (Kısayol: P veya Boşluk)" : "Simulate telemetry stream across all 6 stations (Shortcut: P or Space)"}
+            aria-label={isTr ? "Telemetri ping simülasyonunu başlat" : "Fire telemetry ping simulation"}
           >
-            <div class="flex items-center justify-between w-full mb-1">
-              <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium flex items-center gap-1 group-hover:text-[var(--text)]">
-                <span>{stop.order}</span>
-                <kbd class="kbd-key text-[8px] px-1 py-0 hidden lg:inline-flex">{idx + 1}</kbd>
-              </span>
-              <span class="font-mono text-[9px] text-[var(--text-dim)] uppercase tracking-wider hidden sm:inline">
-                {stop.badge[lang].split(' ')[0]}
-              </span>
-            </div>
-            <div>
-              <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-0.5 group-hover:text-[#E8590C] transition-colors">
-                {stop.name[lang]}
-              </div>
-              <div class="font-mono text-[10px] text-[var(--text-muted)] truncate">
-                {stop.tech[0]}
-              </div>
-            </div>
+            <span class="inline-flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#E8590C] animate-pulse" aria-hidden="true"></span>
+              <span id="ping-btn-label">{isTr ? 'Telemetri Pingi Ateşle' : 'Fire Telemetry Ping'}</span>
+            </span>
+            <kbd class="kbd-key text-[9px] px-1 py-0 bg-[var(--bg)] border-[var(--border)] text-[var(--text-dim)]">P</kbd>
           </button>
-        ))}
+
+          <div class="flex items-center justify-between text-[10px] text-[var(--text-dim)] px-0.5">
+            <span>{isTr ? 'Klavye ile Durak Seç:' : 'Select Station:'}</span>
+            <span class="flex items-center gap-1 font-mono">
+              <kbd class="kbd-key text-[8px] px-1">1–6</kbd>
+            </span>
+          </div>
+
+          <!-- Live Feed Ticker Box -->
+          <div class="p-2.5 bg-[var(--bg-code)] border border-[var(--border)] rounded-none space-y-1">
+            <div class="flex items-center gap-1.5 text-[var(--text-dim)] text-[10px] font-semibold uppercase tracking-wider">
+              <span class="led-status led-green shrink-0" id="pipeline-status-led" aria-hidden="true"></span>
+              <span>[MONITOR / FEED]</span>
+            </div>
+            <div class="text-[11px] text-[var(--text-muted)] break-words leading-tight" id="telemetry-log-text">
+              {isTr ? 'Hattaki tüm istasyonlar senkronize · Hazır' : 'All stations synchronized · Ready for ingestion'}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Mobile Vertical Flow (Continuous Vertical Bus Line with Tap Stubs) -->
-    <div class="md:hidden relative mb-6 pl-8 space-y-2.5" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
-      <!-- Vertical Trunk Line -->
-      <div class="absolute left-[11px] top-3 bottom-3 w-0.5 bg-[var(--border-strong)]" aria-hidden="true"></div>
-      <div class="absolute left-[7px] top-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-[1px]" aria-hidden="true"></div>
-      <div class="absolute left-[7px] bottom-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-[1px]" aria-hidden="true"></div>
+    <!-- Right 8 Columns: Hardware Bus Schematic & Inspection Sheet -->
+    <div class="lg:col-span-8 space-y-6">
+      <!-- The Pipeline Stage (Authentic Hardware Bus Schematic Flow) -->
+      <div class="relative bg-[var(--bg)] border border-[var(--border)] rounded-none p-4 sm:p-6">
+        <!-- Desktop Flow Schematic (Hardware Bus Track & Tap Nodes) -->
+        <div class="hidden md:block relative mb-6">
+          <div class="relative h-9 w-full">
+            <svg class="w-full h-full block" fill="none" aria-hidden="true">
+              <!-- Termination markers on bus ends (120Ω characteristic impedance) -->
+              <rect x="4" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="0" />
+              <line x1="10" y1="5" x2="10" y2="23" stroke="var(--text-dim)" stroke-width="1" />
+              
+              <rect x="calc(100% - 16px)" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="0" />
+              <line x1="calc(100% - 10px)" y1="5" x2="calc(100% - 10px)" y2="23" stroke="var(--text-dim)" stroke-width="1" />
 
-      <!-- Mobile moving packet -->
-      <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true"></div>
+              <!-- Main Bus Line (Base Trunk) -->
+              <line x1="16" y1="14" x2="calc(100% - 16px)" y2="14" stroke="var(--border-strong)" stroke-width="2" />
+              
+              <!-- Illuminated Segment Overlays -->
+              <line id="track-seg-0" x1="8.333%" y1="14" x2="25%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
+              <line id="track-seg-1" x1="25%" y1="14" x2="41.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-2" x1="41.667%" y1="14" x2="58.333%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-3" x1="58.333%" y1="14" x2="75%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-4" x1="75%" y1="14" x2="91.667%" y2="14" stroke="#E8590C" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
 
-      {PIPELINE_STOPS.map((stop, idx) => (
-        <div class="mobile-stop-wrapper relative" data-stop-id={stop.id} data-index={idx}>
-          <!-- Tap branch from vertical trunk to card -->
-          <div class="absolute -left-8 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" aria-hidden="true">
-            <span class={`mobile-tap-node w-2 h-2 rounded-full border ${idx === 0 ? 'bg-[#E8590C] border-[#E8590C]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1.5 z-10`}></span>
-            <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[#E8590C]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
+              <!-- Vertical Drop Stubs connecting trunk to station cards -->
+              <line x1="8.333%" y1="14" x2="8.333%" y2="36" stroke="#E8590C" stroke-width="2" class="tap-stub tap-stub-0 transition-colors" />
+              <line x1="25%" y1="14" x2="25%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-1 transition-colors" />
+              <line x1="41.667%" y1="14" x2="41.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-2 transition-colors" />
+              <line x1="58.333%" y1="14" x2="58.333%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-3 transition-colors" />
+              <line x1="75%" y1="14" x2="75%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-4 transition-colors" />
+              <line x1="91.667%" y1="14" x2="91.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-5 transition-colors" />
+
+              <!-- Station Nodes on trunk (Interactive Tap Terminals) -->
+              <circle cx="8.333%" cy="14" r="5.5" fill="#E8590C" stroke="#E8590C" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[6.5px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" tabindex="0" />
+              <circle cx="25%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-1 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-1" role="button" aria-label="02 Transport / MQTT" tabindex="0" />
+              <circle cx="41.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-2 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-2" role="button" aria-label="03 Queue / RabbitMQ" tabindex="0" />
+              <circle cx="58.333%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-3 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-3" role="button" aria-label="04 Storage / TimescaleDB" tabindex="0" />
+              <circle cx="75%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-4 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-4" role="button" aria-label="05 Delivery / Apache Arrow" tabindex="0" />
+              <circle cx="91.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-5 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-5" role="button" aria-label="06 Trust / X.509" tabindex="0" />
+
+              <!-- Shockwave Indicator Rings for Ping Simulation -->
+              <circle cx="8.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-0" />
+              <circle cx="25%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-1" />
+              <circle cx="41.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-2" />
+              <circle cx="58.333%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-3" />
+              <circle cx="75%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-4" />
+              <circle cx="91.667%" cy="14" r="5" fill="none" stroke="#E8590C" stroke-width="2" class="ping-ring-marker hidden" id="ping-ring-5" />
+
+              <!-- Dedicated Glowing Ping Packet -->
+              <circle id="svg-ping-packet" cx="8.333%" cy="14" r="5" fill="#E8590C" stroke="#FFFFFF" stroke-width="1.5" class="opacity-0 pointer-events-none transition-all duration-150" />
+            </svg>
+
+            <!-- Ambient Traveling Packet (Desktop) -->
+            <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 14px;"></div>
           </div>
 
-          <button
-            type="button"
-            role="tab"
-            class={`pipeline-stop-btn-mobile w-full text-left p-3 rounded-[2px] border ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg)]'} hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-colors tactile-btn`}
-            data-stop-id={stop.id}
-            data-index={idx}
-            aria-selected={idx === 0 ? "true" : "false"}
-            aria-controls={`panel-${stop.id}`}
-            id={`btn-mobile-${stop.id}`}
-            tabindex={idx === 0 ? "0" : "-1"}
-          >
-            <div class="flex items-center justify-between mb-1">
-              <span class="font-mono text-xs text-[#E8590C] font-semibold flex items-center gap-1.5">
-                <span>{stop.order}</span>
-                <kbd class="kbd-key text-[9px] px-1">{idx + 1}</kbd>
-              </span>
-              <span class="font-mono text-[10px] text-[var(--text-dim)]">{stop.badge[lang]}</span>
-            </div>
-            <div class="font-serif text-base text-[var(--text)] font-medium">{stop.name[lang]}</div>
-            <div class="font-mono text-xs text-[var(--text-muted)] mt-1">
-              {stop.tech.slice(0, 3).join(' · ')}
-            </div>
-          </button>
-        </div>
-      ))}
-    </div>
-
-    <!-- Stop Detail Inspection Sheet (Single Coherent Sheet) -->
-    <div class="border-t border-[var(--border)] pt-6 mt-4">
-      {PIPELINE_STOPS.map((stop, idx) => (
-        <div
-          id={`panel-${stop.id}`}
-          class={`pipeline-detail-panel ${idx === 0 ? 'block opacity-100' : 'hidden opacity-0'} space-y-6 transition-all duration-200`}
-          role="tabpanel"
-          aria-labelledby={`btn-${stop.id}`}
-        >
-          <!-- Sheet Header -->
-          <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-3 pb-4 border-b border-[var(--border)]">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="font-mono text-xs px-2 py-0.5 bg-[#E8590C] text-white rounded-[2px] font-semibold">
-                  {stop.order}
-                </span>
-                <span class="font-mono text-xs text-[var(--text-dim)] uppercase tracking-wider">
-                  {stop.badge[lang]}
-                </span>
-              </div>
-              <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] pt-1">
-                {stop.name[lang]}
-              </h3>
-            </div>
-
-            <!-- Editorial Stack Line (No badge soup) -->
-            <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md">
-              <span class="text-[var(--text-dim)]">{isTr ? 'Protokol & Yığın: ' : 'Protocol & Stack: '}</span>
-              <span class="text-[var(--text)]">{stop.tech.join(' · ')}</span>
-            </div>
-          </div>
-
-          <!-- 4-Section Technical Specification Matrix (Single Sheet Layout) -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm font-sans pt-1">
-            <!-- 01. Mühendislik Kapsamı -->
-            <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
-              <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-[1px]" aria-hidden="true"></span>
-                <span>{isTr ? '01 // Mühendislik Kapsamı' : '01 // What I Engineered'}</span>
-              </div>
-              <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
-                {stop.whatIDid[lang]}
-              </p>
-            </div>
-
-            <!-- 02. Karar Gerekçesi -->
-            <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
-              <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-[1px]" aria-hidden="true"></span>
-                <span>{isTr ? '02 // Karar Gerekçesi' : '02 // Architectural Rationale'}</span>
-              </div>
-              <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-                {stop.whyDecision[lang]}
-              </p>
-            </div>
-
-            <!-- 03. Elenen Alternatif -->
-            <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
-              <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-                <span class="text-[var(--text-dim)]" aria-hidden="true">✕</span>
-                <span>{isTr ? '03 // Elenen Alternatif' : '03 // Alternative Eliminated'}</span>
-              </div>
-              <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-                {stop.alternativeEliminated[lang]}
-              </p>
-            </div>
-
-            <!-- 04. Darboğaz & Çözüm -->
-            <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
-              <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-                <span class="text-[#E8590C]" aria-hidden="true">▲</span>
-                <span>{isTr ? '04 // Darboğaz & Çözüm' : '04 // Challenge & Mitigation'}</span>
-              </div>
-              <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-                {stop.challenge[lang]}
-              </p>
-            </div>
-          </div>
-
-          <!-- Deep Link to Relevant Case Study & Copy Note -->
-          <div class="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-            <button
-              type="button"
-              class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2.5 py-1 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C]"
-              data-stop-name={stop.name[lang]}
-              data-stop-summary={`${stop.order}. ${stop.name[lang]}: ${stop.whatIDid[lang]}`}
-            >
-              <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span class="copy-note-text">{isTr ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary'}</span>
-            </button>
-
-            <a
-              href={stop.caseLink.href}
-              class="text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group tactile-btn"
-            >
-              <span>{stop.caseLink.text[lang]}</span>
-              <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
-            </a>
+          <!-- 6 Hardware Bus Tap Stations -->
+          <div class="relative z-10 grid grid-cols-6 border border-[var(--border)] divide-x divide-[var(--border)] rounded-none bg-[var(--bg)]" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
+            {PIPELINE_STOPS.map((stop, idx) => (
+              <button
+                type="button"
+                role="tab"
+                class={`pipeline-stop-btn group text-left px-2.5 py-2.5 border-t-2 ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-transparent bg-transparent'} hover:border-[#E8590C]/60 focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
+                data-stop-id={stop.id}
+                data-index={idx}
+                aria-selected={idx === 0 ? "true" : "false"}
+                aria-controls={`panel-${stop.id}`}
+                id={`btn-${stop.id}`}
+                tabindex={idx === 0 ? "0" : "-1"}
+              >
+                <div class="flex items-center justify-between w-full mb-1">
+                  <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium flex items-center gap-1 group-hover:text-[var(--text)]">
+                    <span>{stop.order}</span>
+                    <kbd class="kbd-key text-[8px] px-1 py-0 hidden lg:inline-flex">{idx + 1}</kbd>
+                  </span>
+                  <span class="font-mono text-[9px] text-[var(--text-dim)] uppercase tracking-wider hidden sm:inline">
+                    {stop.badge[lang].split(' ')[0]}
+                  </span>
+                </div>
+                <div>
+                  <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-0.5 group-hover:text-[#E8590C] transition-colors">
+                    {stop.name[lang]}
+                  </div>
+                  <div class="font-mono text-[10px] text-[var(--text-muted)] truncate">
+                    {stop.tech[0]}
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
-  </div>
 
-  <!-- Infrastructure Ground Strip (Altyapı Zemini) -->
-  <div class="border border-[var(--border)] bg-[var(--bg)] rounded-[2px] px-4 py-3">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-full inline-block"></span>
-        <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
-          {isTr ? 'Altyapı Zemini (Infrastructure Ground)' : 'Infrastructure Ground Plane'}
-        </span>
+        <!-- Mobile Vertical Flow (Continuous Vertical Bus Line with Tap Stubs) -->
+        <div class="md:hidden relative mb-6 pl-8 space-y-2.5" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
+          <!-- Vertical Trunk Line -->
+          <div class="absolute left-[11px] top-3 bottom-3 w-0.5 bg-[var(--border-strong)]" aria-hidden="true"></div>
+          <div class="absolute left-[7px] top-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
+          <div class="absolute left-[7px] bottom-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
+
+          <!-- Mobile moving packet -->
+          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[#E8590C] rounded-full pointer-events-none" aria-hidden="true"></div>
+
+          {PIPELINE_STOPS.map((stop, idx) => (
+            <div class="mobile-stop-wrapper relative" data-stop-id={stop.id} data-index={idx}>
+              <!-- Tap branch from vertical trunk to card -->
+              <div class="absolute -left-8 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" aria-hidden="true">
+                <span class={`mobile-tap-node w-2 h-2 rounded-full border ${idx === 0 ? 'bg-[#E8590C] border-[#E8590C]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1.5 z-10`}></span>
+                <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[#E8590C]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
+              </div>
+
+              <button
+                type="button"
+                role="tab"
+                class={`pipeline-stop-btn-mobile w-full text-left p-3 rounded-none border ${idx === 0 ? 'border-[#E8590C] bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg)]'} hover:border-[#E8590C] focus-visible:outline-2 focus-visible:outline-[#E8590C] transition-colors tactile-btn`}
+                data-stop-id={stop.id}
+                data-index={idx}
+                aria-selected={idx === 0 ? "true" : "false"}
+                aria-controls={`panel-${stop.id}`}
+                id={`btn-mobile-${stop.id}`}
+                tabindex={idx === 0 ? "0" : "-1"}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-[#E8590C] font-semibold flex items-center gap-1.5">
+                    <span>{stop.order}</span>
+                    <kbd class="kbd-key text-[9px] px-1">{idx + 1}</kbd>
+                  </span>
+                  <span class="font-mono text-[10px] text-[var(--text-dim)]">{stop.badge[lang]}</span>
+                </div>
+                <div class="font-serif text-base text-[var(--text)] font-medium">{stop.name[lang]}</div>
+                <div class="font-mono text-xs text-[var(--text-muted)] mt-1">
+                  {stop.tech.slice(0, 3).join(' · ')}
+                </div>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <!-- Stop Detail Inspection Sheet (Single Coherent Sheet) -->
+        <div class="border-t border-[var(--border)] pt-6 mt-4">
+          {PIPELINE_STOPS.map((stop, idx) => (
+            <div
+              id={`panel-${stop.id}`}
+              class={`pipeline-detail-panel ${idx === 0 ? 'block opacity-100' : 'hidden opacity-0'} space-y-6 transition-all duration-200`}
+              role="tabpanel"
+              aria-labelledby={`btn-${stop.id}`}
+            >
+              <!-- Sheet Header -->
+              <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-3 pb-4 border-b border-[var(--border)]">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs px-2 py-0.5 bg-[#E8590C] text-white rounded-none font-semibold">
+                      {stop.order}
+                    </span>
+                    <span class="font-mono text-xs text-[var(--text-dim)] uppercase tracking-wider">
+                      {stop.badge[lang]}
+                    </span>
+                  </div>
+                  <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] pt-1">
+                    {stop.name[lang]}
+                  </h3>
+                </div>
+
+                <!-- Editorial Stack Line -->
+                <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md">
+                  <span class="text-[var(--text-dim)]">{isTr ? 'Protokol & Yığın: ' : 'Protocol & Stack: '}</span>
+                  <span class="text-[var(--text)]">{stop.tech.join(' · ')}</span>
+                </div>
+              </div>
+
+              <!-- 4-Section Technical Specification Matrix -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm font-sans pt-1">
+                <!-- 01. Mühendislik Kapsamı -->
+                <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-none" aria-hidden="true"></span>
+                    <span>{isTr ? '01 // Mühendislik Kapsamı' : '01 // What I Engineered'}</span>
+                  </div>
+                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {stop.whatIDid[lang]}
+                  </p>
+                </div>
+
+                <!-- 02. Karar Gerekçesi -->
+                <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-none" aria-hidden="true"></span>
+                    <span>{isTr ? '02 // Karar Gerekçesi' : '02 // Architectural Rationale'}</span>
+                  </div>
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {stop.whyDecision[lang]}
+                  </p>
+                </div>
+
+                <!-- 03. Elenen Alternatif -->
+                <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="text-[var(--text-dim)]" aria-hidden="true">✕</span>
+                    <span>{isTr ? '03 // Elenen Alternatif' : '03 // Alternative Eliminated'}</span>
+                  </div>
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {stop.alternativeEliminated[lang]}
+                  </p>
+                </div>
+
+                <!-- 04. Darboğaz & Çözüm -->
+                <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3.5">
+                  <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="text-[#E8590C]" aria-hidden="true">▲</span>
+                    <span>{isTr ? '04 // Darboğaz & Çözüm' : '04 // Challenge & Mitigation'}</span>
+                  </div>
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {stop.challenge[lang]}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Deep Link to Relevant Case Study & Copy Note -->
+              <div class="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                <button
+                  type="button"
+                  class="copy-stop-note-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2.5 py-1 rounded-none bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C]"
+                  data-stop-name={stop.name[lang]}
+                  data-stop-summary={`${stop.order}. ${stop.name[lang]}: ${stop.whatIDid[lang]}`}
+                >
+                  <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="0" ry="0"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span class="copy-note-text">{isTr ? 'Bu Katmanın Notunu Kopyala' : 'Copy Stop Summary'}</span>
+                </button>
+
+                <a
+                  href={stop.caseLink.href}
+                  class="text-[#E8590C] hover:text-[#CF4E08] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group tactile-btn"
+                >
+                  <span>{stop.caseLink.text[lang]}</span>
+                  <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[var(--text-muted)]">
-        {INFRASTRUCTURE_STRIP.map((infra) => (
-          <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc}>
-            <span class="text-[var(--text-dim)]">·</span>
-            <span class="font-medium text-[var(--text)]">{infra.name}</span>
-          </span>
-        ))}
+
+      <!-- Infrastructure Ground Strip (Altyapı Zemini) -->
+      <div class="border border-[var(--border)] bg-[var(--bg)] rounded-none px-4 py-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-full inline-block"></span>
+            <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
+              {isTr ? 'Altyapı Zemini (Infrastructure Ground)' : 'Infrastructure Ground Plane'}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[var(--text-muted)]">
+            {INFRASTRUCTURE_STRIP.map((infra) => (
+              <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc}>
+                <span class="text-[var(--text-dim)]">·</span>
+                <span class="font-medium text-[var(--text)]">{infra.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -382,49 +405,70 @@ const isTr = lang === 'tr';
         });
       }
 
+      function updateTapStubs(activeIdx) {
+        for (let i = 0; i < 6; i++) {
+          const stubs = document.querySelectorAll(`.tap-stub-${i}`);
+          stubs.forEach(stub => {
+            if (i === activeIdx) {
+              stub.setAttribute('stroke', '#E8590C');
+              stub.setAttribute('stroke-width', '2');
+            } else {
+              stub.setAttribute('stroke', 'var(--border-strong)');
+              stub.setAttribute('stroke-width', '1.5');
+            }
+          });
+        }
+      }
+
       function flashRing(nodeIdx) {
         const ring = document.getElementById(`ping-ring-${nodeIdx}`);
         if (!ring) return;
-        ring.classList.remove('hidden');
-        ring.classList.remove('ping-shockwave');
-        // Force reflow
+        ring.classList.remove('hidden', 'ping-shockwave');
+        // Force browser reflow to restart CSS animation
         void ring.offsetWidth;
         ring.classList.add('ping-shockwave');
         setTimeout(() => {
           ring.classList.add('hidden');
-        }, 650);
+          ring.classList.remove('ping-shockwave');
+        }, 700);
       }
 
-      function activateStop(stopId, focusTarget = false) {
-        let activeIdx = 0;
+      function activateStop(stopId, shouldFocus = false) {
+        const activeIdx = STOP_IDS.indexOf(stopId);
+        if (activeIdx === -1) return;
 
-        // Update desktop buttons
+        // Desktop button states
         desktopBtns.forEach((btn, idx) => {
-          const isTarget = btn.getAttribute('data-stop-id') === stopId;
-          btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
-          btn.setAttribute('tabindex', isTarget ? '0' : '-1');
-          if (isTarget) {
-            activeIdx = idx;
+          const isSelected = idx === activeIdx;
+          btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+          btn.tabIndex = isSelected ? 0 : -1;
+          if (isSelected) {
             btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
             btn.classList.remove('border-transparent', 'bg-transparent');
-            if (focusTarget) btn.focus();
+            if (shouldFocus) btn.focus();
           } else {
             btn.classList.remove('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
             btn.classList.add('border-transparent', 'bg-transparent');
           }
         });
 
-        // Update mobile buttons & tap branch indicators
-        mobileWrappers.forEach((wrapper, idx) => {
-          const btn = wrapper.querySelector('.pipeline-stop-btn-mobile');
-          const tapNode = wrapper.querySelector('.mobile-tap-node');
-          const tapStub = wrapper.querySelector('.mobile-tap-stub');
-          const isTarget = idx === activeIdx;
+        // Mobile button & tap states
+        mobileWrappers.forEach((wrap, idx) => {
+          const isSelected = idx === activeIdx;
+          const node = wrap.querySelector('.mobile-tap-node');
+          const stub = wrap.querySelector('.mobile-tap-stub');
+          const btn = wrap.querySelector('.pipeline-stop-btn-mobile');
 
+          if (node) {
+            node.className = `mobile-tap-node w-2 h-2 rounded-full border transition-colors ml-1.5 z-10 ${isSelected ? 'bg-[#E8590C] border-[#E8590C]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
+          }
+          if (stub) {
+            stub.className = `mobile-tap-stub w-5 h-0.5 transition-colors ${isSelected ? 'bg-[#E8590C]' : 'bg-[var(--border-strong)]'}`;
+          }
           if (btn) {
-            btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
-            btn.setAttribute('tabindex', isTarget ? '0' : '-1');
-            if (isTarget) {
+            btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            btn.tabIndex = isSelected ? 0 : -1;
+            if (isSelected) {
               btn.classList.add('border-[#E8590C]', 'bg-[var(--bg-subtle)]');
               btn.classList.remove('border-[var(--border)]', 'bg-[var(--bg)]');
             } else {
@@ -432,47 +476,14 @@ const isTr = lang === 'tr';
               btn.classList.add('border-[var(--border)]', 'bg-[var(--bg)]');
             }
           }
-
-          if (tapNode) {
-            if (isTarget) {
-              tapNode.classList.add('bg-[#E8590C]', 'border-[#E8590C]');
-              tapNode.classList.remove('bg-[var(--bg)]', 'border-[var(--border-strong)]');
-            } else {
-              tapNode.classList.remove('bg-[#E8590C]', 'border-[#E8590C]');
-              tapNode.classList.add('bg-[var(--bg)]', 'border-[var(--border-strong)]');
-            }
-          }
-
-          if (tapStub) {
-            if (isTarget) {
-              tapStub.classList.add('bg-[#E8590C]');
-              tapStub.classList.remove('bg-[var(--border-strong)]');
-            } else {
-              tapStub.classList.remove('bg-[#E8590C]');
-              tapStub.classList.add('bg-[var(--border-strong)]');
-            }
-          }
         });
 
-        // Update SVG tap stubs & node markers
-        for (let s = 0; s < 6; s++) {
-          const stub = document.querySelector(`.tap-stub-${s}`);
-          if (stub) {
-            if (s === activeIdx) {
-              stub.setAttribute('stroke', '#E8590C');
-              stub.setAttribute('stroke-width', '2');
-            } else {
-              stub.setAttribute('stroke', 'var(--border-strong)');
-              stub.setAttribute('stroke-width', '1.5');
-            }
-          }
-        }
-
+        // SVG Nodes on Desktop Track
         svgNodes.forEach((node, idx) => {
           if (idx === activeIdx) {
             node.setAttribute('fill', '#E8590C');
             node.setAttribute('stroke', '#E8590C');
-            node.setAttribute('r', '5.5');
+            node.setAttribute('r', '6');
           } else {
             node.setAttribute('fill', 'var(--bg)');
             node.setAttribute('stroke', 'var(--border-strong)');
@@ -480,70 +491,90 @@ const isTr = lang === 'tr';
           }
         });
 
-        // Update Track Segments
         updateTrackIllumination(activeIdx);
+        updateTapStubs(activeIdx);
 
-        // Update panels
-        panels.forEach((panel) => {
-          if (panel.id === `panel-${stopId}`) {
-            panel.classList.remove('hidden', 'opacity-0');
-            panel.classList.add('block', 'opacity-100');
+        // Switch panels with crisp display transition
+        panels.forEach((p, idx) => {
+          if (idx === activeIdx) {
+            p.classList.remove('hidden', 'opacity-0');
+            p.classList.add('block', 'opacity-100');
           } else {
-            panel.classList.remove('block', 'opacity-100');
-            panel.classList.add('hidden', 'opacity-0');
+            p.classList.remove('block', 'opacity-100');
+            p.classList.add('hidden', 'opacity-0');
           }
         });
       }
 
-      // Event listeners for desktop tabs
+      // Desktop Tab Click & Keyboard Arrow Navigation
       desktopBtns.forEach((btn, idx) => {
         btn.addEventListener('click', () => {
           const stopId = btn.getAttribute('data-stop-id');
           if (stopId) activateStop(stopId);
         });
 
-        // Keyboard arrow navigation
         btn.addEventListener('keydown', (e) => {
+          let targetIdx = null;
           if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
             e.preventDefault();
-            const nextIdx = (idx + 1) % desktopBtns.length;
-            const nextId = desktopBtns[nextIdx].getAttribute('data-stop-id');
-            if (nextId) activateStop(nextId, true);
+            targetIdx = (idx + 1) % desktopBtns.length;
           } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
             e.preventDefault();
-            const prevIdx = (idx - 1 + desktopBtns.length) % desktopBtns.length;
-            const prevId = desktopBtns[prevIdx].getAttribute('data-stop-id');
-            if (prevId) activateStop(prevId, true);
+            targetIdx = (idx - 1 + desktopBtns.length) % desktopBtns.length;
           } else if (e.key === 'Home') {
             e.preventDefault();
-            const firstId = desktopBtns[0].getAttribute('data-stop-id');
-            if (firstId) activateStop(firstId, true);
+            targetIdx = 0;
           } else if (e.key === 'End') {
             e.preventDefault();
-            const lastId = desktopBtns[desktopBtns.length - 1].getAttribute('data-stop-id');
-            if (lastId) activateStop(lastId, true);
+            targetIdx = desktopBtns.length - 1;
+          }
+
+          if (targetIdx !== null) {
+            const nextStopId = desktopBtns[targetIdx].getAttribute('data-stop-id');
+            if (nextStopId) activateStop(nextStopId, true);
           }
         });
       });
 
-      mobileBtns.forEach((btn) => {
+      // Mobile Tab Click & Keyboard Arrow Navigation
+      mobileBtns.forEach((btn, idx) => {
         btn.addEventListener('click', () => {
           const stopId = btn.getAttribute('data-stop-id');
           if (stopId) activateStop(stopId);
         });
+
+        btn.addEventListener('keydown', (e) => {
+          let targetIdx = null;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            targetIdx = (idx + 1) % mobileBtns.length;
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            targetIdx = (idx - 1 + mobileBtns.length) % mobileBtns.length;
+          }
+
+          if (targetIdx !== null) {
+            const nextStopId = mobileBtns[targetIdx].getAttribute('data-stop-id');
+            if (nextStopId) {
+              activateStop(nextStopId, true);
+              mobileBtns[targetIdx].focus();
+            }
+          }
+        });
       });
 
-      // SVG schematic nodes click and keyboard listeners
+      // SVG Tap Nodes Click & Keyboard Support
       svgNodes.forEach((node, idx) => {
         node.addEventListener('click', () => {
           const stopId = STOP_IDS[idx];
           if (stopId) activateStop(stopId);
         });
+
         node.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             const stopId = STOP_IDS[idx];
-            if (stopId) activateStop(stopId, true);
+            if (stopId) activateStop(stopId);
           }
         });
       });
@@ -616,7 +647,7 @@ const isTr = lang === 'tr';
 
       // Keyboard numbers 1 to 6 to switch stops, and P for ping
       window.addEventListener('keydown', (e) => {
-        // CRITICAL: Ignore modifier keys so browser tab switching (Ctrl+1..6) and Print (Ctrl+P) remain untouched
+        // Ignore modifier keys
         if (e.ctrlKey || e.metaKey || e.altKey) {
           return;
         }

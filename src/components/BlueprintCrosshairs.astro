@@ -1,0 +1,43 @@
+---
+export interface Props {
+  top?: boolean;
+  bottom?: boolean;
+  showSplit?: boolean;
+  splitPos?: '1/3' | '2/3' | 'both';
+  className?: string;
+}
+
+const { 
+  top = false, 
+  bottom = true, 
+  showSplit = true, 
+  splitPos = '1/3',
+  className = '' 
+} = Astro.props;
+---
+
+{top && (
+  <div class={`pointer-events-none select-none absolute -top-[5.5px] left-0 w-full flex items-center justify-between font-mono text-[11px] leading-none text-[var(--border-strong)] z-20 ${className}`} aria-hidden="true">
+    <span class="inline-block leading-none -translate-x-1/2">+</span>
+    {showSplit && (splitPos === '1/3' || splitPos === 'both') && (
+      <span class="hidden lg:inline-block absolute left-1/3 -translate-x-1/2 leading-none">+</span>
+    )}
+    {showSplit && (splitPos === '2/3' || splitPos === 'both') && (
+      <span class="hidden lg:inline-block absolute left-2/3 -translate-x-1/2 leading-none">+</span>
+    )}
+    <span class="inline-block leading-none translate-x-1/2">+</span>
+  </div>
+)}
+
+{bottom && (
+  <div class={`pointer-events-none select-none absolute -bottom-[5.5px] left-0 w-full flex items-center justify-between font-mono text-[11px] leading-none text-[var(--border-strong)] z-20 ${className}`} aria-hidden="true">
+    <span class="inline-block leading-none -translate-x-1/2">+</span>
+    {showSplit && (splitPos === '1/3' || splitPos === 'both') && (
+      <span class="hidden lg:inline-block absolute left-1/3 -translate-x-1/2 leading-none">+</span>
+    )}
+    {showSplit && (splitPos === '2/3' || splitPos === 'both') && (
+      <span class="hidden lg:inline-block absolute left-2/3 -translate-x-1/2 leading-none">+</span>
+    )}
+    <span class="inline-block leading-none translate-x-1/2">+</span>
+  </div>
+)}

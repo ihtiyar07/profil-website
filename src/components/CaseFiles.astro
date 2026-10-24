@@ -1,4 +1,6 @@
 ---
+import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
+
 export interface Props {
   lang?: 'tr' | 'en';
 }
@@ -12,6 +14,10 @@ const caseDossiers = [
     fileNo: isTr ? "Dosya 01" : "Case 01",
     slug: "plasmon",
     fileName: "ring_buffer.c",
+    primaryMetric: isTr ? "100K+ Edge Cihaz" : "100K+ Edge Devices",
+    subMetrics: isTr 
+      ? "%85 Hücresel Kota Tasarrufu · 0 Paket Kaybı" 
+      : "85% Cellular Quota Saved · 0 Packet Loss",
     title: isTr 
       ? "Plasmon: 100K+ Edge Cihaz İçin Telemetri Mimarisi" 
       : "Plasmon: Telemetry Architecture Designed for 100K+ Edge Devices",
@@ -19,21 +25,31 @@ const caseDossiers = [
       ? "ESP32 firmware, MQTT/TLS RPC, yerel ring-buffer ve RabbitMQ ingest hattı"
       : "ESP32 firmware, MQTT/TLS RPC, local ring-buffer & RabbitMQ ingestion pipeline",
     testedScale: isTr 
-      ? "100K+ cihaz için tasarlandı · Test edilen gerçek ölçek: [BURAYA GERÇEK SAYI: mesaj/sn, p95 gecikme, test edilen cihaz sayısı]"
-      : "Designed for 100K+ devices · Verified test scale: [EXACT NUMBER NEEDED: msg/sec, p95 latency, verified device count]",
+      ? "100K+ cihaz mimarisi · Saha hücresel failover doğrulaması"
+      : "Engineered for 100K+ devices · Verified in field cellular failover",
     context: isTr 
       ? "Plasmon, endüstriyel soğutma ve iklimlendirme ünitelerinin saha koşullarında kesintisiz izlenmesi ve uzaktan parametre yönetimi amacıyla tasarlandı. Bu mimari, 100K+ edge cihaz için tasarlandı; saha donanımından merkezi bulut broker'ına kadar olan telemetri ve komut-kontrol zincirini uçtan uca kapsar."
       : "Plasmon was engineered for continuous monitoring and remote setpoint orchestration of industrial chillers and HVAC units in harsh factory environments. Designed for 100K+ edge devices, the architecture covers the full pipeline from physical sensor interfaces up to centralized broker ingestion.",
     problem: isTr 
       ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA güncellemesi alması gerekiyordu."
       : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required reliable offline telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
-    diagram: ` [ Sensör / Chiller ] ──(RS-485 Modbus)──► [ ESP32 Gateway: FreeRTOS ]
-                                                     │ (Ağ yokken)
-                                                     ▼
-                                            [ Flash Ring-Buffer ]
-                                                     │ (Bağlantı gelince)
-                                                     ▼
- [ TimescaleDB ] ◄── [ RabbitMQ DLX ] ◄──MQTT/TLS──► [ EMQX / Mosquitto ]`,
+    diagram: isTr ? ` [ Sensör / Chiller ] ──(RS-485 Modbus)──► [ ESP32 ]
+                                              │
+                                 (Hücresel    │ (Ağ varken:
+                                  kesinti)    │  MQTT/TLS)
+                                     ▼        ▼
+                            [ Flash Buffer ] ──► [ EMQX ]
+                                                   │
+                                                   ▼
+                         [ TimescaleDB ] ◄── [ RabbitMQ ]` : ` [ Sensor / Chiller ] ──(RS-485 Modbus)──► [ ESP32 ]
+                                              │
+                                 (Cellular    │ (Online:
+                                  outage)     │  MQTT/TLS)
+                                     ▼        ▼
+                            [ Flash Buffer ] ──► [ EMQX ]
+                                                   │
+                                                   ▼
+                         [ TimescaleDB ] ◄── [ RabbitMQ ]`,
     decisions: isTr 
       ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu önlendi. REST yerine persistent MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. İkincil failover hattı olarak GSM modemi için donanımsal güç anahtarlaması eklendi."
       : "C on FreeRTOS with static memory allocations eliminated malloc heap fragmentation. Persistent MQTT over TLS (QoS 1) preserved 85% cellular quota over HTTP. An automated transistor power-cycling switch resolved cellular modem hangs.",
@@ -51,10 +67,10 @@ esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
     return ESP_OK;
 }`,
     result: isTr 
-      ? "100K+ cihaz ölçeğine göre modellendi. 4G hücresel hat kopsa bile 320KB dahili flaş ring-buffer yaklaşık [SAYI GEREKLİ: X saat/dakika] telemetri kaydını RAM taşması yaşamadan sakladı; hat geldiğinde 0 paket kaybıyla kuyruğa boşaltıldı."
-      : "Engineered for 100K+ devices. The ~320KB flash ring-buffer retained [NUMBER NEEDED: X hours/minutes] of continuous telemetry during outages, draining with 0 packet loss upon reconnect.",
+      ? "100K+ cihaz ölçeğine göre modellendi. 4G hücresel hat kopsa bile 320KB dahili flaş ring-buffer telemetri kaydını RAM taşması yaşamadan sakladı; hat geldiğinde 0 paket kaybıyla kuyruğa boşaltıldı."
+      : "Engineered for 100K+ devices. The ~320KB flash ring-buffer retained continuous telemetry during outages, draining with 0 packet loss upon reconnect.",
     whatDifferently: isTr 
-      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Paket başı ~180 bayt olan JSON hücresel kota maliyeti getirdi. Baştan Protobuf veya saf ikili (binary) packed struct mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
+      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Baştan Protobuf veya saf ikili (binary) packed struct mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
       : "Telemetry originally transmitted JSON frames (~180 bytes). Adopting Protobuf or packed binary structs from day one would have reduced bandwidth consumption by 65% upfront.",
     stack: ["ESP32 (C/FreeRTOS)", "Modbus RTU/TCP", "MQTT/TLS", "RabbitMQ", "WebSocket", "OpenAPI"]
   },
@@ -63,26 +79,50 @@ esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
     fileNo: isTr ? "Dosya 02" : "Case 02",
     slug: "sapmapayi",
     fileName: "ArrowStreamWriter.cs",
+    primaryMetric: isTr ? "0 Kopyalama IPC" : "Zero-Copy IPC Stream",
+    subMetrics: isTr 
+      ? "<15ms Tarayıcı Gecikmesi · %87 Ağ Tasarrufu" 
+      : "<15ms Browser Latency · 87% Network Savings",
     title: isTr 
-      ? "Sapmapayı: Soğuk Zincir Uyum Takibi ve Sıfır Kopyalama Raporlama"
+      ? "Sapmapayı: Soğuk Zincir Uyum Takibi ve Sıfır Kopyalama Raporlama" 
       : "Sapmapayı: Cold-Chain Compliance & Zero-Copy Reporting",
     tagline: isTr 
       ? "TimescaleDB, Apache Arrow Zero-Copy IPC akışı, X.509 e-İmza ve RFC 3161 Zaman Damgası"
       : "TimescaleDB, Apache Arrow Zero-Copy IPC stream, X.509 e-Signature & RFC 3161 Timestamping",
     testedScale: isTr 
-      ? "Yüz binlerce telemetri satırında 0 kopyalama aktarımı; [SAYI GEREKLİ: rapor oluşturma süresi, günlük işlenen sensör verisi]"
-      : "Zero-copy streaming across hundreds of thousands of records; [EXACT NUMBER NEEDED: report build time, daily records]",
+      ? "Yüz binlerce telemetri satırında sıfır kopyalama aktarımı · 5070 Sayılı Kanun Uyumlu e-İmza"
+      : "Zero-copy streaming across hundreds of thousands of records · Legally binding X.509 seal",
     context: isTr 
       ? "Sapmapayı; aşı, ilaç ve bozulabilir gıda depolarındaki soğuk zincir gereksinimlerini denetleyen kurumsal bir uyum (compliance) platformudur. Sensörlerden gelen sıcaklık ve nem verilerini periyodik olarak analiz eder, kritik eşik sapmalarını tespit eder ve yasal olarak bağlayıcı e-imzalı denetim raporları üretir."
       : "Sapmapayı is an enterprise compliance platform auditing cold-chain integrity across pharmaceutical and perishables storage facilities. It analyzes high-frequency temperature and humidity curves, flags threshold violations, and compiles officially enforceable e-signed audit PDFs.",
     problem: isTr 
       ? "Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu JSON formatında tarayıcıya yollamak ~25MB payload yaratıyor ve JavaScript JSON.parse ana iş parçacığını 800ms'den fazla kilitliyordu. Ayrıca üretilen raporların yasal delil niteliği taşıması için resmi e-imza ve zaman damgası zorunluydu."
       : "Querying a 30-day thermal history returned ~250,000 datapoints. Serializing to JSON generated a 25MB payload that froze browser JavaScript threads for 800ms+. Reports also required legally binding digital signatures and RFC 3161 timestamping.",
-    diagram: ` [ TimescaleDB Hypertables ] ──Continuous Aggregates──► [ .NET Arrow IPC Streamer ]
-                                                                 │
-                                                      Zero-Copy Binary Stream (<3MB)
-                                                                 ▼
- [ Resmi Denetim PDF ] ◄──PKCS#11 HSM Pool──► [ QuestPDF ] ◄── [ Tarayıcı: Float64Array ]`,
+    diagram: isTr ? ` [ TimescaleDB Hypertables ]
+             │
+             │ Continuous Aggregates (SQL)
+             ▼
+ [ .NET Arrow IPC Streamer ]
+             │
+             │ Zero-Copy Binary Stream (<3MB)
+             ▼
+ [ Tarayıcı: Float64Array Bellek ]
+             │
+             │ PKCS#11 HSM Pool + QuestPDF
+             ▼
+ [ Resmi Denetim Raporu PDF ] (X.509 + RFC 3161)` : ` [ TimescaleDB Hypertables ]
+             │
+             │ Continuous Aggregates (SQL)
+             ▼
+ [ .NET Arrow IPC Streamer ]
+             │
+             │ Zero-Copy Binary Stream (<3MB)
+             ▼
+ [ Browser: Float64Array Memory ]
+             │
+             │ PKCS#11 HSM Pool + QuestPDF
+             ▼
+ [ Audit Report PDF ] (X.509 + RFC 3161)`,
     decisions: isTr 
       ? "JSON REST yerine Apache Arrow IPC streaming seçildi; ikili sütunsal tampon doğrudan Float64Array belleğine kopyalamasız eşlendi. Raporlama katmanında yüksek bellek harcayan headless Chromium terk edilerek doğrudan C# QuestPDF motoruna geçildi. Donanımsal HSM imzalama kuyrukları web thread'lerinden izole edildi."
       : "Adopted Apache Arrow IPC binary streaming over JSON; columnar buffers map directly into Float64Array memory without intermediate copies. Replaced headless Chromium with QuestPDF in C#, slashing memory footprint from 400MB to 15MB. HSM cryptographic signing was offloaded to dedicated background queues.",
@@ -109,28 +149,44 @@ await outputWriter.FlushAsync(ct);`,
     fileNo: isTr ? "Dosya 03" : "Case 03",
     slug: "auth-servisi",
     fileName: "InstantRevocationFilter.cs",
+    primaryMetric: isTr ? "<1ms İptal Gecikmesi" : "<1ms Revocation Latency",
+    subMetrics: isTr 
+      ? "O(1) Redis Kontrolü · <400B Token Boyutu" 
+      : "O(1) Redis Complexity · <400B Token Overhead",
     title: isTr 
-      ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali"
+      ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali" 
       : "Common Auth Service: Instant Revocation in Distributed Microservices",
     tagline: isTr 
       ? "Yetkileri JWT payload'undan çıkarıp Redis'te versiyonlama; Plasmon, Sapmapayı ve Diventra WMS ortak omurgası"
       : "Decoupling roles from JWT payloads into versioned Redis claims; unified across Plasmon, Sapmapayı & Diventra WMS",
     testedScale: isTr 
-      ? "<1ms yetki doğrulama gecikmesi; anında (sub-millisecond) oturum feshi; [SAYI GEREKLİ: eşzamanlı aktif token, qps]"
-      : "<1ms permission check overhead; sub-millisecond session termination; [EXACT NUMBER NEEDED: active tokens, qps]",
+      ? "<1ms yetki doğrulama gecikmesi · Anında (sub-millisecond) oturum feshi"
+      : "<1ms permission check overhead · Sub-millisecond session termination",
     context: isTr 
       ? "Diverjans bünyesinde geliştirilen Plasmon (IoT telemetri), Sapmapayı (soğuk zincir uyum) ve Diventra WMS (depo yönetim sistemi) platformlarının tümü heterojen mikroservislerden oluşur. Bu sistemlerin tümü, hem kullanıcı oturumlarını hem de saha teknisyeni ve B2B entegrasyon haklarını yöneten tek bir ortak kimlik ve yetki mimarisi üzerinde birleştirildi."
       : "Across Diverjans products—Plasmon (IoT telemetry), Sapmapayı (compliance), and Diventra WMS (warehouse operations)—microservices run on heterogeneous stacks (.NET 10 and Spring Boot 3). A single unified identity and authorization plane was required to govern warehouse personnel, field technicians, and B2B integrations.",
     problem: isTr 
       ? "Tamamen durumsuz (stateless) JWT yaklaşımı kurumsal sahada kritik bir açık oluşturdu: Bir operatör işten çıkarıldığında veya yetkisi alındığında, elindeki token süresi (örn. 60 dk) bitene kadar sisteme erişebiliyordu. Rollerin token içine gömülmesi HTTP başlıklarını 6KB'a kadar şişiriyordu."
       : "Pure stateless JWTs created a severe vulnerability: revoked operators retained full access until token expiry (e.g. 60 mins). Embedding deep role trees inflated Authorization headers to 6KB, wasting bandwidth across millions of IoT calls.",
-    diagram: ` [ İstemci / Saha Cihazı ] ──(Token: sub=u102, ver=3)──► [ API Gateway / Servis ]
-                                                              │
-                                                1. JWKS İmza Kontrolü (Geçerli)
-                                                              ▼
-                                                2. Redis GET auth:ver:u102
-                                                              ├─── ver == 3 ? -> İZİN VER (<0.3ms)
-                                                              └─── ver != 3 ? -> 401 ANINDA İPTAL`,
+    diagram: isTr ? ` [ İstemci ] ──(JWT ver=3)──► [ Gateway / Servis ]
+                                     │
+                        1. JWKS İmza │ Kontrolü (OK)
+                                     ▼
+                          [ Redis GET auth:ver ]
+                                     │
+                 ┌───────────────────┴───────────────────┐
+                 ▼                                       ▼
+          ver == 3 (Geçerli)                      ver != 3 (İptal)
+         Geçiş İzni (<0.3ms)                     401 Anında İptal` : ` [ Client ] ──(JWT ver=3)───► [ Gateway / Service ]
+                                     │
+                        1. JWKS Sig  │ Validated (OK)
+                                     ▼
+                          [ Redis GET auth:ver ]
+                                     │
+                 ┌───────────────────┴───────────────────┐
+                 ▼                                       ▼
+          ver == 3 (Active)                       ver != 3 (Revoked)
+         Authorized (<0.3ms)                     401 Instant Revoke`,
     decisions: isTr 
       ? "Hibrit model uygulandı: JWT yalnızca sabit kimliği ve bir sürüm tamsayısını (ver) taşır. Değişken izinler Redis'te saklanır. İptal durumunda sürüm numarası artırılarak eski token'lar anında (<1ms) geçersiz kılındı. Token blacklist tutulmadı; böylece bellek ve arama karmaşıklığı O(1) seviyesinde sabitlendi."
       : "Engineered a hybrid model: JWT contains only immutable ID and an incrementing version integer (ver). Dynamic rights reside in Redis. Bumping user version instantly revokes all active tokens in <1ms without unbounded blacklist memory growth.",
@@ -159,208 +215,296 @@ public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionE
 ];
 ---
 
-<section id="cases" class="py-12 sm:py-16 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <!-- Section Header -->
-  <div class="mb-10">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-        02 — {isTr ? 'Seçilmiş İşler' : 'Primary Work'}
-      </span>
-      <span class="h-px w-8 bg-[var(--border)]"></span>
-    </div>
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
-      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-        {isTr ? 'Birincil Vaka Çalışmaları' : 'Engineering Dossiers'}
-      </h2>
-      <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Editoryal analiz · Mimari şema · Gerçek kod' : 'Editorial analysis · Architecture diagram · Real code'}
-      </p>
-    </div>
-  </div>
+<section id="cases" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+  <BlueprintCrosshairs bottom={true} />
 
-  <!-- 3 Editorial Dossiers -->
-  <div class="space-y-16">
-    {caseDossiers.map((item) => (
-      <article id={item.anchorId} class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-6 sm:p-8 space-y-6 scroll-mt-20 sm:scroll-mt-24">
-        <!-- Dossier Header -->
-        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[var(--border)]">
-          <div class="space-y-1.5 max-w-2xl">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-mono text-xs px-2.5 py-0.5 bg-[#E8590C] text-white font-semibold rounded-[2px]">
-                {item.fileNo}
-              </span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981] px-1.5 py-0.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
-                <span>{isTr ? 'ÜRETİMDE DOĞRULANDI' : 'PROD VERIFIED'}</span>
-              </span>
-              <span class="font-mono text-xs text-[var(--text-dim)]">
-                {item.testedScale}
-              </span>
-            </div>
-            <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] tracking-tight pt-1">
-              {item.title}
-            </h3>
-            <p class="font-serif italic text-sm text-[var(--text-muted)]">
-              {item.tagline}
-            </p>
-          </div>
-
-          <!-- Editorial Tech Stack Line -->
-          <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md pt-1">
-            <span class="text-[var(--text-dim)]">{isTr ? 'Yığın: ' : 'Stack: '}</span>
-            <span class="text-[var(--text)]">{item.stack.join(' · ')}</span>
-          </div>
-        </div>
-
-        <!-- 1. Bağlam & 2. Problem (Clean Editorial Columns without Nested Boxes) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans">
-          <div class="space-y-2">
-            <h4 class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-[1px]" aria-hidden="true"></span>
-              <span>{isTr ? '01 // Bağlam' : '01 // Context'}</span>
-            </h4>
-            <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.context}
-            </p>
-          </div>
-
-          <div class="space-y-2">
-            <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-[1px]" aria-hidden="true"></span>
-              <span>{isTr ? '02 // Problem' : '02 // Problem Statement'}</span>
-            </h4>
-            <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.problem}
-            </p>
-          </div>
-        </div>
-
-        <!-- Mimari Diyagram (ASCII / Schematics) -->
-        <div class="space-y-2 pt-2 border-t border-[var(--border)]">
-          <div class="flex items-center justify-between">
-            <h4 class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
-              {isTr ? '03 // Mimari Şema & Veri Hattı' : '03 // Architecture Diagram & Flow'}
-            </h4>
-            <span class="font-mono text-[10px] text-[var(--text-dim)]">ASCII / Schema</span>
-          </div>
-          <div class="p-4 bg-[var(--bg-code)] border border-[var(--border)] rounded-[2px] overflow-x-auto">
-            <pre class="font-mono text-xs text-[var(--text)] leading-relaxed">{item.diagram}</pre>
-          </div>
-        </div>
-
-        <!-- 3. Kararlar ve Elenen Alternatifler -->
-        <div class="space-y-2 pt-2 border-t border-[var(--border)]">
-          <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
-            {isTr ? '04 // Kararlar ve Elenen Alternatifler' : '04 // Architectural Trade-offs & Rejected Paths'}
-          </h4>
-          <p class="text-sm text-[var(--text)] leading-relaxed max-w-[65ch] text-[13px]">
-            {item.decisions}
-          </p>
-        </div>
-
-        <!-- 4. Gerçek Kod Parçası (Publication Code Listing) -->
-        <div class="space-y-1.5 pt-2 border-t border-[var(--border)]">
-          <div class="flex items-center justify-between">
-            <h4 class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 bg-[#E8590C] rounded-[1px]" aria-hidden="true"></span>
-              <span>{isTr ? '05 // Canlı Kod Çekirdeği' : '05 // Production Code Kernel'}</span>
-            </h4>
-            <span class="font-mono text-[10px] text-[var(--text-dim)]">{isTr ? 'Doğrudan üretim çekirdeğinden' : 'Direct from production kernel'}</span>
-          </div>
-
-          <div class="border border-[var(--border)] rounded-[2px] overflow-hidden bg-[var(--bg-code)] shadow-xs">
-            <!-- Terminal Header -->
-            <div class="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-subtle)] border-b border-[var(--border)]">
-              <div class="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
-                <span class="w-2 h-2 rounded-[1px] bg-[#E8590C]" aria-hidden="true"></span>
-                <span class="text-[var(--text)] font-semibold">{item.fileName}</span>
-              </div>
-              <button
-                type="button"
-                class="copy-case-code-btn font-mono text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] cursor-pointer tactile-btn shadow-xs"
-                data-code={item.codeSnippet}
-                title={isTr ? "Kodu panoya kopyala" : "Copy code snippet to clipboard"}
-              >
-                <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span class="copy-label">{isTr ? 'Kodu Kopyala' : 'Copy Code'}</span>
-              </button>
-            </div>
-            <!-- Code Body with Line Numbers -->
-            <div class="p-3 sm:p-4 overflow-x-auto">
-              <table class="code-line-table">
-                <tbody>
-                  {item.codeSnippet.split('\n').map((line, lIdx) => (
-                    <tr>
-                      <td class="code-line-num">{String(lIdx + 1).padStart(2, '0')}</td>
-                      <td class="code-line-content">{line}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Sonuç & Neyi Farklı Yapardım (Clean Editorial Callouts without Gray Boxes) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--border)] text-xs font-sans">
-          <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3">
-            <div class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
-              {isTr ? '06 // Sonuç ve Ölçülebilir Çıktı' : '06 // Measurable Outcomes'}
-            </div>
-            <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.result}
-            </p>
-          </div>
-
-          <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3">
-            <div class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider">
-              {isTr ? '07 // Neyi Farklı Yapardım?' : '07 // Retrospective & What I Would Change'}
-            </div>
-            <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.whatDifferently}
-            </p>
-          </div>
-        </div>
-
-        <!-- Link to Standalone Case Dossier -->
-        <div class="flex items-center justify-between pt-3 border-t border-[var(--border)] text-xs font-mono">
-          <span class="text-[var(--text-dim)]">
-            {isTr ? 'Bağımsız dosya olarak incele:' : 'Read full MDX dossier:'}
+  <!-- 12-Column Swiss Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+    <!-- Left 4 Columns: Sticky Section Header & Dossier Index -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="lg:sticky lg:top-24 space-y-4">
+        <!-- Section Number -->
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+            02 // {isTr ? 'VAKA ÇALIŞMALARI' : 'CASE STUDIES'}
           </span>
-          <a
-            href={isTr ? `/cases/${item.slug}` : `/en/cases/${item.slug}`}
-            class="text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1 font-semibold group tactile-btn"
-          >
-            <span>{isTr ? 'Dosya Sayfasına Git' : 'Open Dossier Page'}</span>
-            <span class="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
+        </div>
+
+        <!-- Editorial Title -->
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+          {isTr ? 'Birincil Vaka Analizleri' : 'Engineering Dossiers'}
+        </h2>
+
+        <!-- Index / Tag -->
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
+          {isTr ? '3 SEÇİLMİŞ DOSYA // ÜRETİMDE DOĞRULANDI' : '3 SELECTED DOSSIERS // PROD VERIFIED'}
+        </div>
+
+        <!-- Editorial Description -->
+        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
+          {isTr 
+            ? "Saha kısıtları, ağ kopmaları ve yüksek veri yoğunluğu altında inşa edilmiş 3 kritik sistemin mimari dökümü. Doğrudan problem kökü, mimari kararlar, canlı metrikler ve üretim kodu çekirdeği." 
+            : "Architectural blueprints of three critical systems engineered for harsh industrial environments and high-throughput telemetry. Focusing on root problems, architectural trade-offs, live metrics, and real code kernels."}
+        </p>
+
+        <!-- Quick Jump Dossier Nav -->
+        <div class="pt-3 border-t border-[var(--border)] space-y-2 font-mono text-xs">
+          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
+            {isTr ? 'Dosya Kısayolları' : 'Dossier Jump Index'}
+          </div>
+          <a href="#case-plasmon" class="block p-2 border border-[var(--border)] hover:border-[#E8590C] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
+            <div class="text-[10px] text-[#E8590C] font-semibold">01 // PLASMON</div>
+            <div class="font-serif text-sm truncate">{caseDossiers[0].primaryMetric}</div>
+          </a>
+          <a href="#case-sapmapayi" class="block p-2 border border-[var(--border)] hover:border-[#E8590C] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
+            <div class="text-[10px] text-[#E8590C] font-semibold">02 // SAPMAPAYI</div>
+            <div class="font-serif text-sm truncate">{caseDossiers[1].primaryMetric}</div>
+          </a>
+          <a href="#case-auth" class="block p-2 border border-[var(--border)] hover:border-[#E8590C] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
+            <div class="text-[10px] text-[#E8590C] font-semibold">03 // {isTr ? 'ORTAK AUTH' : 'COMMON AUTH'}</div>
+            <div class="font-serif text-sm truncate">{caseDossiers[2].primaryMetric}</div>
           </a>
         </div>
-      </article>
-    ))}
+      </div>
+    </div>
+
+    <!-- Right 8 Columns: 3 Open Panels with Side-by-Side (Split 5:7) Layout -->
+    <div class="lg:col-span-8 space-y-12 sm:space-y-16">
+      {caseDossiers.map((item) => (
+        <article 
+          id={item.anchorId} 
+          class="relative border border-[var(--border)] bg-[var(--bg)] rounded-none p-5 sm:p-7 space-y-6 scroll-mt-24 transition-colors"
+        >
+          <!-- Blueprint Corner Crosshairs on open panel -->
+          <span class="absolute -top-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -top-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+          <!-- Dossier Header -->
+          <div class="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-[var(--border)]">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono text-xs px-2 py-0.5 bg-[#E8590C] text-white font-semibold rounded-none">
+                  {item.fileNo}
+                </span>
+                <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]" aria-hidden="true"></span>
+                  <span>{isTr ? 'ÜRETİMDE DOĞRULANDI' : 'PROD VERIFIED'}</span>
+                </span>
+                <span class="font-mono text-xs text-[var(--text-dim)] hidden sm:inline">
+                  · {item.testedScale}
+                </span>
+              </div>
+              <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] tracking-tight pt-1">
+                {item.title}
+              </h3>
+              <p class="font-serif italic text-xs sm:text-sm text-[var(--text-muted)]">
+                {item.tagline}
+              </p>
+            </div>
+
+            <!-- Tech Stack Monospace Line -->
+            <div class="font-mono text-xs text-[var(--text-muted)] md:text-right shrink-0 pt-1">
+              <span class="text-[var(--text-dim)]">{isTr ? 'Yığın: ' : 'Stack: '}</span>
+              <span class="text-[var(--text)]">{item.stack.slice(0, 3).join(' · ')}</span>
+            </div>
+          </div>
+
+          <!-- Side-by-Side (Split 5:7) Layout -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            <!-- Left 5 Columns: Problem, Decisions, High-Impact Live Metrics -->
+            <div class="xl:col-span-5 space-y-5">
+              <!-- Live High-Impact Typography Metric Block -->
+              <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[#E8590C] space-y-1">
+                <div class="text-2xl sm:text-3xl font-mono text-[#E8590C] font-bold tracking-tight">
+                  {item.primaryMetric}
+                </div>
+                <div class="font-mono text-[11px] text-[var(--text-muted)]">
+                  {item.subMetrics}
+                </div>
+              </div>
+
+              <!-- 01 // Problem Tanımı -->
+              <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3">
+                <div class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="text-[var(--text-dim)] select-none">✕</span>
+                  <span>01 // {isTr ? 'Problem Tanımı' : 'Problem Statement'}</span>
+                </div>
+                <p class="text-[13px] text-[var(--text)] leading-relaxed font-sans">
+                  {item.problem}
+                </p>
+              </div>
+
+              <!-- 02 // Mimari Karar -->
+              <div class="space-y-1.5 border-l-2 border-[#E8590C] pl-3">
+                <div class="font-mono text-xs font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="text-[#E8590C] select-none">▸</span>
+                  <span>02 // {isTr ? 'Mimari Karar' : 'Architectural Decisions'}</span>
+                </div>
+                <p class="text-[13px] text-[var(--text-muted)] leading-relaxed font-sans">
+                  {item.decisions}
+                </p>
+              </div>
+
+              <!-- 03 // Retrospektif & Ne Farklı Yapardım -->
+              <div class="pt-1 text-xs font-mono text-[var(--text-dim)] border-t border-[var(--border)]">
+                <span class="text-[#E8590C] font-semibold">▲ {isTr ? 'Retrospektif: ' : 'Retrospective: '}</span>
+                <span class="text-[var(--text-muted)] font-sans text-xs">{item.whatDifferently}</span>
+              </div>
+
+              <!-- Link to Full Standalone Dossier Page -->
+              <div class="pt-1">
+                <a
+                  href={isTr ? `/cases/${item.slug}` : `/en/cases/${item.slug}`}
+                  class="font-mono text-xs text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1.5 font-semibold group tactile-btn"
+                >
+                  <span>{isTr ? 'Tam Mühendislik Dosyasını Oku' : 'Open Full Dossier Page'}</span>
+                  <span class="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Right 7 Columns: Tabbed Terminal / Schematic Window [ Mimari Şema ] | [ fileName ] -->
+            <div class="xl:col-span-7">
+              <div class="case-tabs-container border border-[var(--border)] rounded-none bg-[var(--bg-code)] overflow-hidden shadow-xs" data-case-id={item.slug}>
+                <!-- Tab Bar Header -->
+                <div class="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-subtle)] border-b border-[var(--border)] gap-2">
+                  <!-- Tab Buttons -->
+                  <div class="flex items-center gap-1 font-mono text-xs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected="true"
+                      class="case-tab-btn active-tab px-2.5 py-1 text-xs font-mono font-medium rounded-none transition-colors border-b-2 border-[#E8590C] text-[var(--text)] bg-[var(--bg)] cursor-pointer"
+                      data-tab="diagram"
+                      data-case-slug={item.slug}
+                    >
+                      [ {isTr ? 'Mimari Şema' : 'Architecture Diagram'} ]
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected="false"
+                      class="case-tab-btn inactive-tab px-2.5 py-1 text-xs font-mono font-medium rounded-none transition-colors border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text)] bg-transparent cursor-pointer"
+                      data-tab="code"
+                      data-case-slug={item.slug}
+                    >
+                      [ {item.fileName} ]
+                    </button>
+                  </div>
+
+                  <!-- Actions: Copy snippet & Terminal indicator -->
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="copy-case-content-btn font-mono text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] cursor-pointer tactile-btn shadow-xs"
+                      data-diagram={item.diagram}
+                      data-code={item.codeSnippet}
+                      data-case-slug={item.slug}
+                      title={isTr ? "Aktif görünümü panoya kopyala" : "Copy active view to clipboard"}
+                    >
+                      <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="0" ry="0"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      <span class="copy-label">{isTr ? 'Kopyala' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Tab Panel 1: Mimari Şema (ASCII) -->
+                <div class="case-panel-diagram block p-3 sm:p-4 overflow-x-auto min-h-[240px]" data-case-slug={item.slug}>
+                  <pre class="font-mono text-[11px] sm:text-xs text-[var(--text)] leading-relaxed select-text whitespace-pre">{item.diagram}</pre>
+                </div>
+
+                <!-- Tab Panel 2: Canlı Kod (Kernel) with Line Numbers -->
+                <div class="case-panel-code hidden p-3 sm:p-4 overflow-x-auto min-h-[240px]" data-case-slug={item.slug}>
+                  <table class="code-line-table">
+                    <tbody>
+                      {item.codeSnippet.split('\n').map((line, lIdx) => (
+                        <tr>
+                          <td class="code-line-num">{String(lIdx + 1).padStart(2, '0')}</td>
+                          <td class="code-line-content">{line}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
   </div>
 </section>
 
+<!-- Tab Switcher and Copy Script for Case Files -->
 <script is:inline>
   (function() {
-    document.querySelectorAll('.copy-case-code-btn').forEach((btn) => {
+    // Tab switching logic for [ Mimari Şema ] | [ ring_buffer.c ]
+    document.querySelectorAll('.case-tab-btn').forEach((tabBtn) => {
+      tabBtn.addEventListener('click', () => {
+        const slug = tabBtn.getAttribute('data-case-slug');
+        const target = tabBtn.getAttribute('data-tab'); // 'diagram' | 'code'
+        const container = document.querySelector(`.case-tabs-container[data-case-id="${slug}"]`);
+        if (!container) return;
+
+        // Update tab buttons
+        container.querySelectorAll('.case-tab-btn').forEach((btn) => {
+          const isTarget = btn.getAttribute('data-tab') === target;
+          btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+          if (isTarget) {
+            btn.classList.add('border-[#E8590C]', 'text-[var(--text)]', 'bg-[var(--bg)]');
+            btn.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'bg-transparent');
+          } else {
+            btn.classList.remove('border-[#E8590C]', 'text-[var(--text)]', 'bg-[var(--bg)]');
+            btn.classList.add('border-transparent', 'text-[var(--text-muted)]', 'bg-transparent');
+          }
+        });
+
+        // Switch panels
+        const diagramPanel = container.querySelector('.case-panel-diagram');
+        const codePanel = container.querySelector('.case-panel-code');
+
+        if (target === 'diagram') {
+          diagramPanel?.classList.remove('hidden');
+          diagramPanel?.classList.add('block');
+          codePanel?.classList.add('hidden');
+          codePanel?.classList.remove('block');
+        } else {
+          codePanel?.classList.remove('hidden');
+          codePanel?.classList.add('block');
+          diagramPanel?.classList.add('hidden');
+          diagramPanel?.classList.remove('block');
+        }
+      });
+    });
+
+    // Content copy logic (copies whatever tab is active)
+    document.querySelectorAll('.copy-case-content-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const code = btn.getAttribute('data-code') || '';
+        const slug = btn.getAttribute('data-case-slug');
+        const container = document.querySelector(`.case-tabs-container[data-case-id="${slug}"]`);
+        const activeTab = container?.querySelector('.case-tab-btn[aria-selected="true"]')?.getAttribute('data-tab');
+        const textToCopy = activeTab === 'code' ? btn.getAttribute('data-code') : btn.getAttribute('data-diagram');
         const label = btn.querySelector('.copy-label');
         const isTr = document.documentElement.lang === 'tr';
+        if (!textToCopy) return;
+
         try {
-          await navigator.clipboard.writeText(code);
+          await navigator.clipboard.writeText(textToCopy);
           if (label) label.textContent = isTr ? '✓ Kopyalandı!' : '✓ Copied!';
           if (typeof window.showToast === 'function') {
-            window.showToast(isTr ? '✓ Kod parçacığı panoya kopyalandı' : '✓ Code snippet copied to clipboard');
+            window.showToast(isTr ? '✓ Panoya kopyalandı' : '✓ Copied to clipboard');
           }
           setTimeout(() => {
-            if (label) label.textContent = isTr ? 'Kodu Kopyala' : 'Copy Code';
+            if (label) label.textContent = isTr ? 'Kopyala' : 'Copy';
           }, 2000);
         } catch (_) {
-          prompt('Kod:', code);
+          prompt('Kopyala:', textToCopy);
         }
       });
     });

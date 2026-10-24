@@ -1,5 +1,6 @@
 ---
 import { SITE_META } from '../data/siteMeta';
+import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -9,126 +10,158 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="contact" class="py-12 sm:py-16 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <!-- Section Title -->
-  <div class="mb-8">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-        07 — {isTr ? 'İletişim & Kanallar' : 'Contact Channels'}
-      </span>
-      <span class="h-px w-8 bg-[var(--border)]"></span>
-    </div>
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
-      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-        {isTr ? 'İletişime Geçin' : 'Get in Touch'}
-      </h2>
-      <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Form yok · Doğrudan mühendislik teması' : 'No form walls · Direct engineering channels'}
-      </p>
-    </div>
-  </div>
+<section id="contact" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+  <BlueprintCrosshairs bottom={true} />
 
-  <!-- Contact Grid -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <!-- Email Card with Copy Action -->
-    <div class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3">
-      <div class="space-y-1">
-        <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-          <span>{isTr ? 'E-posta' : 'Email'}</span>
-          <button
-            type="button"
-            id="copy-contact-email-btn"
-            class="text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 cursor-pointer tactile-btn px-1.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)]"
-            title={isTr ? "E-postayı kopyala" : "Copy email address"}
-          >
-            <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            <span class="copy-email-label">{isTr ? 'Kopyala' : 'Copy'}</span>
-          </button>
+  <!-- 12-Column Swiss Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+    <!-- Left 4 Columns: Sticky Section Header -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="lg:sticky lg:top-24 space-y-4">
+        <!-- Section Number -->
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+            07 // {isTr ? 'İLETİŞİM' : 'DIRECT CONTACT'}
+          </span>
+          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
-        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors truncate" title={SITE_META.email}>
-          {SITE_META.email}
+
+        <!-- Editorial Title -->
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+          {isTr ? 'İletişime Geçin' : 'Get in Touch'}
+        </h2>
+
+        <!-- Index / Tag -->
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
+          {isTr ? 'DOĞRUDAN TEMAS // SIFIR FORM DUVARI' : 'DIRECT ACCESS // NO FORM WALLS'}
         </div>
+
+        <!-- Short Description -->
+        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
+          {isTr 
+            ? "Form yok. Dağıtık mimariler, telemetri hatları ve veritabanı optimizasyonu üzerine doğrudan mühendislik teması." 
+            : "No form walls. Direct engineering channels for distributed architectures, telemetry pipelines, and database optimization discussions."}
+        </p>
       </div>
-      <div>
+    </div>
+
+    <!-- Right 8 Columns: 2x2 Technical Channel Cards -->
+    <div class="lg:col-span-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Email Card with Copy Action -->
+        <div class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4">
+          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+              <span>{isTr ? 'E-posta' : 'Email'}</span>
+              <button
+                type="button"
+                id="copy-contact-email-btn"
+                class="text-[10px] text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1 cursor-pointer tactile-btn px-1.5 py-0.5 rounded-none bg-[var(--bg-subtle)] border border-[var(--border)]"
+                title={isTr ? "E-postayı kopyala" : "Copy email address"}
+              >
+                <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="0" ry="0"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span class="copy-email-label">{isTr ? 'Kopyala' : 'Copy'}</span>
+              </button>
+            </div>
+            <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors truncate" title={SITE_META.email}>
+              {SITE_META.email}
+            </div>
+          </div>
+          <div>
+            <a
+              href={`mailto:${SITE_META.email}`}
+              class="font-mono text-xs text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1 font-medium"
+            >
+              <span>{isTr ? 'Mesaj Gönder' : 'Send Direct Mail'}</span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- GitHub -->
         <a
-          href={`mailto:${SITE_META.email}`}
-          class="font-mono text-[11px] text-[#E8590C] hover:text-[#CF4E08] hover:underline inline-flex items-center gap-1"
+          href={SITE_META.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
         >
-          <span>{isTr ? 'Mesaj Gönder' : 'Send Direct Mail'}</span>
-          <span aria-hidden="true">↗</span>
+          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+          <div class="space-y-1.5">
+            <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+              GitHub
+            </div>
+            <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+              github.com/ihtiyar07
+            </div>
+          </div>
+          <div class="font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 font-medium">
+            <span>{isTr ? 'Depoları İncele' : 'Inspect Repositories'}</span>
+            <span aria-hidden="true">↗</span>
+          </div>
+        </a>
+
+        <!-- LinkedIn -->
+        <a
+          href={SITE_META.linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
+        >
+          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+          <div class="space-y-1.5">
+            <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+              LinkedIn
+            </div>
+            <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+              in/ahmet-ihtiyar
+            </div>
+          </div>
+          <div class="font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 font-medium">
+            <span>{isTr ? 'Ağa Bağlan' : 'Connect on LinkedIn'}</span>
+            <span aria-hidden="true">↗</span>
+          </div>
+        </a>
+
+        <!-- Resume / CV PDF -->
+        <a
+          href={SITE_META.cvPath}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
+        >
+          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+              <span>{isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}</span>
+              <span class="text-[10px] text-[var(--text-dim)]">PDF · 142 KB</span>
+            </div>
+            <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
+              Ahmet_Ihtiyar_CV.pdf
+            </div>
+          </div>
+          <div class="font-mono text-xs text-[#E8590C] inline-flex items-center gap-1 font-medium">
+            <span>{isTr ? 'Dosyayı İndir' : 'Download Document'}</span>
+            <span aria-hidden="true">↓</span>
+          </div>
         </a>
       </div>
     </div>
-
-    <!-- GitHub -->
-    <a
-      href={SITE_META.github}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tactile-btn"
-    >
-      <div class="space-y-1">
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-          GitHub
-        </div>
-        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-          github.com/ihtiyar07
-        </div>
-      </div>
-      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
-        <span>{isTr ? 'Depoları İncele' : 'Inspect Repositories'}</span>
-        <span aria-hidden="true">↗</span>
-      </div>
-    </a>
-
-    <!-- LinkedIn -->
-    <a
-      href={SITE_META.linkedin}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tactile-btn"
-    >
-      <div class="space-y-1">
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-          LinkedIn
-        </div>
-        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-          in/ahmet-ihtiyar
-        </div>
-      </div>
-      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
-        <span>{isTr ? 'Ağa Bağlan' : 'Connect on LinkedIn'}</span>
-        <span aria-hidden="true">↗</span>
-      </div>
-    </a>
-
-    <!-- Resume / CV PDF -->
-    <a
-      href={SITE_META.cvPath}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C] rounded-[2px] transition-all group flex flex-col justify-between space-y-3 tactile-btn"
-    >
-      <div class="space-y-1">
-        <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-          <span>{isTr ? 'Özgeçmiş' : 'Curriculum Vitae'}</span>
-          <span class="text-[10px] text-[var(--text-dim)]">PDF · 142 KB</span>
-        </div>
-        <div class="font-serif text-base text-[var(--text)] group-hover:text-[#E8590C] transition-colors">
-          {isTr ? 'Ahmet_Ihtiyar_CV.pdf' : 'Ahmet_Ihtiyar_CV.pdf'}
-        </div>
-      </div>
-      <div class="font-mono text-[11px] text-[#E8590C] inline-flex items-center gap-1">
-        <span>{isTr ? 'Dosyayı İndir' : 'Download Document'}</span>
-        <span aria-hidden="true">↓</span>
-      </div>
-    </a>
   </div>
 </section>
 
+<!-- Email Copy Script -->
 <script is:inline>
   (function() {
     const copyBtn = document.getElementById('copy-contact-email-btn');

@@ -1,5 +1,6 @@
 ---
 import { SITE_META } from '../data/siteMeta';
+import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -12,20 +13,22 @@ const headline = SITE_META.headline[lang];
 const nowLine = SITE_META.nowLine[lang];
 ---
 
-<section class="py-10 sm:py-16 border-b border-[var(--border)]">
-  <div class="flex flex-col-reverse md:flex-row items-start justify-between gap-8 md:gap-12">
-    <!-- Text Column -->
-    <div class="flex-1 max-w-2xl">
+<section class="relative py-12 sm:py-18 border-b border-[var(--border)]">
+  <BlueprintCrosshairs bottom={true} />
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+    <!-- Left 8 Columns: Editorial Headline, Bio, and Industrial CTA -->
+    <div class="lg:col-span-8 space-y-6">
       <!-- Monospace Section Tag -->
-      <div class="flex items-center gap-2 mb-4">
+      <div class="flex items-center gap-2">
         <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-          00 — {isTr ? 'Giriş & Konumlandırma' : 'Positioning'}
+          00 // {isTr ? 'GİRİŞ & KONUMLANDIRMA' : 'POSITIONING & DOSSIER'}
         </span>
-        <span class="h-px w-8 bg-[var(--border)]"></span>
+        <span class="h-px w-8 bg-[var(--border-strong)]"></span>
       </div>
 
       <!-- H1 Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-serif leading-[1.18] tracking-tight text-[var(--text)] mb-5">
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.85rem] font-serif leading-[1.16] tracking-tight text-[var(--text)]">
         {isTr ? (
           <>
             Sensörden imzalı rapora, <span class="italic font-normal">verinin yolunu</span> baştan sona kuran mühendis.
@@ -38,7 +41,7 @@ const nowLine = SITE_META.nowLine[lang];
       </h1>
 
       <!-- "Now" Line -->
-      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] border-l-2 border-[#E8590C] pl-3.5 py-1 mb-6 leading-relaxed">
+      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] border-l-2 border-[#E8590C] pl-3.5 py-1 leading-relaxed bg-[var(--bg-subtle)]/40">
         <div class="flex items-start gap-2">
           <span class="text-[#E8590C] select-none font-bold" aria-hidden="true">▸</span>
           <span>{nowLine}</span>
@@ -46,7 +49,7 @@ const nowLine = SITE_META.nowLine[lang];
       </div>
 
       <!-- Bio / Context -->
-      <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed mb-8 max-w-[65ch] font-sans">
+      <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
         {isTr ? (
           <>
             Ahmet İhtiyar. Bilgisayar Mühendisiyim. Diverjans Bilgi Teknolojileri'nde tam zamanlı olarak donanım seviyesinden (ESP32, Modbus) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) sıfır kopyalama veri aktarımına (Apache Arrow) ve resmi e-imzalı raporlamaya kadar uzanan uçtan uca veri hatlarını kuruyorum.
@@ -58,19 +61,21 @@ const nowLine = SITE_META.nowLine[lang];
         )}
       </p>
 
-      <!-- 3 Actions: Primary, Mail, Quick Copy -->
-      <div class="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs">
+      <!-- Industrial CTA Actions -->
+      <div class="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs pt-2">
+        <!-- Main Industrial Inverting CTA -->
         <a
-          href="#cases"
-          class="px-4 py-2.5 bg-[#E8590C] text-white hover:bg-[#CF4E08] transition-all rounded-[2px] font-medium inline-flex items-center gap-2 group tactile-btn"
+          href={isTr ? '#cases' : '/en#cases'}
+          class="px-5 py-3 bg-[var(--text)] text-[var(--bg)] border border-[var(--text)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-3 tactile-btn group"
         >
-          <span>{isTr ? 'Vaka Çalışmalarını Oku' : 'Read Case Studies'}</span>
-          <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">↓</span>
+          <span>{isTr ? 'Vaka Çalışmalarını İncele' : 'Inspect Case Studies'}</span>
+          <span class="font-mono transition-transform group-hover:translate-x-1" aria-hidden="true">-></span>
         </a>
 
+        <!-- Secondary Industrial Mail CTA -->
         <a
           href={`mailto:${SITE_META.email}`}
-          class="px-4 py-2.5 border border-[var(--border-strong)] text-[var(--text)] hover:border-[#E8590C] hover:text-[#E8590C] transition-all rounded-[2px] inline-flex items-center gap-2 tactile-btn font-medium"
+          class="px-5 py-3 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[#E8590C] hover:text-[#E8590C] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-2 tactile-btn"
         >
           <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
@@ -78,50 +83,33 @@ const nowLine = SITE_META.nowLine[lang];
       </div>
     </div>
 
-    <!-- Clean Portrait Photo Frame -->
-    <div class="flex-shrink-0 self-start md:self-auto">
-      <div class="w-32 sm:w-40 h-40 sm:h-48 overflow-hidden rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-        <picture>
-          <source srcset="/profile.webp" type="image/webp" />
-          <img
-            src="/profile.png"
-            alt="Ahmet İhtiyar — Portre"
-            width="160"
-            height="192"
-            loading="eager"
-            class="w-full h-full object-cover object-center rounded-[1px] transition-all duration-300 filter contrast-[1.02] saturate-[0.95]"
-          />
-        </picture>
-      </div>
-      <div class="text-center font-mono text-[10px] text-[var(--text-dim)] mt-2">
-        <span>İstanbul, TR</span>
+    <!-- Right 4 Columns: High-contrast Monochrome Portrait with Technical Blueprint Coordinates -->
+    <div class="lg:col-span-4 flex flex-col items-start lg:items-end">
+      <div class="relative border border-[var(--border-strong)] p-1 bg-[var(--bg-subtle)] rounded-[2px] shadow-xs w-fit">
+        <!-- High-Contrast Monochrome Portrait Container -->
+        <div class="w-40 sm:w-48 h-48 sm:h-56 overflow-hidden bg-[var(--bg)] border border-[var(--border)] relative group/photo">
+          <picture>
+            <source srcset="/profile.webp" type="image/webp" />
+            <img
+              src="/profile.png"
+              alt="Ahmet İhtiyar — Portre"
+              width="192"
+              height="224"
+              loading="eager"
+              class="w-full h-full object-cover object-center transition-all duration-500 filter grayscale contrast-[1.18] brightness-[0.98] group-hover/photo:contrast-[1.05] group-hover/photo:grayscale-0"
+            />
+          </picture>
+        </div>
+
+        <!-- Clean Location & Status Footer -->
+        <div class="px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between mt-1">
+          <div class="flex items-center gap-1.5 font-medium tracking-wide">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#E8590C]" aria-hidden="true"></span>
+            <span>{isTr ? 'İstanbul, Türkiye' : 'Istanbul, Turkey'}</span>
+          </div>
+          <span class="text-[var(--text-dim)]">Diverjans IT</span>
+        </div>
       </div>
     </div>
   </div>
 </section>
-
-<script is:inline>
-  (function() {
-    const copyBtn = document.getElementById('hero-copy-email-btn');
-    if (!copyBtn) return;
-    copyBtn.addEventListener('click', async () => {
-      const email = copyBtn.getAttribute('data-email') || 'ahmetihtiyar1453@gmail.com';
-      const label = copyBtn.querySelector('.hero-copy-label');
-      const isTr = document.documentElement.lang === 'tr';
-      try {
-        await navigator.clipboard.writeText(email);
-        if (label) label.textContent = isTr ? '✓ Kopyalandı!' : '✓ Copied!';
-        copyBtn.classList.add('border-[#10B981]');
-        if (typeof window.showToast === 'function') {
-          window.showToast(isTr ? `✓ E-posta kopyalandı: ${email}` : `✓ Email copied: ${email}`);
-        }
-        setTimeout(() => {
-          if (label) label.textContent = isTr ? 'Kopyala' : 'Copy';
-          copyBtn.classList.remove('border-[#10B981]');
-        }, 2000);
-      } catch (_) {
-        prompt('E-posta:', email);
-      }
-    });
-  })();
-</script>

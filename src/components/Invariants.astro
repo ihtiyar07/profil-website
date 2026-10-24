@@ -1,5 +1,6 @@
 ---
 import { INVARIANTS } from '../data/invariants';
+import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -9,118 +10,150 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="invariants" class="py-12 sm:py-16 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <!-- Section Title -->
-  <div class="mb-10">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
-        04 — {isTr ? 'Değişmezler' : 'Architectural Invariants'}
-      </span>
-      <span class="h-px w-8 bg-[var(--border)]"></span>
-    </div>
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
-      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-        {isTr ? 'Mimari İlkeler ve Değişmez Kurallar' : 'Invariants & Failure Modes'}
-      </h2>
-      <p class="font-mono text-xs text-[var(--text-dim)]">
-        {isTr ? 'Kural → Nasıl bozulur → Çözüm → Nerede doğruladım' : 'Rule → Failure mode → Mitigation → Verification'}
-      </p>
-    </div>
-  </div>
+<section id="invariants" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+  <BlueprintCrosshairs bottom={true} />
 
-  <!-- Invariants 4-Field Matrix with Tactile Cards -->
-  <div class="space-y-6">
-    {INVARIANTS.map((item, idx) => (
-      <article class="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-5 sm:p-6 space-y-4 hover:border-[var(--border-strong)] transition-all">
-        <!-- Invariant Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
-          <div class="flex items-center gap-2.5">
-            <span class="font-mono text-[11px] font-semibold text-[#E8590C]">
-              {item.badge}
-            </span>
-            <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
-            <h3 class="font-serif text-lg sm:text-xl font-medium text-[var(--text)]">
-              {item.title[lang]}
-            </h3>
-          </div>
-
-          <div class="flex items-center gap-2 self-start sm:self-auto">
-            <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981]">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
-              <span>{isTr ? 'KURAL: KORUNUYOR' : 'ENFORCED'}</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- 4 Structured Fields (Clean Editorial Lines without Gray Boxes) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-sans pt-2">
-          <!-- 1. Kural -->
-          <div class="border-l-2 border-[#E8590C] pl-3.5 space-y-1.5">
-            <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
-              <span>■</span>
-              <span>{isTr ? 'Kural' : 'Invariant Rule'}</span>
-            </div>
-            <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.rule[lang]}
-            </p>
-          </div>
-
-          <!-- 2. Nasıl Bozulur -->
-          <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1.5">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-              <span>✕</span>
-              <span>{isTr ? 'Nasıl Bozulur (Failure Mode)' : 'How It Breaks (Failure Mode)'}</span>
-            </div>
-            <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.failureMode[lang]}
-            </p>
-          </div>
-
-          <!-- 3. Çözüm -->
-          <div class="border-l-2 border-[#E8590C] pl-3.5 space-y-1.5">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
-              <span>▸</span>
-              <span>{isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}</span>
-            </div>
-            <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.solution[lang]}
-            </p>
-          </div>
-
-          <!-- 4. Nerede Doğruladım -->
-          <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1.5">
-            <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-              <span>▲</span>
-              <span>{isTr ? 'Nerede Doğruladım' : 'Production Verification'}</span>
-            </div>
-            <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
-              {item.verification[lang]}
-            </p>
-          </div>
-        </div>
-
-        <!-- Invariant Footer Action -->
-        <div class="pt-2 flex justify-between items-center text-xs font-mono border-t border-[var(--border)]">
-          <span class="text-[10px] text-[var(--text-dim)]">
-            {isTr ? 'Hata Modu Güvencesi' : 'Failure Mode Assurance'}
+  <!-- 12-Column Swiss Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+    <!-- Left 4 Columns: Sticky Section Header -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="lg:sticky lg:top-24 space-y-4">
+        <!-- Section Number -->
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-[#E8590C] uppercase tracking-wider font-semibold">
+            04 // {isTr ? 'DEĞİŞMEZLER' : 'ARCHITECTURAL INVARIANTS'}
           </span>
-          <button
-            type="button"
-            class="copy-invariant-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2 py-1 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C]"
-            data-rule={`${item.badge}: ${item.rule[lang]}`}
-          >
-            <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            <span class="copy-inv-label">{isTr ? 'Kuralı Kopyala' : 'Copy Invariant'}</span>
-          </button>
+          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
-      </article>
-    ))}
+
+        <!-- Editorial Title -->
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+          {isTr ? 'Mimari İlkeler ve Değişmez Kurallar' : 'Invariants & Failure Modes'}
+        </h2>
+
+        <!-- Index / Tag -->
+        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[#E8590C] pl-2.5">
+          {isTr ? 'Kural → Nasıl Bozulur → Çözüm → Nerede Doğruladım' : 'Rule → Failure Mode → Solution → Verification'}
+        </div>
+
+        <!-- Editorial Description -->
+        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
+          {isTr 
+            ? "Saha kısıtları ve donanım gerçeklikleriyle sınanmış mühendislik kuralları. Bir kuralın nasıl bozulacağı öngörülmeden ve üretimde test edilmeden hiçbir mimari karar alınmaz." 
+            : "Rigid engineering rules forged under production stress and hardware limits. No architecture is established without defining its failure mode and production defense."}
+        </p>
+      </div>
+    </div>
+
+    <!-- Right 8 Columns: 2-Column Asymmetric Bento Grid -->
+    <div class="lg:col-span-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {INVARIANTS.map((item, idx) => {
+          const isHero = idx === 0;
+
+          return (
+            <article 
+              class={`relative border border-[var(--border)] bg-[var(--bg)] rounded-none p-5 sm:p-6 space-y-5 hover:border-[var(--border-strong)] transition-all ${isHero ? 'md:col-span-2 bg-[var(--bg-subtle)]/30' : 'md:col-span-1'}`}
+            >
+              <!-- Corner Crosshairs for Bento Panels -->
+              <span class="absolute -top-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+              <span class="absolute -top-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+              <span class="absolute -bottom-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+              <span class="absolute -bottom-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
+
+              <!-- Invariant Header -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
+                <div class="flex items-center gap-2.5">
+                  <span class="font-mono text-[11px] font-semibold text-[#E8590C]">
+                    {item.badge}
+                  </span>
+                  <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
+                  <h3 class={`font-serif font-medium text-[var(--text)] ${isHero ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'}`}>
+                    {item.title[lang]}
+                  </h3>
+                </div>
+
+                <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]" aria-hidden="true"></span>
+                    <span>{isTr ? 'KURAL: KORUNUYOR' : 'ENFORCED'}</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- 4 Structured Fields in Bento Rhythm -->
+              <div class={`grid grid-cols-1 ${isHero ? 'md:grid-cols-2 gap-6' : 'gap-4'} text-xs font-sans pt-1`}>
+                <!-- 1. Kural -->
+                <div class="border-l-2 border-[#E8590C] pl-3.5 space-y-1">
+                  <div class="font-mono text-[11px] font-semibold text-[#E8590C] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>■</span>
+                    <span>{isTr ? 'Kural' : 'Invariant Rule'}</span>
+                  </div>
+                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {item.rule[lang]}
+                  </p>
+                </div>
+
+                <!-- 2. Nasıl Bozulur -->
+                <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>✕</span>
+                    <span>{isTr ? 'Nasıl Bozulur' : 'How It Breaks'}</span>
+                  </div>
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {item.failureMode[lang]}
+                  </p>
+                </div>
+
+                <!-- 3. Çözüm -->
+                <div class="border-l-2 border-[#E8590C] pl-3.5 space-y-1">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>▸</span>
+                    <span>{isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}</span>
+                  </div>
+                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {item.solution[lang]}
+                  </p>
+                </div>
+
+                <!-- 4. Nerede Doğruladım -->
+                <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1">
+                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>▲</span>
+                    <span>{isTr ? 'Nerede Doğruladım' : 'Production Verification'}</span>
+                  </div>
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                    {item.verification[lang]}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Footer Action -->
+              <div class="pt-3 flex justify-between items-center text-xs font-mono border-t border-[var(--border)]">
+                <span class="text-[10px] text-[var(--text-dim)]">
+                  {isTr ? 'Hata Modu Güvencesi' : 'Failure Mode Assurance'}
+                </span>
+                <button
+                  type="button"
+                  class="copy-invariant-btn text-[var(--text-muted)] hover:text-[#E8590C] inline-flex items-center gap-1.5 text-[11px] cursor-pointer tactile-btn px-2 py-1 rounded-none bg-[var(--bg)] border border-[var(--border)] hover:border-[#E8590C]"
+                  data-rule={`${item.badge}: ${item.rule[lang]}`}
+                >
+                  <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="0" ry="0"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span class="copy-inv-label">{isTr ? 'Kuralı Kopyala' : 'Copy Invariant'}</span>
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
   </div>
 </section>
 
+<!-- Invariants Copy Handler -->
 <script is:inline>
   (function() {
     document.querySelectorAll('.copy-invariant-btn').forEach((btn) => {

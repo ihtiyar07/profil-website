@@ -29,33 +29,12 @@ The system encountered two architectural bottlenecks:
 
 ## 3. Architecture & Data Path
 
-```
- [ TimescaleDB Hypertables ]
-               │ Continuous Aggregate View
-               ▼
- ┌────────────────────────────────────────────────────────┐
- │ .NET Backend: Arrow RecordBatch Streamer               │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ Npgsql Binary     │───────►│ Arrow RecordBatch     │ │
- │ │ Raw Buffer Reader │        │ IPC Streamer          │ │
- │ └───────────────────┘        └──────────┬────────────┘ │
- └─────────────────────────────────────────┼──────────────┘
-                                           │ Zero-Copy IPC Stream (Binary)
-                                           ▼
- ┌────────────────────────────────────────────────────────┐
- │ Frontend & Canvas / WebGL                              │
- │   Browser: Arrow Table.from() -> Float64Array (0ms)    │
- └────────────────────────────────────────────────────────┘
-                                           │ Approved Report
-                                           ▼
- ┌────────────────────────────────────────────────────────┐
- │ PDF Notarization Engine                                │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ QuestPDF Engine   │───────►│ PKCS#11 Worker Pool   │ │
- │ │ Raw PDF Stream    │        │ RFC 3161 Timestamping │ │
- │ └───────────────────┘        └───────────────────────┘ │
- └────────────────────────────────────────────────────────┘
-```
+Telemetry streaming and notarized compliance reporting operate through four unified layers:
+
+1. **Time-Series Persistence (TimescaleDB):** High-frequency temperature and humidity readings reside in hypertable partitions. 1-minute raw sensor logs are continuously aggregated into hourly rollups on disk.
+2. **Binary IPC Streamer (.NET 10 & Apache Arrow):** Query handlers bypass traditional object serialization and JSON loops. Records are transformed directly into Apache Arrow RecordBatch columnar buffers and streamed via PipeWriter over HTTP/WebSocket.
+3. **Frontend Zero-Copy Buffer (Canvas & Float64Array):** Incoming Arrow IPC chunks bind directly into JavaScript `Float64Array` typed memory without JSON parsing overhead, driving 60 FPS graphics without thread stutter.
+4. **Compliance Document Notarization (PKCS#11 HSM & QuestPDF):** Reports render via native vector PDF layouts (`QuestPDF`) rather than heavy headless browsers. Documents are asynchronously signed using certified X.509 keys and RFC 3161 timestamps via a dedicated PKCS#11 queue.
 
 ## 4. Decisions & Rejected Alternatives
 
@@ -63,42 +42,22 @@ The system encountered two architectural bottlenecks:
 - **Asynchronous HSM worker pool chosen, synchronous calls rejected:** Hardware Security Modules (HSMs) operate synchronously with 300–700ms signing latency. Dedicated background worker queues decoupled report generation from interactive web threads.
 - **TimescaleDB Continuous Aggregates chosen, document stores rejected:** Pre-computing hourly rollups inside partitioned PostgreSQL hypertables avoided repeated, resource-heavy disk scans on raw telemetry.
 
-## 5. Production Code: Arrow RecordBatch Streaming
+## 5. Core Engineering Mechanism: Zero-Copy Memory Streaming & Legal Notarization
 
-```csharp
-using Apache.Arrow;
-using Apache.Arrow.Ipc;
-using System.IO.Pipelines;
+Performance and compliance guarantees in Sapmapayı rely upon two foundational architectural patterns:
 
-public async Task StreamTelemetryArrowAsync(
-    long deviceId, 
-    DateTimeOffset start, 
-    DateTimeOffset end, 
-    PipeWriter outputWriter,
-    CancellationToken ct)
-{
-    var schema = new Schema.Builder()
-        .Field(new Field("timestamp", new TimestampType(TimeUnit.Millisecond, "UTC"), false))
-        .Field(new Field("temperature", new DoubleType(), false))
-        .Field(new Field("humidity", new DoubleType(), false))
-        .Build();
+### Apache Arrow Zero-Copy Streaming
+Querying a 250,000-row dataset through conventional REST architectures induces heavy memory and compute friction:
+- Database records are deserialized into C# domain objects (millions of short-lived heap allocations causing GC pauses).
+- Objects serialize into JSON strings (~25MB payload over the wire).
+- The browser parses the text via `JSON.parse()`, blocking the main UI thread for ~800ms.
 
-    using var arrowWriter = new ArrowStreamWriter(outputWriter.AsStream(), schema);
+Sapmapayı replaces this pipeline with Apache Arrow IPC streams. Columnar byte buffers from TimescaleDB map directly into Arrow RecordBatches. Network transfer drops from 24.8MB to 3.1MB (87% bandwidth savings). In the browser, Arrow arrays map directly into `Float64Array` memory buffers without copying, slashing thread latency from 800ms to &lt;15ms.
 
-    await using var conn = await _dataSource.OpenConnectionAsync(ct);
-    await using var cmd = conn.CreateCommand();
-    cmd.CommandText = @"
-        SELECT bucket AS timestamp, avg_temp, avg_hum 
-        FROM chiller_hourly_summary 
-        WHERE device_id = $1 AND bucket BETWEEN $2 AND $3 
-        ORDER BY bucket ASC;";
-    
-    // Direct memory block transfer - zero JSON parsing allocations
-    var batch = await ReadRecordBatchFromDbAsync(cmd, schema, ct);
-    await arrowWriter.WriteRecordBatchAsync(batch, ct);
-    await outputWriter.FlushAsync(ct);
-}
-```
+### Native PDF Rendering and Isolated HSM Queues
+Initial prototypes using headless Chromium (Puppeteer) required 400MB+ RAM per instance, leading to out-of-memory container crashes under burst loads. Replacing this with native C# vector rendering (`QuestPDF`) reduced memory footprint to 15MB.
+
+To handle legal enforceability without stalling API throughput, cryptographic operations (X.509 signatures and certified RFC 3161 timestamps) are isolated behind a dedicated PKCS#11 worker queue. Web controllers immediately return job tokens, while background workers batch-sign documents against physical HSM hardware.
 
 ## 6. Outcome & Measurable Results
 - **Network Payload:** A 250,000-row telemetry dataset dropped from ~24.8MB (JSON) to `~3.1MB` via Apache Arrow IPC (~87% reduction).

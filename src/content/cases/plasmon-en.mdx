@@ -29,33 +29,12 @@ Deployments faced two fundamental hurdles:
 
 ## 3. Architecture & Data Flow
 
-```
- [ Sensor & Chiller Controller ]
-               │ (RS-485 / Modbus RTU)
-               ▼
- ┌────────────────────────────────────────────────────────┐
- │ ESP32 Edge Gateway (FreeRTOS)                         │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ Modbus Poller     │───────►│ SPIFFS Ring-Buffer    │ │
- │ │ (Core 0, 1000ms)  │        │ (Flash buffer offline)│ │
- │ └───────────────────┘        └──────────┬────────────┘ │
- │                                         │              │
- │ ┌───────────────────┐                   │ On Reconnect │
- │ │ MQTT Client (TLS) │◄──────────────────┘              │
- │ └─────────┬─────────┘                                  │
- └───────────┼────────────────────────────────────────────┘
-             │ MQTT/TLS (QoS 1) - GSM 4G / Wi-Fi
-             ▼
- ┌────────────────────────────────────────────────────────┐
- │ Ingestion & Broker Cluster                             │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ EMQX / Mosquitto  │───────►│ RabbitMQ Telemetry    │ │
- │ │ TLS Broker        │        │ Topic Exchanges (DLX) │ │
- │ └───────────────────┘        └──────────┬────────────┘ │
- └─────────────────────────────────────────┼──────────────┘
-                                           ▼
-                                [ TimescaleDB & WebFlux ]
-```
+Telemetry flows from industrial field controllers up to central persistence through four distinct architectural stages:
+
+1. **Field Instrumentation (RS-485 / Modbus RTU):** Industrial chiller controllers, evaporators, and transducers are polled every 1000ms. Optical isolators protect the UART bus from high-voltage transients and compressor start spikes.
+2. **Edge Gateway (ESP32 / FreeRTOS):** Frames are buffered in statically allocated FreeRTOS task memory. When online, frames transmit immediately over TLS; on cellular drops, data routes directly to an on-chip circular flash buffer.
+3. **Transport & Network (MQTT over TLS):** Dual-path connectivity (Wi-Fi primary, 4G LTE failover) maintains a persistent QoS 1 socket. Last Will & Testament (LWT) ensures immediate notification of silent connection dropouts.
+4. **Ingestion & Buffering (RabbitMQ & TimescaleDB):** Telemetry routes across topic exchanges with Dead Letter Exchanges (DLX) isolating unparseable frames while valid data streams into TimescaleDB hypertables.
 
 ## 4. Decisions & Rejected Alternatives
 
@@ -63,43 +42,19 @@ Deployments faced two fundamental hurdles:
 - **MQTT/TLS (QoS 1) chosen, HTTP REST rejected:** Opening TCP/TLS handshakes for every payload consumed prohibitive cellular data. A persistent MQTT socket allowed compact streaming with sub-second disconnection detection via Last Will & Testament (LWT).
 - **RabbitMQ chosen for ingestion, Kafka deferred:** Per-device RPC request-reply patterns, dynamic routing keys, and lower operational complexity made RabbitMQ ideal for this workload.
 
-## 5. Production Code: Flash Ring-Buffer Core
+## 5. Core Engineering Mechanism: Flash Ring-Buffer & Hardware Recovery
 
-```c
-#include "esp_spiffs.h"
-#include "esp_log.h"
+Production stability in the field rests upon two architectural defenses:
 
-#define TELEMETRY_RING_FILE "/spiffs/ring_buf.bin"
-#define MAX_BUFFER_ENTRIES   2048
+### Static Circular Ring-Buffer Architecture
+On microcontrollers operating 24/7, dynamic heap allocation (`malloc`) causes memory fragmentation, which inevitably leads to out-of-memory resets during network outages.
 
-typedef struct __attribute__((packed)) {
-    uint32_t timestamp;
-    int16_t  temp_chiller_x10;
-    int16_t  temp_ambient_x10;
-    uint16_t pressure_bar_x100;
-    uint8_t  compressor_state;
-    uint8_t  crc8;
-} TelemetryFrame;
+To guarantee bounded memory usage, a fixed-size (~320KB) circular ring-buffer was implemented on SPIFFS/LittleFS flash. Buffer memory is allocated statically at boot. During cellular carrier outages lasting up to 48 hours, telemetry frames append to circular flash blocks. Upon capacity exhaustion, the buffer wraps around and overwrites the oldest frames (FIFO), maintaining deterministic operation without heap panics. When cellular connectivity resumes, buffered frames drain chronologically to RabbitMQ without data loss.
 
-esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
-    FILE *f = fopen(TELEMETRY_RING_FILE, "a+b");
-    if (!f) {
-        ESP_LOGE("RING", "Failed to open flash ring buffer");
-        return ESP_FAIL;
-    }
-    
-    long size = ftell(f);
-    if (size >= (long)(MAX_BUFFER_ENTRIES * sizeof(TelemetryFrame))) {
-        // Circular wrap-around on boundary exhaustion
-        fseek(f, 0, SEEK_SET);
-    }
-    
-    fwrite(frame, sizeof(TelemetryFrame), 1, f);
-    fflush(f);
-    fclose(f);
-    return ESP_OK;
-}
-```
+### Transistor-Driven Hardware Modem Power Cycling
+In rural industrial environments, cellular base station transitions can cause modems to hang in an unresponsive AT command state, ignoring software reset signals.
+
+A dedicated transistor power switch controlled by an ESP32 GPIO pin was incorporated into the circuit. When the watchdog task detects no modem response for 120 seconds, it cuts DC power to the modem for 500ms, triggering a hardware cold reboot. This automated hardware failover eliminated the need for field technician dispatches.
 
 ## 6. Outcome & Measurable Results
 - **Design Capacity:** Sized for 100K+ edge units concurrently publishing telemetry.

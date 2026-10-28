@@ -1,7 +1,7 @@
 {
   "name": "Ahmet İhtiyar — Mühendislik Dosyası",
   "short_name": "Ahmet İhtiyar",
-  "description": "Sensörden imzalı rapora, verinin yolunu baştan sona kuran mühendis.",
+  "description": "Gömülü uç sistemlerden dağıtık arka uç mimarilerine uzanan telemetri ve veri altyapıları.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F4F6F9",

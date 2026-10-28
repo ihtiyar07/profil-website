@@ -20,18 +20,18 @@ const isTr = lang === 'tr';
           <span>{isTr ? 'Üretimde Aktif' : 'Production Active'}</span>
         </span>
         <span class="text-[var(--border-strong)]">·</span>
-        <span>{isTr ? 'Diverjans IT · Dağıtık Telemetri ve Sistem Mimarisi' : 'Diverjans IT · Distributed Telemetry & Systems'}</span>
+        <span>{isTr ? 'Diverjans IT · Telemetri ve Veri Altyapısı' : 'Diverjans IT · Telemetry & Data Infrastructure'}</span>
       </div>
 
       <!-- Main Headline -->
       <h1 class="text-3xl sm:text-4xl lg:text-[3.25rem] font-serif leading-[1.14] tracking-tight text-[var(--text)]">
         {isTr ? (
           <>
-            Sensörden imzalı rapora: <span class="italic font-normal">verinin yolunu</span> baştan sona kuran mühendis.
+            Gömülü uç sistemlerden dağıtık mimarilere <span class="italic font-normal">telemetri ve veri altyapıları</span> geliştiriyorum.
           </>
         ) : (
           <>
-            From raw sensor to signed audit report: <span class="italic font-normal">engineering the entire path of data.</span>
+            Engineering telemetry and data infrastructure <span class="italic font-normal">from embedded edge to distributed backends.</span>
           </>
         )}
       </h1>
@@ -40,11 +40,11 @@ const isTr = lang === 'tr';
       <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
         {isTr ? (
           <>
-            Diverjans IT bünyesinde; donanım seviyesinden (ESP32, Modbus RTU/TCP) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) Apache Arrow sıfır-kopyalama veri aktarımına ve resmi e-imzalı denetim raporlarına kadar uzanan telemetri ve sistem hatlarını bizzat tasarlıyor ve idame ediyorum.
+            Diverjans IT bünyesinde; saha donanımlarından (ESP32, Modbus RTU/TCP) dağıtık mikroservislere, zaman serisi veritabanlarından (TimescaleDB) Apache Arrow tabanlı veri aktarımına ve e-imzalı denetim raporlarına uzanan sistem altyapıları tasarlıyor ve yönetiyorum.
           </>
         ) : (
           <>
-            Engineering distributed telemetry infrastructure at Diverjans IT in Istanbul. Architecting end-to-end data pipelines from physical microcontrollers (ESP32, Modbus RTU/TCP) up to high-throughput time-series storage (TimescaleDB), Apache Arrow zero-copy memory streaming, and legally binding X.509 audit reports.
+            Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Designing end-to-end pipelines from physical edge devices (ESP32, Modbus RTU/TCP) to time-series storage (TimescaleDB), Apache Arrow zero-copy streaming, and certified X.509 audit reports.
           </>
         )}
       </p>
@@ -54,19 +54,19 @@ const isTr = lang === 'tr';
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 py-3 font-mono">
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">100K+</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Uç Cihaz (Modbus/ESP32)' : 'Edge Devices (Modbus)'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Saha Cihaz Kapasitesi' : 'Field Device Fleet'}</div>
           </div>
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--text-accent)] tracking-tight">&lt;15ms</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Arrow IPC Render' : 'Arrow IPC Stream'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Arrow İkili Akış Gecikmesi' : 'Arrow IPC Latency'}</div>
           </div>
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">&lt;1ms</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'O(1) Yetki İptali' : 'O(1) Revocation'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'O(1) Yetki İptal Süresi' : 'O(1) Revocation'}</div>
           </div>
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--status-green)] tracking-tight">0</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Kayıpsız Ring-Buffer' : 'Loss Flash Buffer'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Saha Kesintisi Paket Kaybı' : 'Outage Packet Loss'}</div>
           </div>
         </div>
       </div>

@@ -71,7 +71,7 @@ function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
   <!-- Bottom footer -->
   <line x1="36" y1="510" x2="1164" y2="510" stroke="#1E293B" stroke-width="1.5" />
   <text x="96" y="555" fill="#64748B" font-family="monospace, ui-monospace, sans-serif" font-size="15">
-    ahmetihtiyar.com ${meta ? `· ${escapeXml(meta)}` : '· Sensörden imzalı rapora verinin yolu'}
+    ahmetihtiyar.com ${meta ? `· ${escapeXml(meta)}` : '· Telemetri ve Veri Altyapısı'}
   </text>
   <circle cx="1100" cy="550" r="5" fill="#38BDF8" />
 </svg>`;
@@ -82,16 +82,16 @@ export async function getStaticPaths() {
     {
       params: { slug: 'index' },
       props: {
-        title: 'Sensörden imzalı rapora, verinin yolunu baştan sona kuran mühendis.',
-        subtitle: 'Ahmet İhtiyar — Bilgisayar Mühendisi | Diverjans IT',
-        badge: 'Giriş & Omurga',
+        title: 'Gömülü uç sistemlerden dağıtık arka uç mimarilerine telemetri ve veri altyapıları.',
+        subtitle: 'Ahmet İhtiyar — Sistem ve Arka Uç Mühendisi | Diverjans IT',
+        badge: 'Mühendislik Dosyası',
         meta: 'ESP32 · RabbitMQ · TimescaleDB · Arrow · Keycloak',
       },
     },
     {
       params: { slug: 'en/index' },
       props: {
-        title: 'From raw sensor to signed audit report: engineering the entire path of data.',
+        title: 'Engineering telemetry and data infrastructure from embedded edge to distributed backends.',
         subtitle: 'Ahmet İhtiyar — Systems & Backend Engineer | Istanbul',
         badge: 'Engineering Dossier',
         meta: 'ESP32 · RabbitMQ · TimescaleDB · Arrow · Keycloak',

@@ -27,35 +27,14 @@ Endüstriyel sahada iki büyük zorluk vardı:
 1. **Güvenilmez Hücresel Bağlantı:** Fabrikalarda ve uzak tesislerde GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları (polling) bellek taşmalarına ve veri boşluklarına yol açıyordu.
 2. **Çift Yönlü İletişim ve OTA:** Cihazların sadece veri göndermesi değil; acil durumlarda set-değeri değiştirebilmesi, Modbus register'larına komut yazabilmesi ve uzaktan firmware (OTA) güncellemelerini güvenle alması gerekiyordu.
 
-## 3. Mimari ve Veri Akışı
+## 3. Mimari ve Veri Akış Hattı
 
-```
- [ Sensör & Chiller ]
-         │ (RS-485 / Modbus RTU)
-         ▼
- ┌────────────────────────────────────────────────────────┐
- │ ESP32 Edge Gateway (FreeRTOS)                         │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ Modbus Poller     │───────►│ SPIFFS Ring-Buffer    │ │
- │ │ (Core 0, 1000ms)  │        │ (Ağ yokken kalıcı flaş)│ │
- │ └───────────────────┘        └──────────┬────────────┘ │
- │                                         │              │
- │ ┌───────────────────┐                   │ Bağlantı     │
- │ │ MQTT Client (TLS) │◄──────────────────┘ Gelince      │
- │ └─────────┬─────────┘                                  │
- └───────────┼────────────────────────────────────────────┘
-             │ MQTT/TLS (QoS 1) - GSM 4G / Wi-Fi
-             ▼
- ┌────────────────────────────────────────────────────────┐
- │ Ingestion & Broker Layer                               │
- │ ┌───────────────────┐        ┌───────────────────────┐ │
- │ │ EMQX / Mosquitto  │───────►│ RabbitMQ Telemetry    │ │
- │ │ TLS Broker        │        │ Topic Exchanges (DLX) │ │
- │ └───────────────────┘        └──────────┬────────────┘ │
- └─────────────────────────────────────────┼──────────────┘
-                                           ▼
-                                [ TimescaleDB & WebFlux ]
-```
+Telemetri akışı sahadan merkezi veritabanına kadar dört ana aşamada yürütülür:
+
+1. **Saha Enstrümantasyonu (RS-485 / Modbus RTU):** Endüstriyel chiller ünitelerinden, evaporatörlerden ve sıcaklık/basınç transdüserlerinden 1000ms aralıklarla analog/dijital kayıtlar okunur. Hat elektriksel gürültüye karşı donanımsal optik izolatörlerle korunur.
+2. **Uç Ağ Geçidi (ESP32 / FreeRTOS):** Veriler mikrodenetleyicinin statik bellek yapılarına alınır. Çevrimiçi durumda telemetri doğrudan TLS soketine verilir; hücresel kesinti algılandığında SPIFFS üzerindeki kalıcı dairesel flaş belleğe yönlendirilir.
+3. **Aktarım ve Protokol Katmanı (MQTT over TLS):** Çift hatlı yönlendirme (Wi-Fi birincil, 4G LTE ikincil) ile QoS 1 seviyesinde kalıcı soket kullanılır. Last Will & Testament (LWT) ile anlık bağlantı kopmaları gecikmesiz tespit edilir.
+4. **Kuyruk ve Tüketim Hattı (RabbitMQ & TimescaleDB):** Gelen telemetri Topic Exchange üzerinden ayrıştırılır. Hatalı paketler Dead Letter Exchange (DLX) ile izole edilirken geçerli veri zaman serisi hypertables üzerine aktarılır.
 
 ## 4. Kararlar ve Elenen Alternatifler
 
@@ -63,46 +42,19 @@ Endüstriyel sahada iki büyük zorluk vardı:
 - **MQTT/TLS (QoS 1) seçildi, HTTP REST elendi:** REST çağrıları her paket için yeni TCP ve TLS el sıkışması açarak GSM kotasını hızla tüketiyordu. MQTT persistent connection sayesinde tek bağlantı üzerinden kompakt ikili/JSON telemetri akıtıldı; Last Will & Testament (LWT) ile anlık bağlantı kopmaları gecikmesiz algılandı.
 - **Kuyruk katmanında RabbitMQ seçildi, Kafka ertelendi:** Cihaz bazında komut-yanıt (RPC) kalıpları, routing key esnekliği ve düşük operasyonel bakım maliyeti nedeniyle RabbitMQ tercih edildi.
 
-## 5. Gerçek Kod: Flash Ring-Buffer ve Telemetri Paketi
+## 5. Kritik Sistem Mekanizması: Flaş Halka Bellek ve Donanımsal Kurtarma
 
-Aşağıdaki C parçası, ağ koptuğunda telemetriyi heap yerine flaş dairesel tampona yazan ve bağlantı kurulduğunda boşaltan mantığın çekirdeğidir:
+Sistemin üretim sahasındaki kararlılığı iki temel mühendislik kararına dayanır:
 
-```c
-#include "esp_spiffs.h"
-#include "esp_log.h"
+### Statik Halka Bellek (Circular Ring-Buffer) Mimarisi
+FreeRTOS üzerinde 7/24 çalışan mikrodenetleyicilerin en sık karşılaştığı arıza kök nedeni dinamik bellek (malloc) parçalanmasıdır. Ağ kesintilerinde gelen telemetriyi heap belleğinde dinamik olarak biriktirmek birkaç dakika içinde bellek taşmasına ve cihazın çökmesine yol açar.
 
-#define TELEMETRY_RING_FILE "/spiffs/ring_buf.bin"
-#define MAX_BUFFER_ENTRIES   2048
+Bu sorunu çözmek için SPIFFS/LittleFS üzerinde sabit boyutlu (~320KB) bir dairesel tampon kurgulandı. Bellek tahsisi sistem başlangıcında statik olarak sabitlenir. GSM kesintisi 48 saate kadar uzasa dahi telemetri paketleri dairesel dosya bloklarına yazılır. Kapasite sınırına ulaşıldığında en eski kayıtlar FIFO prensibiyle üzerine yazılarak sistemin kilitlenmesi engellenir. Hücresel hat yeniden bağlandığında tampon bloklar kronolojik sırayla kuyruğa aktarılır ve veri kaybı yaşanmaz.
 
-typedef struct __attribute__((packed)) {
-    uint32_t timestamp;
-    int16_t  temp_chiller_x10;
-    int16_t  temp_ambient_x10;
-    uint16_t pressure_bar_x100;
-    uint8_t  compressor_state;
-    uint8_t  crc8;
-} TelemetryFrame;
+### Transistör Tabanlı Donanımsal Modem Güç Döngüsü
+Uzak sanayi tesislerinde hücresel baz istasyonu dalgalanmaları sırasında SIM modülleri AT komut döngüsünde kilitlenebilir. Bu durumda mikrodenetleyicinin yazılımsal AT yeniden başlatma komutları modeme ulaşmaz.
 
-esp_err_t ring_buffer_push(const TelemetryFrame *frame) {
-    FILE *f = fopen(TELEMETRY_RING_FILE, "a+b");
-    if (!f) {
-        ESP_LOGE("RING", "Flaş dosya açılamadı");
-        return ESP_FAIL;
-    }
-    
-    // Boyut sınırını denetle: MAX_BUFFER_ENTRIES aşılırsa en eski bloğu başa sar
-    long size = ftell(f);
-    if (size >= (long)(MAX_BUFFER_ENTRIES * sizeof(TelemetryFrame))) {
-        // En eski kayıt üzerine yazma (wrap-around) stratejisi
-        fseek(f, 0, SEEK_SET);
-    }
-    
-    fwrite(frame, sizeof(TelemetryFrame), 1, f);
-    fflush(f);
-    fclose(f);
-    return ESP_OK;
-}
-```
+ESP32'nin bağımsız bir GPIO hattı üzerinden kontrol edilen transistör anahtarlaması eklendi. Watchdog görevi hücresel modemin 120 saniyeden uzun süre tepkisiz kaldığını tespit ettiğinde, modemin besleme hattını 500ms süreyle fiziksel olarak keser ve sıfırdan soğuk başlatma uygular. Bu mekanizma, sahaya teknisyen gönderme ihtiyacını tamamen ortadan kaldırdı.
 
 ## 6. Sonuç ve Ölçülebilir Çıktılar
 - **Tasarım Kapasitesi:** 100K+ edge cihaz eşzamanlı telemetri yayını için boyutlandırıldı.

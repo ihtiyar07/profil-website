@@ -29,30 +29,12 @@ Standard stateless JWT architectures present an unacceptable security vulnerabil
 
 ## 3. Architecture & Verification Flow
 
-```
- [ Client / Field Device / Web ]
-                 │ Authorization: Bearer <jwt_id_token>
-                 ▼
- ┌────────────────────────────────────────────────────────┐
- │ API Gateway / Downstream Microservice                  │
- │ ┌────────────────────────────────────────────────────┐ │
- │ │ 1. Cryptographic Signature Verification (JWKS)     │ │
- │ │    -> Token not expired & signature valid?         │ │
- │ └─────────────────────────┬──────────────────────────┘ │
- │                           │ Valid
- │                           ▼
- │ ┌────────────────────────────────────────────────────┐ │
- │ │ 2. Redis Permission & Version Assertion            │ │
- │ │    GET user:perms:{user_id}                        │ │
- │ │    -> User active? Permission version matches?     │ │
- │ └─────────────────────────┬──────────────────────────┘ │
- └───────────────────────────┼────────────────────────────┘
-                             │
-            ┌────────────────┴────────────────┐
-            ▼                                 ▼
-      [ Claim Valid ]                  [ Session Revoked ]
-     Allow Request (<0.4ms)            HTTP 401/403 Immediate Cut
-```
+The authorization pipeline operates via a two-stage hybrid verification model:
+
+1. **Compact Client Token:** Clients supply the API Gateway with a minimal JWT (&lt;400 bytes) containing immutable user identity and an incrementing session integer (`ver`).
+2. **Cryptographic Signature Verification (JWKS):** The API Gateway verifies token expiration and asymmetric cryptographic signature against public keys, eliminating malformed or expired requests without hitting Redis.
+3. **In-Memory Version Assertion (Redis):** Valid tokens trigger an atomic comparison of the token's version integer against the current active version key in Redis (&lt;0.3ms latency).
+4. **Routing Outcome:** If versions match, the request passes through to downstream microservices (200 OK). If access was revoked or version bumped, the session immediately terminates (401 Unauthorized).
 
 ## 4. Decisions & Rejected Alternatives
 
@@ -60,47 +42,25 @@ Standard stateless JWT architectures present an unacceptable security vulnerabil
 - **Versioned Claims chosen, Token Blacklists rejected:** Querying an ever-growing Redis set of revoked token IDs incurs ballooning memory overhead. Instead, each identity maintains an incrementing integer `token_version`; bumping the version instantly invalidates all previously issued tokens.
 - **Keycloak retained for SSO core:** Federation, MFA, and OAuth2 identity management remain with Keycloak, while high-frequency authorization and instant revocation are delegated to localized Redis filter layers.
 
-## 5. Production Code: Instant Revocation Filter
+## 5. Core Engineering Mechanism: Versioned O(1) Session Invalidation
 
-```csharp
-public class InstantRevocationAuthFilter : IAsyncActionFilter
-{
-    private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger<InstantRevocationAuthFilter> _logger;
+Distributed authorization security is grounded in two architectural principles:
 
-    public InstantRevocationAuthFilter(IConnectionMultiplexer redis, ILogger<InstantRevocationAuthFilter> logger)
-    {
-        _redis = redis;
-        _logger = logger;
-    }
+### Hybrid Identity: Stateless Claims + Versioned Revocation
+Pure stateless JWTs prevent instant revocation, while querying a central database on every HTTP call defeats microservice scalability.
 
-    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-    {
-        var user = context.HttpContext.User;
-        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var tokenVersionClaim = user.FindFirst("ver")?.Value;
+The hybrid architecture establishes clear separation of concerns:
+- JWTs carry only immutable identity fields (`sub`, `iss`, `exp`) alongside the user's active session version (`ver: 3`).
+- Granular permissions and active version counters reside inside the Redis cache cluster.
+- This design slashes HTTP Authorization headers from 6KB role trees to compact &lt;400-byte tokens, saving over 90% in header overhead across IoT calls.
 
-        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenVersionClaim))
-        {
-            context.Result = new UnauthorizedResult();
-            return;
-        }
+### Instant Revocation via Atomic O(1) Version Bumps
+Conventional session termination strategies maintain blacklists of revoked token IDs. Across hundreds of thousands of users and volatile IoT sessions, blacklists cause unbounded memory expansion and O(N) lookup degradation.
 
-        var db = _redis.GetDatabase();
-        // Read current token version from Redis in <0.3ms
-        var currentVersion = await db.StringGetAsync($"auth:ver:{userId}");
-
-        if (!currentVersion.HasValue || currentVersion.ToString() != tokenVersionClaim)
-        {
-            _logger.LogWarning("Session instantly revoked for User {UserId}", userId);
-            context.Result = new ObjectResult(new { error = "session_revoked" }) { StatusCode = 401 };
-            return;
-        }
-
-        await next();
-    }
-}
-```
+Blacklists were discarded entirely:
+- When an operator is suspended, credentials changed, or permissions altered, the `auth:ver:{userId}` key in Redis increments atomically (`INCR`).
+- Any active tokens carrying outdated version numbers (`ver: 3`) across mobile devices or terminals are rejected on their next API request in &lt;1ms.
+- Lookup complexity remains strictly O(1), maintaining deterministic memory usage regardless of transaction volume.
 
 ## 6. Outcome & Measurable Results
 - **Revocation Delay:** Dropped from 60 minutes to `<1 millisecond` across all microservices.

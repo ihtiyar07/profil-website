@@ -29,30 +29,12 @@ Mikroservis dünyasında popüler olan "tamamen durumsuz (stateless) JWT" yakla�
 
 ## 3. Mimari ve Yetki Doğrulama Akışı
 
-```
- [ İstemci / Saha Cihazı / Web ]
-                 │ Authorization: Bearer <jwt_id_token>
-                 ▼
- ┌────────────────────────────────────────────────────────┐
- │ API Gateway / Downstream Microservice                  │
- │ ┌────────────────────────────────────────────────────┐ │
- │ │ 1. Kriptografik İmza Denetimi (JWKS Public Key)   │ │
- │ │    -> Token süresi & imza geçerli mi?              │ │
- │ └─────────────────────────┬──────────────────────────┘ │
- │                           │ Valid
- │                           ▼
- │ ┌────────────────────────────────────────────────────┐ │
- │ │ 2. Redis Yetki & Versiyon Kontrolü                 │ │
- │ │    GET user:perms:{user_id}                        │ │
- │ │    -> Kullanıcı aktif mi? Rol sürümü eşleşiyor mu? │ │
- │ └─────────────────────────┬──────────────────────────┘ │
- └───────────────────────────┼────────────────────────────┘
-                             │
-            ┌────────────────┴────────────────┐
-            ▼                                 ▼
-      [ Hak Geçerli ]                  [ Yetki İptal / Değişti ]
-     İşleme İzin Ver (<0.4ms)          HTTP 401/403 Anında Kes
-```
+Yetkilendirme hattı iki kademeli hibrit doğrulama modeliyle çalışır:
+
+1. **Kompakt İstemci İsteği:** İstemci, API Gateway'e yalnızca sabit kullanıcı kimliğini ve tamsayı oturum sürümünü (`ver`) içeren küçük bir JWT token gönderir (&lt;400 bayt).
+2. **Kriptografik İmza Denetimi (JWKS):** API Gateway seviyesinde yerel açık anahtar kullanılarak token süresi ve kriptografik imza asenkron doğrulanır. Bu aşama Redis'e gitmeden geçersiz veya süresi dolmuş token'ları eler.
+3. **Bellek İçi Sürüm Doğrulaması (Redis):** İmzası geçerli token'ın sürüm damgası, Redis'teki kullanıcı sürüm anahtarıyla atomik olarak karşılaştırılır (&lt;0.3ms gecikme).
+4. **Yönlendirme Kararı:** Sürüm eşleşiyorsa istek downstream mikroservis hattına iletilir (200 OK). Bir yönetici yetkiyi iptal etmiş veya sürümü artırmışsa istek anında kesilir (401 Unauthorized).
 
 ## 4. Kararlar ve Elenen Alternatifler
 
@@ -60,49 +42,25 @@ Mikroservis dünyasında popüler olan "tamamen durumsuz (stateless) JWT" yakla�
 - **Versiyonlanmış Haklar (Versioned Claims) seçildi, Karalama Listesi (Blacklist) elendi:** Milyonlarca iptal edilmiş token hash'ini Redis set'inde aramak (blacklist) bellek ve sorgu maliyetini sürekli büyütür. Bunun yerine kullanıcının tek bir `token_version` tamsayı değeri tutuldu; oturum feshedildiğinde bu tamsayı 1 artırıldı. Eski token'lar anında geçersiz kılındı.
 - **Keycloak SSO omurgası korundu:** Kimlik doğrulama, MFA ve federasyon Keycloak üzerinde bırakıldı; yetkilendirme (authorization) ve hızlı oturum iptal motoru ise doğrudan Redis tabanlı özel filtrelerle mikroservis seviyesine indirildi.
 
-## 5. Gerçek Kod: Anında İptal Eden Auth Filtresi
+## 5. Kritik Sistem Mekanizması: Sürüm Tabanlı O(1) Oturum Feshi
 
-Aşağıdaki C# .NET parçası, gelen her istekte Redis tabanlı versiyon kontrolü yaparak anında oturum feshi uygulayan yetkilendirme ara katmanıdır:
+Dağıtık mikroservislerde oturum güvenliği iki temel mimari kararla sağlandı:
 
-```csharp
-public class InstantRevocationAuthFilter : IAsyncActionFilter
-{
-    private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger<InstantRevocationAuthFilter> _logger;
+### Hibrit Model: Durumsuz Kimlik + Versiyonlanmış Haklar (Versioned Claims)
+Tamamen durumsuz JWT'lerde yetki iptali yapılamaz; her istekte veritabanına gitmek ise mikroservis mimarisinin ölçeklenme amacını yok eder.
 
-    public InstantRevocationAuthFilter(IConnectionMultiplexer redis, ILogger<InstantRevocationAuthFilter> logger)
-    {
-        _redis = redis;
-        _logger = logger;
-    }
+Geliştirilen hibrit modelde sorumluluklar ayrıştırıldı:
+- JWT yalnızca sabit kimlik bilgilerini (`sub`, `iss`, `exp`) ve kullanıcının anlık oturum sürüm numarasını (`ver: 3`) taşır.
+- Dinamik yetki setleri ve güncel sürüm damgası Redis kümesinde tutulur.
+- Böylece Authorization başlığı 6KB'lık şişkin rol listelerinden &lt;400 baytlık kompakt bir kimlik kartına indirildi (%90+ HTTP başlık tasarrufu).
 
-    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-    {
-        var user = context.HttpContext.User;
-        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var tokenVersionClaim = user.FindFirst("ver")?.Value;
+### O(1) Atomik Sürüm Artırımı ile Anında İptal
+Geleneksel oturum iptal yöntemlerinde, iptal edilen her token'ın hash değeri bir kara listede (blacklist) saklanır. Yüz binlerce kullanıcı ve milyonlarca aktif oturumun bulunduğu bir ekosistemde blacklist tutmak bellek tüketimini ve arama maliyetini O(N) karmaşıklıkla sürekli büyütür.
 
-        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenVersionClaim))
-        {
-            context.Result = new UnauthorizedResult();
-            return;
-        }
-
-        var db = _redis.GetDatabase();
-        // Redis'ten kullanıcının güncel yetki ve sürüm kaydını <0.3ms içinde oku
-        var currentVersion = await db.StringGetAsync($"auth:ver:{userId}");
-
-        if (!currentVersion.HasValue || currentVersion.ToString() != tokenVersionClaim)
-        {
-            _logger.LogWarning("Oturum anında iptal edildi: User {UserId}", userId);
-            context.Result = new ObjectResult(new { error = "session_revoked" }) { StatusCode = 401 };
-            return;
-        }
-
-        await next();
-    }
-}
-```
+Bu sistemde kara liste tamamen terk edildi:
+- Kullanıcı işten çıkarıldığında, şifresini değiştirdiğinde veya rolü güncellendiğinde, Redis'teki `auth:ver:{userId}` değeri tek bir atomik komutla artırılır (`INCR`).
+- Kullanıcının elinde bulunan ve önceki sürüm numarasını (`ver: 3`) taşıyan tüm aktif token'lar (farklı mobil cihazlar veya tarayıcılar dahil) bir sonraki API isteğinde &lt;1ms içinde geçersiz kalır.
+- İşlem maliyeti O(1) sabit zamanda kalır; bellek ayak izi kullanıcı sayısı artsa dahi minimal seviyede korunur.
 
 ## 6. Sonuç ve Ölçülebilir Çıktılar
 - **Yetki İptal Gecikmesi:** Token süresinin bitmesini (60 dakika) bekleme mecburiyeti kalktı; oturum iptali veya rol değişimi `<1 milisaniye` içinde Plasmon, Sapmapayı ve Diventra WMS genelinde devreye girdi.

@@ -2,7 +2,10 @@
 @import "@fontsource/newsreader/400-italic.css";
 @import "@fontsource/newsreader/500.css";
 @import "@fontsource/newsreader/500-italic.css";
-@import "@fontsource/geist-sans/index.css";
+@import "@fontsource/ibm-plex-sans/index.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
 @import "@fontsource/jetbrains-mono/index.css";
 @import "tailwindcss";
 
@@ -20,15 +23,18 @@
   --bg-subtle: #EAEFF5;
   --bg-code: #E5EBF2;
   --text: #0F172A;
-  --text-muted: #475569;
-  --text-dim: #64748B;
+  --text-muted: #334155;
+  --text-dim: #475569;
   --border: #D8E2EC;
   --border-strong: #BAC7D5;
-  --accent: #0284C7;
-  --accent-hover: #0369A1;
+  --accent: #0369A1;
+  --accent-hover: #075985;
   --text-accent: #0369A1;
-  --accent-subtle: rgba(2, 132, 199, 0.08);
-  --selection: #0284C7;
+  --accent-ink: #FFFFFF;
+  --accent-subtle: rgba(3, 105, 161, 0.08);
+  --status-green: #047857;
+  --status-red: #B91C1C;
+  --selection: #0369A1;
   --selection-text: #FFFFFF;
 }
 
@@ -39,14 +45,17 @@ html[data-theme="dark"] {
   --bg-subtle: #162035;
   --bg-code: #121A2B;
   --text: #F1F5F9;
-  --text-muted: #94A3B8;
-  --text-dim: #64748B;
+  --text-muted: #CBD5E1;
+  --text-dim: #94A3B8;
   --border: #1E293B;
   --border-strong: #334155;
   --accent: #38BDF8;
   --accent-hover: #7DD3FC;
   --text-accent: #38BDF8;
+  --accent-ink: #0A0F1D;
   --accent-subtle: rgba(56, 189, 248, 0.12);
+  --status-green: #34D399;
+  --status-red: #F87171;
   --selection: #0284C7;
   --selection-text: #FFFFFF;
 }
@@ -58,14 +67,17 @@ html[data-theme="dark"] {
     --bg-subtle: #162035;
     --bg-code: #121A2B;
     --text: #F1F5F9;
-    --text-muted: #94A3B8;
-    --text-dim: #64748B;
+    --text-muted: #CBD5E1;
+    --text-dim: #94A3B8;
     --border: #1E293B;
     --border-strong: #334155;
     --accent: #38BDF8;
     --accent-hover: #7DD3FC;
     --text-accent: #38BDF8;
+    --accent-ink: #0A0F1D;
     --accent-subtle: rgba(56, 189, 248, 0.12);
+    --status-green: #34D399;
+    --status-red: #F87171;
     --selection: #0284C7;
     --selection-text: #FFFFFF;
   }
@@ -90,13 +102,17 @@ html {
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.65;
   margin: 0;
   padding: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+p, .prose-editorial {
+  text-wrap: pretty;
 }
 
 /* Editorial Typography */
@@ -172,33 +188,23 @@ section[id], article[id], div[id] {
 }
 
 /* Hardware Status LEDs */
-@keyframes led-pulse-live {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 6px currentColor;
-  }
-  50% {
-    opacity: 0.35;
-    box-shadow: none;
-  }
-}
-
 .led-status {
   display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  animation: led-pulse-live 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 0 1.5px var(--bg);
 }
 
 .led-green {
-  background-color: #10B981;
-  color: #10B981;
+  background-color: var(--status-green);
+  color: var(--status-green);
 }
 
 .led-amber {
-  background-color: #F59E0B;
-  color: #F59E0B;
+  background-color: #D97706;
+  color: #D97706;
 }
 
 .led-cobalt {
@@ -206,7 +212,7 @@ section[id], article[id], div[id] {
   color: var(--accent);
 }
 
-/* Pipeline packet pulse animation: moves from 0% to 100% along the track */
+/* Pipeline packet animation */
 @keyframes pipeline-pulse-x {
   0% { left: 4%; opacity: 0; }
   6% { opacity: 1; }
@@ -225,18 +231,20 @@ section[id], article[id], div[id] {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  animation: pipeline-pulse-x 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: pipeline-pulse-x 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   z-index: 20;
-  box-shadow: 0 0 8px var(--accent), 0 0 14px var(--accent-subtle);
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1.5px;
 }
 
 .pipeline-packet-mobile {
   position: absolute;
   left: 12px;
   transform: translate(-50%, -50%);
-  animation: pipeline-pulse-y 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: pipeline-pulse-y 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   z-index: 20;
-  box-shadow: 0 0 8px var(--accent);
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1.5px;
 }
 
 @media (prefers-reduced-motion: reduce) {

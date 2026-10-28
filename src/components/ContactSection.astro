@@ -1,6 +1,5 @@
 ---
 import { SITE_META } from '../data/siteMeta';
-import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -11,7 +10,6 @@ const isTr = lang === 'tr';
 ---
 
 <section id="contact" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <BlueprintCrosshairs bottom={true} />
 
   <!-- 12-Column Swiss Grid Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -50,17 +48,14 @@ const isTr = lang === 'tr';
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Email Card with Copy Action -->
         <div class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] rounded-none transition-all group flex flex-col justify-between space-y-4">
-          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-
           <div class="space-y-1.5">
             <div class="flex items-center justify-between font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
               <span>{isTr ? 'E-posta' : 'Email'}</span>
               <button
                 type="button"
                 id="copy-contact-email-btn"
-                class="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] inline-flex items-center gap-1 cursor-pointer tactile-btn px-1.5 py-0.5 rounded-none bg-[var(--bg-subtle)] border border-[var(--border)]"
-                title={isTr ? "E-postayı kopyala" : "Copy email address"}
+                class="text-[11px] text-[var(--text-muted)] hover:text-[var(--accent)] inline-flex items-center gap-1 cursor-pointer tactile-btn px-2 py-0.5 rounded-none bg-[var(--bg-subtle)] border border-[var(--border)]"
+                aria-label={isTr ? "E-postayı kopyala" : "Copy email address"}
               >
                 <svg class="w-3 h-3 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <rect x="9" y="9" width="13" height="13" rx="0" ry="0"></rect>
@@ -91,9 +86,6 @@ const isTr = lang === 'tr';
           rel="noopener noreferrer"
           class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
         >
-          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-
           <div class="space-y-1.5">
             <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
               GitHub
@@ -115,9 +107,6 @@ const isTr = lang === 'tr';
           rel="noopener noreferrer"
           class="relative p-5 bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] rounded-none transition-all group flex flex-col justify-between space-y-4 tactile-btn"
         >
-          <span class="absolute -top-1 -left-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-          <span class="absolute -bottom-1 -right-1 font-mono text-[9px] text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-
           <div class="space-y-1.5">
             <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
               LinkedIn

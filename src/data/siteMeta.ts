@@ -21,7 +21,7 @@ export const SITE_META = {
   github: "https://github.com/ihtiyar07",
   linkedin: "https://linkedin.com/in/ahmet-ihtiyar",
   fontsNote: {
-    tr: "Tipografi: Newsreader (başlıklar), Geist (gövde), JetBrains Mono (kod). Barındırma: Kendi Proxmox VE sunucusu / Caddy.",
-    en: "Typography: Newsreader (headings), Geist (body), JetBrains Mono (code). Hosted on personal Proxmox VE server / Caddy."
+    tr: "Tipografi: Newsreader (başlıklar), IBM Plex Sans (gövde), JetBrains Mono (kod). Barındırma: Kendi Proxmox VE sunucusu / Caddy.",
+    en: "Typography: Newsreader (headings), IBM Plex Sans (body), JetBrains Mono (code). Hosted on personal Proxmox VE server / Caddy."
   }
 };

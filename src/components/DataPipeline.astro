@@ -1,6 +1,5 @@
 ---
 import { PIPELINE_STOPS, INFRASTRUCTURE_STRIP } from '../data/pipelineStops';
-import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -11,7 +10,6 @@ const isTr = lang === 'tr';
 ---
 
 <section id="pipeline" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <BlueprintCrosshairs bottom={true} />
 
   <!-- 12-Column Swiss Grid Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -45,7 +43,7 @@ const isTr = lang === 'tr';
 
         <!-- Station Quick-Jump Index in Sidebar -->
         <div class="pt-3 border-t border-[var(--border)] space-y-2 font-mono text-xs">
-          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
+          <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
             {isTr ? 'İstasyon İndeksi' : 'Station Index'}
           </div>
           <div class="space-y-1">
@@ -71,55 +69,73 @@ const isTr = lang === 'tr';
     <div class="lg:col-span-8 space-y-6">
       <!-- The Pipeline Stage (Authentic Hardware Bus Schematic Flow) -->
       <div class="relative bg-[var(--bg)] border border-[var(--border)] rounded-none p-4 sm:p-6">
+        <!-- Industrial Chassis Header Bar -->
+        <div class="flex items-center justify-between pb-3.5 mb-5 border-b border-[var(--border)] font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
+            <span class="font-bold text-[var(--text)]">{isTr ? 'Telemetri Veri Hattı Omurgası' : 'Telemetry Data Bus Spine'}</span>
+            <span class="text-[var(--border-strong)] hidden sm:inline">|</span>
+            <span class="hidden sm:inline">{isTr ? '6 Kritik Durak · 120Ω Sonlandırma' : '6 Critical Stations · 120Ω Termination'}</span>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <span class="text-[var(--status-green)] font-semibold flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 bg-[var(--status-green)] rounded-none inline-block"></span>
+              {isTr ? 'HAT: ÇEVRİMİÇİ' : 'BUS: ACTIVE'}
+            </span>
+          </div>
+        </div>
+
         <!-- Desktop Flow Schematic (Hardware Bus Track & Tap Nodes) -->
         <div class="hidden md:block relative mb-6">
-          <div class="relative h-9 w-full">
+          <div class="relative h-10 w-full">
             <svg class="w-full h-full block" fill="none" aria-hidden="true">
               <!-- Termination markers on bus ends (120Ω characteristic impedance) -->
-              <rect x="4" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="0" />
-              <line x1="10" y1="5" x2="10" y2="23" stroke="var(--text-dim)" stroke-width="1" />
+              <rect x="4" y="9" width="14" height="14" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="2" rx="0" />
+              <line x1="11" y1="5" x2="11" y2="27" stroke="var(--text-dim)" stroke-width="1.5" />
+              <text x="24" y="20" fill="var(--text-dim)" font-family="monospace" font-size="11" font-weight="bold">120Ω</text>
               
-              <rect x="calc(100% - 16px)" y="8" width="12" height="12" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="1.5" rx="0" />
-              <line x1="calc(100% - 10px)" y1="5" x2="calc(100% - 10px)" y2="23" stroke="var(--text-dim)" stroke-width="1" />
+              <rect x="calc(100% - 18px)" y="9" width="14" height="14" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="2" rx="0" />
+              <line x1="calc(100% - 11px)" y1="5" x2="calc(100% - 11px)" y2="27" stroke="var(--text-dim)" stroke-width="1.5" />
+              <text x="calc(100% - 55px)" y="20" fill="var(--text-dim)" font-family="monospace" font-size="11" font-weight="bold">120Ω</text>
 
               <!-- Main Bus Line (Base Trunk) -->
-              <line x1="16" y1="14" x2="calc(100% - 16px)" y2="14" stroke="var(--border-strong)" stroke-width="2" />
+              <line x1="18" y1="16" x2="calc(100% - 18px)" y2="16" stroke="var(--border-strong)" stroke-width="3" />
               
               <!-- Illuminated Segment Overlays -->
-              <line id="track-seg-0" x1="8.333%" y1="14" x2="25%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.35" class="transition-opacity duration-300" />
-              <line id="track-seg-1" x1="25%" y1="14" x2="41.667%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-2" x1="41.667%" y1="14" x2="58.333%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-3" x1="58.333%" y1="14" x2="75%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-4" x1="75%" y1="14" x2="91.667%" y2="14" stroke="var(--accent)" stroke-width="2.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-0" x1="8.333%" y1="16" x2="25%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.4" class="transition-opacity duration-300" />
+              <line id="track-seg-1" x1="25%" y1="16" x2="41.667%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-2" x1="41.667%" y1="16" x2="58.333%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-3" x1="58.333%" y1="16" x2="75%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
+              <line id="track-seg-4" x1="75%" y1="16" x2="91.667%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
 
               <!-- Vertical Drop Stubs connecting trunk to station cards -->
-              <line x1="8.333%" y1="14" x2="8.333%" y2="36" stroke="var(--accent)" stroke-width="2" class="tap-stub tap-stub-0 transition-colors" />
-              <line x1="25%" y1="14" x2="25%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-1 transition-colors" />
-              <line x1="41.667%" y1="14" x2="41.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-2 transition-colors" />
-              <line x1="58.333%" y1="14" x2="58.333%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-3 transition-colors" />
-              <line x1="75%" y1="14" x2="75%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-4 transition-colors" />
-              <line x1="91.667%" y1="14" x2="91.667%" y2="36" stroke="var(--border-strong)" stroke-width="1.5" class="tap-stub tap-stub-5 transition-colors" />
+              <line x1="8.333%" y1="16" x2="8.333%" y2="40" stroke="var(--accent)" stroke-width="2.5" class="tap-stub tap-stub-0 transition-colors" />
+              <line x1="25%" y1="16" x2="25%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-1 transition-colors" />
+              <line x1="41.667%" y1="16" x2="41.667%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-2 transition-colors" />
+              <line x1="58.333%" y1="16" x2="58.333%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-3 transition-colors" />
+              <line x1="75%" y1="16" x2="75%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-4 transition-colors" />
+              <line x1="91.667%" y1="16" x2="91.667%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-5 transition-colors" />
 
               <!-- Station Nodes on trunk (Interactive Tap Terminals) -->
-              <circle cx="8.333%" cy="14" r="5.5" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200 cursor-pointer hover:r-[6.5px]" id="svg-node-0" role="button" aria-label="01 Edge / ESP32" tabindex="0" />
-              <circle cx="25%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-1 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-1" role="button" aria-label="02 Transport / MQTT" tabindex="0" />
-              <circle cx="41.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-2 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-2" role="button" aria-label="03 Queue / RabbitMQ" tabindex="0" />
-              <circle cx="58.333%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-3 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-3" role="button" aria-label="04 Storage / TimescaleDB" tabindex="0" />
-              <circle cx="75%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-4 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-4" role="button" aria-label="05 Delivery / Apache Arrow" tabindex="0" />
-              <circle cx="91.667%" cy="14" r="4.5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1.5" class="svg-node svg-node-5 transition-all duration-200 cursor-pointer hover:r-[6px]" id="svg-node-5" role="button" aria-label="06 Trust / X.509" tabindex="0" />
+              <circle cx="8.333%" cy="16" r="6.5" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200" id="svg-node-0" aria-hidden="true" />
+              <circle cx="25%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1 transition-all duration-200" id="svg-node-1" aria-hidden="true" />
+              <circle cx="41.667%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2 transition-all duration-200" id="svg-node-2" aria-hidden="true" />
+              <circle cx="58.333%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3 transition-all duration-200" id="svg-node-3" aria-hidden="true" />
+              <circle cx="75%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4 transition-all duration-200" id="svg-node-4" aria-hidden="true" />
+              <circle cx="91.667%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5 transition-all duration-200" id="svg-node-5" aria-hidden="true" />
             </svg>
 
             <!-- Ambient Traveling Packet (Desktop) -->
-            <div class="pipeline-packet-desktop w-2.5 h-2.5 bg-[var(--accent)] rounded-full pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 14px;"></div>
+            <div class="pipeline-packet-desktop w-3 h-3 bg-[var(--accent)] rounded-none pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 16px;"></div>
           </div>
 
           <!-- 6 Hardware Bus Tap Stations -->
-          <div class="relative z-10 grid grid-cols-6 border border-[var(--border)] divide-x divide-[var(--border)] rounded-none bg-[var(--bg)]" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
+          <div class="relative z-10 grid grid-cols-6 border-2 border-[var(--border-strong)] divide-x divide-[var(--border)] rounded-none bg-[var(--bg)]" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
             {PIPELINE_STOPS.map((stop, idx) => (
               <button
                 type="button"
                 role="tab"
-                class={`pipeline-stop-btn group text-left px-2.5 py-2.5 border-t-2 ${idx === 0 ? 'border-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-transparent bg-transparent'} hover:border-[var(--accent)]/60 focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
+                class={`pipeline-stop-btn group text-left px-3 py-3 border-t-[3px] ${idx === 0 ? 'border-t-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-t-transparent bg-transparent'} hover:border-t-[var(--accent)]/60 focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
                 data-stop-id={stop.id}
                 data-index={idx}
                 aria-selected={idx === 0 ? "true" : "false"}
@@ -127,19 +143,19 @@ const isTr = lang === 'tr';
                 id={`btn-${stop.id}`}
                 tabindex={idx === 0 ? "0" : "-1"}
               >
-                <div class="flex items-center justify-between w-full mb-1">
-                  <span class="font-mono text-[10px] text-[var(--text-dim)] font-medium flex items-center gap-1 group-hover:text-[var(--text)]">
-                    <span>{stop.order}</span>
+                <div class="flex items-center justify-between w-full mb-1.5">
+                  <span class="font-mono text-xs font-bold text-[var(--text-accent)] flex items-center gap-1 group-hover:text-[var(--text)]">
+                    <span>[{stop.order}]</span>
                   </span>
-                  <span class="font-mono text-[9px] text-[var(--text-dim)] uppercase tracking-wider hidden sm:inline">
+                  <span class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider hidden lg:inline font-semibold">
                     {stop.badge[lang].split(' ')[0]}
                   </span>
                 </div>
                 <div>
-                  <div class="font-serif text-sm font-medium text-[var(--text)] leading-tight mb-0.5 group-hover:text-[var(--text-accent)] transition-colors">
+                  <div class="font-serif text-[14px] sm:text-[14.5px] font-semibold text-[var(--text)] leading-tight mb-1 group-hover:text-[var(--text-accent)] transition-colors">
                     {stop.name[lang]}
                   </div>
-                  <div class="font-mono text-[10px] text-[var(--text-muted)] truncate">
+                  <div class="font-mono text-[11px] text-[var(--text-dim)] truncate">
                     {stop.tech[0]}
                   </div>
                 </div>
@@ -151,25 +167,25 @@ const isTr = lang === 'tr';
         <!-- Mobile Vertical Flow (Continuous Vertical Bus Line with Tap Stubs) -->
         <div class="md:hidden relative mb-6 pl-8 space-y-2.5" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
           <!-- Vertical Trunk Line -->
-          <div class="absolute left-[11px] top-3 bottom-3 w-0.5 bg-[var(--border-strong)]" aria-hidden="true"></div>
-          <div class="absolute left-[7px] top-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
-          <div class="absolute left-[7px] bottom-0 w-2.5 h-2.5 bg-[var(--bg-code)] border border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
+          <div class="absolute left-[11px] top-3 bottom-3 w-[3px] bg-[var(--border-strong)]" aria-hidden="true"></div>
+          <div class="absolute left-[6px] top-0 w-3 h-3 bg-[var(--bg-code)] border-2 border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
+          <div class="absolute left-[6px] bottom-0 w-3 h-3 bg-[var(--bg-code)] border-2 border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
 
           <!-- Mobile moving packet -->
-          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[var(--accent)] rounded-full pointer-events-none" aria-hidden="true"></div>
+          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[var(--accent)] rounded-none pointer-events-none" aria-hidden="true"></div>
 
           {PIPELINE_STOPS.map((stop, idx) => (
             <div class="mobile-stop-wrapper relative" data-stop-id={stop.id} data-index={idx}>
               <!-- Tap branch from vertical trunk to card -->
               <div class="absolute -left-8 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" aria-hidden="true">
-                <span class={`mobile-tap-node w-2 h-2 rounded-full border ${idx === 0 ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1.5 z-10`}></span>
+                <span class={`mobile-tap-node w-2.5 h-2.5 rounded-none border-2 ${idx === 0 ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1 z-10`}></span>
                 <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
               </div>
 
               <button
                 type="button"
                 role="tab"
-                class={`pipeline-stop-btn-mobile w-full text-left p-3 rounded-none border ${idx === 0 ? 'border-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg)]'} hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors tactile-btn`}
+                class={`pipeline-stop-btn-mobile w-full text-left p-3.5 rounded-none border-y border-r border-l-[3px] ${idx === 0 ? 'border-l-[var(--accent)] border-y-[var(--border)] border-r-[var(--border)] bg-[var(--bg-subtle)]' : 'border-l-transparent border-[var(--border)] bg-[var(--bg)]'} hover:border-l-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors tactile-btn`}
                 data-stop-id={stop.id}
                 data-index={idx}
                 aria-selected={idx === 0 ? "true" : "false"}
@@ -177,14 +193,14 @@ const isTr = lang === 'tr';
                 id={`btn-mobile-${stop.id}`}
                 tabindex={idx === 0 ? "0" : "-1"}
               >
-                <div class="flex items-center justify-between mb-1">
-                  <span class="font-mono text-xs text-[var(--text-accent)] font-semibold flex items-center gap-1.5">
-                    <span>{stop.order}</span>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-mono text-xs text-[var(--text-accent)] font-bold flex items-center gap-1.5">
+                    <span>[{stop.order}]</span>
                   </span>
-                  <span class="font-mono text-[10px] text-[var(--text-dim)]">{stop.badge[lang]}</span>
+                  <span class="font-mono text-[11px] text-[var(--text-dim)] font-semibold uppercase tracking-wider">{stop.badge[lang]}</span>
                 </div>
-                <div class="font-serif text-base text-[var(--text)] font-medium">{stop.name[lang]}</div>
-                <div class="font-mono text-xs text-[var(--text-muted)] mt-1">
+                <div class="font-serif text-base text-[var(--text)] font-semibold">{stop.name[lang]}</div>
+                <div class="font-mono text-xs text-[var(--text-dim)] mt-1">
                   {stop.tech.slice(0, 3).join(' · ')}
                 </div>
               </button>
@@ -203,69 +219,77 @@ const isTr = lang === 'tr';
             >
               <!-- Sheet Header -->
               <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-3 pb-4 border-b border-[var(--border)]">
-                <div class="space-y-1">
+                <div class="space-y-1.5">
                   <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs px-2 py-0.5 bg-[var(--accent)] text-white rounded-none font-semibold">
+                    <span class="font-mono text-xs px-2.5 py-0.5 bg-[var(--accent)] text-white dark:text-[#0A0F1D] rounded-none font-bold">
                       {stop.order}
                     </span>
-                    <span class="font-mono text-xs text-[var(--text-dim)] uppercase tracking-wider">
+                    <span class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
                       {stop.badge[lang]}
                     </span>
                   </div>
-                  <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] pt-1">
+                  <h3 class="text-2xl sm:text-3xl font-serif font-bold text-[var(--text)] pt-0.5 tracking-tight">
                     {stop.name[lang]}
                   </h3>
                 </div>
 
-                <!-- Editorial Stack Line -->
-                <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md">
-                  <span class="text-[var(--text-dim)]">{isTr ? 'Protokol & Yığın: ' : 'Protocol & Stack: '}</span>
-                  <span class="text-[var(--text)]">{stop.tech.join(' · ')}</span>
+                <!-- Editorial Stack Line in Spec Header Box -->
+                <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md bg-[var(--bg-subtle)] px-3 py-1.5 border border-[var(--border)]">
+                  <span class="text-[var(--text-dim)] font-semibold">{isTr ? 'PROTOKOL & YIĞIN: ' : 'PROTOCOL & STACK: '}</span>
+                  <span class="text-[var(--text)] font-medium">{stop.tech.join(' · ')}</span>
                 </div>
               </div>
 
               <!-- 4-Section Technical Specification Matrix -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm font-sans pt-1">
-                <!-- 01. Ne Yaptım -->
-                <div class="space-y-1.5 border-l-2 border-[var(--accent)] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
-                    <span>{isTr ? 'Ne Yaptım' : 'What I Engineered'}</span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-sans pt-1">
+                <!-- 01. Çekirdek İşlev -->
+                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--accent)] border-y border-r border-[var(--border)]">
+                  <div class="font-mono text-[11px] font-bold text-[var(--text-accent)] uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
+                      <span>{isTr ? '[01 / ÇEKİRDEK İŞLEV]' : '[01 / CORE FUNCTION]'}</span>
+                    </span>
                   </div>
-                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text)] leading-relaxed text-[13.5px] sm:text-sm">
                     {stop.whatIDid[lang]}
                   </p>
                 </div>
 
-                <!-- 02. Karar Gerekçesi -->
-                <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-none" aria-hidden="true"></span>
-                    <span>{isTr ? 'Karar Gerekçesi' : 'Architectural Rationale'}</span>
+                <!-- 02. Mimari Karar Gerekçesi -->
+                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--border-strong)] border-y border-r border-[var(--border)]">
+                  <div class="font-mono text-[11px] font-bold text-[var(--text)] uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-none" aria-hidden="true"></span>
+                      <span>{isTr ? '[02 / MİMARİ KARAR]' : '[02 / ARCHITECTURAL RATIONALE]'}</span>
+                    </span>
                   </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px] sm:text-sm">
                     {stop.whyDecision[lang]}
                   </p>
                 </div>
 
-                <!-- 03. Elenen Alternatif -->
-                <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="text-[var(--text-dim)]" aria-hidden="true">✕</span>
-                    <span>{isTr ? 'Elenen Alternatif' : 'Alternative Eliminated'}</span>
+                <!-- 03. Elenen Yöntem -->
+                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--border-strong)] border-y border-r border-[var(--border)]">
+                  <div class="font-mono text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                      <span class="text-[var(--text-dim)] font-bold" aria-hidden="true">✕</span>
+                      <span>{isTr ? '[03 / ELENEN YÖNTEM]' : '[03 / ELIMINATED ALTERNATIVE]'}</span>
+                    </span>
                   </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px] sm:text-sm">
                     {stop.alternativeEliminated[lang]}
                   </p>
                 </div>
 
-                <!-- 04. Zorlayan Nokta & Çözüm -->
-                <div class="space-y-1.5 border-l-2 border-[var(--accent)] pl-3.5">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="text-[var(--text-accent)]" aria-hidden="true">⚡</span>
-                    <span>{isTr ? 'Zorlayan Nokta & Çözüm' : 'Challenge & Mitigation'}</span>
+                <!-- 04. Saha Riski & Çözüm -->
+                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--accent)] border-y border-r border-[var(--border)]">
+                  <div class="font-mono text-[11px] font-bold text-[var(--text-accent)] uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                      <span class="text-[var(--text-accent)] font-bold" aria-hidden="true">⚡</span>
+                      <span>{isTr ? '[04 / SAHA RİSKİ & ÇÖZÜM]' : '[04 / FIELD DEFENSE & RECOVERY]'}</span>
+                    </span>
                   </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text)] leading-relaxed text-[13.5px] sm:text-sm">
                     {stop.challenge[lang]}
                   </p>
                 </div>
@@ -291,20 +315,23 @@ const isTr = lang === 'tr';
         </div>
       </div>
 
-      <!-- Infrastructure Ground Strip (Altyapı Zemini) -->
-      <div class="border border-[var(--border)] bg-[var(--bg)] rounded-none px-4 py-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <!-- Infrastructure Ground Plane (Altyapı Topraklama ve Zemin Hattı) -->
+      <div class="border-2 border-[var(--border-strong)] bg-[var(--bg-subtle)] rounded-none px-4 py-3.5 relative">
+        <div class="absolute -top-2.5 left-4 px-2 bg-[var(--bg)] border border-[var(--border-strong)] font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-bold">
+          {isTr ? 'GND / ORTAK ZEMİN HATTI' : 'GND / COMMON GROUND PLANE'}
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-full inline-block"></span>
-            <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
-              {isTr ? 'Altyapı Zemini (Infrastructure Ground)' : 'Infrastructure Ground Plane'}
+            <span class="w-2 h-2 bg-[var(--accent)] rounded-none inline-block"></span>
+            <span class="font-mono text-xs uppercase tracking-wider text-[var(--text)] font-bold">
+              {isTr ? 'Altyapı Katmanı' : 'Bare-Metal Infrastructure'}
             </span>
           </div>
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[var(--text-muted)]">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-mono text-[var(--text-muted)]">
             {INFRASTRUCTURE_STRIP.map((infra) => (
-              <span class="inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors" title={infra.desc[lang]}>
-                <span class="text-[var(--text-dim)]">·</span>
-                <span class="font-medium text-[var(--text)]">{infra.name}</span>
+              <span class="inline-flex items-center gap-1.5 hover:text-[var(--text)] transition-colors group cursor-default" title={infra.desc[lang]}>
+                <span class="text-[var(--accent)] font-bold">⏚</span>
+                <span class="font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)]">{infra.name}</span>
               </span>
             ))}
           </div>
@@ -359,10 +386,10 @@ const isTr = lang === 'tr';
           stubs.forEach(stub => {
             if (i === activeIdx) {
               stub.setAttribute('stroke', 'var(--accent)');
-              stub.setAttribute('stroke-width', '2');
+              stub.setAttribute('stroke-width', '2.5');
             } else {
               stub.setAttribute('stroke', 'var(--border-strong)');
-              stub.setAttribute('stroke-width', '1.5');
+              stub.setAttribute('stroke-width', '2');
             }
           });
         }
@@ -378,12 +405,12 @@ const isTr = lang === 'tr';
           btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
           btn.tabIndex = isSelected ? 0 : -1;
           if (isSelected) {
-            btn.classList.add('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-            btn.classList.remove('border-transparent', 'bg-transparent');
+            btn.classList.add('border-t-[var(--accent)]', 'bg-[var(--bg-subtle)]');
+            btn.classList.remove('border-t-transparent', 'bg-transparent');
             if (shouldFocus) btn.focus();
           } else {
-            btn.classList.remove('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-            btn.classList.add('border-transparent', 'bg-transparent');
+            btn.classList.remove('border-t-[var(--accent)]', 'bg-[var(--bg-subtle)]');
+            btn.classList.add('border-t-transparent', 'bg-transparent');
           }
         });
 
@@ -395,7 +422,7 @@ const isTr = lang === 'tr';
           const btn = wrap.querySelector('.pipeline-stop-btn-mobile');
 
           if (node) {
-            node.className = `mobile-tap-node w-2 h-2 rounded-full border transition-colors ml-1.5 z-10 ${isSelected ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
+            node.className = `mobile-tap-node w-2.5 h-2.5 rounded-none border-2 transition-colors ml-1 z-10 ${isSelected ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
           }
           if (stub) {
             stub.className = `mobile-tap-stub w-5 h-0.5 transition-colors ${isSelected ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'}`;
@@ -404,11 +431,11 @@ const isTr = lang === 'tr';
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
             btn.tabIndex = isSelected ? 0 : -1;
             if (isSelected) {
-              btn.classList.add('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-              btn.classList.remove('border-[var(--border)]', 'bg-[var(--bg)]');
+              btn.classList.add('border-l-[var(--accent)]', 'bg-[var(--bg-subtle)]');
+              btn.classList.remove('border-l-transparent', 'bg-[var(--bg)]');
             } else {
-              btn.classList.remove('border-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-              btn.classList.add('border-[var(--border)]', 'bg-[var(--bg)]');
+              btn.classList.remove('border-l-[var(--accent)]', 'bg-[var(--bg-subtle)]');
+              btn.classList.add('border-l-transparent', 'bg-[var(--bg)]');
             }
           }
         });
@@ -430,11 +457,11 @@ const isTr = lang === 'tr';
           if (idx === activeIdx) {
             node.setAttribute('fill', 'var(--accent)');
             node.setAttribute('stroke', 'var(--accent)');
-            node.setAttribute('r', '6');
+            node.setAttribute('r', '6.5');
           } else {
             node.setAttribute('fill', 'var(--bg)');
             node.setAttribute('stroke', 'var(--border-strong)');
-            node.setAttribute('r', '4.5');
+            node.setAttribute('r', '5');
           }
         });
 
@@ -451,6 +478,11 @@ const isTr = lang === 'tr';
             p.classList.add('hidden', 'opacity-0');
           }
         });
+
+        // Update URL hash without scroll jump
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', '#pipeline-' + stopId);
+        }
       }
 
       // Desktop Tab Click & Keyboard Arrow Navigation
@@ -510,19 +542,11 @@ const isTr = lang === 'tr';
         });
       });
 
-      // SVG Tap Nodes Click & Keyboard Support
+      // SVG Tap Nodes Click
       svgNodes.forEach((node, idx) => {
         node.addEventListener('click', () => {
           const stopId = STOP_IDS[idx];
           if (stopId) activateStop(stopId);
-        });
-
-        node.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            const stopId = STOP_IDS[idx];
-            if (stopId) activateStop(stopId);
-          }
         });
       });
 
@@ -534,8 +558,16 @@ const isTr = lang === 'tr';
         });
       });
 
-      // Initialize with first stop active
-      activateStop('device');
+      // Initialize from current URL hash if present, otherwise default to first stop
+      const currentHash = window.location.hash;
+      let initialStop = 'device';
+      if (currentHash && currentHash.startsWith('#pipeline-')) {
+        const parsed = currentHash.replace('#pipeline-', '');
+        if (STOP_IDS.includes(parsed)) {
+          initialStop = parsed;
+        }
+      }
+      activateStop(initialStop);
     }
 
     if (document.readyState === 'loading') {

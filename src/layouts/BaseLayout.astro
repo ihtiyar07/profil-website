@@ -172,7 +172,7 @@ const jsonLd = {
 
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'absolute top-2.5 right-2.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg-card)]/90 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] text-[10px] font-mono opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm tactile-btn';
+            btn.className = 'absolute top-2.5 right-2.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg-card)]/90 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] text-[11px] font-mono opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm tactile-btn';
             const copyIconSvg = `<svg class="w-3 h-3 text-[var(--text-dim)] shrink-0 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
             btn.setAttribute('aria-label', isTr ? 'Kodu kopyala' : 'Copy code');
             btn.innerHTML = `<span class="inline-flex items-center">${copyIconSvg}${isTr ? 'Kopyala' : 'Copy'}</span>`;
@@ -181,7 +181,7 @@ const jsonLd = {
               const code = pre.querySelector('code')?.innerText || pre.innerText;
               try {
                 await navigator.clipboard.writeText(code);
-                btn.innerHTML = `<span class="text-[#10B981] inline-flex items-center font-semibold">✓ ${isTr ? 'Kopyalandı' : 'Copied'}</span>`;
+                btn.innerHTML = `<span class="text-[var(--status-green)] inline-flex items-center font-semibold">✓ ${isTr ? 'Kopyalandı' : 'Copied'}</span>`;
                 if (typeof window.showToast === 'function') {
                   window.showToast(isTr ? '✓ Kod parçacığı panoya kopyalandı' : '✓ Code copied to clipboard');
                 }

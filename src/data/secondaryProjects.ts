@@ -3,7 +3,7 @@ export interface SecondaryProject {
   name: string;
   whatItDid: { tr: string; en: string };
   stack: string;
-  year: string;
+  year: string | { tr: string; en: string };
 }
 
 export const SECONDARY_PROJECTS: SecondaryProject[] = [
@@ -55,6 +55,9 @@ export const SECONDARY_PROJECTS: SecondaryProject[] = [
       en: "Bare-metal KVM/LXC virtualization cluster, ZFS storage pools, automated PBS deduplicated backups, and WireGuard tunnels"
     },
     stack: "Proxmox VE 8, Fedora Linux, ZFS, PBS, Docker, Caddy",
-    year: "2023–günümüz"
+    year: {
+      tr: "2023–günümüz",
+      en: "2023–present"
+    }
   }
 ];

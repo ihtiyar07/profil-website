@@ -1,6 +1,5 @@
 ---
 import { INVARIANTS } from '../data/invariants';
-import BlueprintCrosshairs from './BlueprintCrosshairs.astro';
 
 export interface Props {
   lang?: 'tr' | 'en';
@@ -11,7 +10,6 @@ const isTr = lang === 'tr';
 ---
 
 <section id="invariants" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <BlueprintCrosshairs bottom={true} />
 
   <!-- 12-Column Swiss Grid Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -55,12 +53,6 @@ const isTr = lang === 'tr';
             <article 
               class={`relative border border-[var(--border)] bg-[var(--bg)] rounded-none p-5 sm:p-6 space-y-5 hover:border-[var(--border-strong)] transition-all ${isHero ? 'md:col-span-2 bg-[var(--bg-subtle)]/30' : 'md:col-span-1'}`}
             >
-              <!-- Corner Crosshairs for Bento Panels -->
-              <span class="absolute -top-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-              <span class="absolute -top-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-              <span class="absolute -bottom-1.5 -left-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-              <span class="absolute -bottom-1.5 -right-1.5 font-mono text-[10px] leading-none text-[var(--border-strong)] select-none" aria-hidden="true">+</span>
-
               <!-- Invariant Header -->
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
                 <div class="flex items-center gap-2.5">
@@ -74,8 +66,8 @@ const isTr = lang === 'tr';
                 </div>
 
                 <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                  <span class="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#10B981]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]" aria-hidden="true"></span>
+                  <span class="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-green)]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
                     <span>{isTr ? 'KURAL: KORUNUYOR' : 'ENFORCED'}</span>
                   </span>
                 </div>
@@ -89,7 +81,7 @@ const isTr = lang === 'tr';
                     <span class="w-1.5 h-1.5 bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
                     <span>{isTr ? 'Kural' : 'Invariant Rule'}</span>
                   </div>
-                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text)] leading-relaxed text-sm max-w-[65ch]">
                     {item.rule[lang]}
                   </p>
                 </div>
@@ -100,7 +92,7 @@ const isTr = lang === 'tr';
                     <span class="w-1.5 h-1.5 bg-[var(--text-dim)] shrink-0" aria-hidden="true"></span>
                     <span>{isTr ? 'Nasıl Bozulur' : 'How It Breaks'}</span>
                   </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text-muted)] leading-relaxed text-sm max-w-[65ch]">
                     {item.failureMode[lang]}
                   </p>
                 </div>
@@ -111,7 +103,7 @@ const isTr = lang === 'tr';
                     <span class="w-1.5 h-1.5 bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
                     <span>{isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}</span>
                   </div>
-                  <p class="text-[var(--text)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text)] leading-relaxed text-sm max-w-[65ch]">
                     {item.solution[lang]}
                   </p>
                 </div>
@@ -122,14 +114,14 @@ const isTr = lang === 'tr';
                     <span class="w-1.5 h-1.5 bg-[var(--border-strong)] shrink-0" aria-hidden="true"></span>
                     <span>{isTr ? 'Nerede Doğruladım' : 'Production Verification'}</span>
                   </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13px] max-w-[65ch]">
+                  <p class="text-[var(--text-muted)] leading-relaxed text-sm max-w-[65ch]">
                     {item.verification[lang]}
                   </p>
                 </div>
               </div>
 
               <!-- Footer Context Note -->
-              <div class="pt-2.5 flex justify-between items-center text-[10px] font-mono border-t border-[var(--border)] text-[var(--text-dim)]">
+              <div class="pt-2.5 flex justify-between items-center text-[11px] font-mono border-t border-[var(--border)] text-[var(--text-dim)]">
                 <span>{isTr ? 'Hata Modu Güvencesi' : 'Failure Mode Assurance'}</span>
                 <span class="text-[var(--text-muted)]">{item.badge}</span>
               </div>

@@ -17,35 +17,52 @@ const caseDossiers = [
       : "85% Cellular Quota Saved · 0 Packet Loss",
     title: isTr 
       ? "Plasmon: 100K+ Edge Cihaz İçin Telemetri Mimarisi" 
-      : "Plasmon: Telemetry Architecture Designed for 100K+ Edge Devices",
+      : "Plasmon: Telemetry Architecture for 100K+ Edge Devices",
     tagline: isTr 
       ? "ESP32 firmware, MQTT/TLS RPC, yerel ring-buffer ve RabbitMQ ingest hattı"
       : "ESP32 firmware, MQTT/TLS RPC, local ring-buffer & RabbitMQ ingestion pipeline",
     testedScale: isTr 
-      ? "100K+ cihaz mimarisi · Saha hücresel failover doğrulaması"
-      : "Engineered for 100K+ devices · Verified in field cellular failover",
-    context: isTr 
-      ? "Plasmon, endüstriyel soğutma ve iklimlendirme ünitelerinin saha koşullarında kesintisiz izlenmesi ve uzaktan parametre yönetimi amacıyla tasarlandı. Bu mimari, 100K+ edge cihaz için tasarlandı; saha donanımından merkezi bulut broker'ına kadar olan telemetri ve komut-kontrol zincirini uçtan uca kapsar."
-      : "Plasmon was engineered for continuous monitoring and remote setpoint orchestration of industrial chillers and HVAC units in harsh factory environments. Designed for 100K+ edge devices, the architecture covers the full pipeline from physical sensor interfaces up to centralized broker ingestion.",
+      ? "100K+ Cihaz Ölçeği · Saha Hücresel Failover Doğrulaması"
+      : "100K+ Device Scale · Field Cellular Failover Verification",
     problem: isTr 
-      ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA güncellemesi alması gerekiyordu."
+      ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA alması gerekiyordu."
       : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required reliable offline telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
     decisions: isTr 
-      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu önlendi. REST yerine persistent MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. İkincil failover hattı olarak GSM modemi için donanımsal güç anahtarlaması eklendi."
+      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu önlendi. REST yerine kalıcı MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. Hücresel modemin kilitlenmesine karşı bağımsız transistör güç kesme anahtarlaması eklendi."
       : "C on FreeRTOS with static memory allocations eliminated malloc heap fragmentation. Persistent MQTT over TLS (QoS 1) preserved 85% cellular quota over HTTP. An automated transistor power-cycling switch resolved cellular modem hangs.",
     result: isTr 
       ? "100K+ cihaz ölçeğine göre modellendi. 4G hücresel hat kopsa bile 320KB dahili flaş ring-buffer telemetri kaydını RAM taşması yaşamadan sakladı; hat geldiğinde 0 paket kaybıyla kuyruğa boşaltıldı."
       : "Engineered for 100K+ devices. The ~320KB flash ring-buffer retained continuous telemetry during outages, draining with 0 packet loss upon reconnect.",
     whatDifferently: isTr 
-      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Baştan Protobuf veya saf ikili (binary) packed struct mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
+      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Baştan Protobuf veya saf ikili (packed struct) mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
       : "Telemetry originally transmitted JSON frames (~180 bytes). Adopting Protobuf or packed binary structs from day one would have reduced bandwidth consumption by 65% upfront.",
-    stack: ["ESP32 (C/FreeRTOS)", "Modbus RTU/TCP", "MQTT/TLS", "RabbitMQ", "WebSocket", "OpenAPI"]
+    stack: ["ESP32 (C/FreeRTOS)", "Modbus RTU/TCP", "MQTT/TLS", "RabbitMQ", "TimescaleDB"],
+    telemetryDeltas: [
+      {
+        metric: isTr ? "Ağ Protokolü" : "Network Protocol",
+        before: "HTTP Polling",
+        after: "MQTT/TLS QoS 1",
+        gain: isTr ? "%85 hücresel tasarruf" : "85% quota saved"
+      },
+      {
+        metric: isTr ? "Bellek Tahsisi" : "RAM Allocation",
+        before: "Dinamik malloc",
+        after: "Statik Ring-Buffer",
+        gain: isTr ? "0 heap fragmantasyonu" : "Zero heap fragmentation"
+      },
+      {
+        metric: isTr ? "Hat Kesintisi" : "Cellular Outage",
+        before: "RAM taşması & veri kaybı",
+        after: "320KB Flaş Dairesel Tampon",
+        gain: isTr ? "0 paket kaybı ile tahliye" : "0 packet loss on reconnect"
+      }
+    ]
   },
   {
     anchorId: "case-sapmapayi",
     fileNo: isTr ? "Dosya 02" : "Case 02",
     slug: "sapmapayi",
-    primaryMetric: isTr ? "0 Kopyalama IPC" : "Zero-Copy IPC Stream",
+    primaryMetric: isTr ? "Sıfır Kopyalama IPC" : "Zero-Copy IPC Stream",
     subMetrics: isTr 
       ? "<15ms Tarayıcı Gecikmesi · %87 Ağ Tasarrufu" 
       : "<15ms Browser Latency · 87% Network Savings",
@@ -56,11 +73,8 @@ const caseDossiers = [
       ? "TimescaleDB, Apache Arrow Zero-Copy IPC akışı, X.509 e-İmza ve RFC 3161 Zaman Damgası"
       : "TimescaleDB, Apache Arrow Zero-Copy IPC stream, X.509 e-Signature & RFC 3161 Timestamping",
     testedScale: isTr 
-      ? "Yüz binlerce telemetri satırında sıfır kopyalama aktarımı · 5070 Sayılı Kanun Uyumlu e-İmza"
-      : "Zero-copy streaming across hundreds of thousands of records · Legally binding X.509 seal",
-    context: isTr 
-      ? "Sapmapayı; aşı, ilaç ve bozulabilir gıda depolarındaki soğuk zincir gereksinimlerini denetleyen kurumsal bir uyum (compliance) platformudur. Sensörlerden gelen sıcaklık ve nem verilerini periyodik olarak analiz eder, kritik eşik sapmalarını tespit eder ve yasal olarak bağlayıcı e-imzalı denetim raporları üretir."
-      : "Sapmapayı is an enterprise compliance platform auditing cold-chain integrity across pharmaceutical and perishables storage facilities. It analyzes high-frequency temperature and humidity curves, flags threshold violations, and compiles officially enforceable e-signed audit PDFs.",
+      ? "250K+ Sıcaklık Kaydında Sıfır Kopyalama · 5070 Sayılı Kanun Uyumlu"
+      : "250K+ Records Zero-Copy Stream · Legally Binding X.509 Seal",
     problem: isTr 
       ? "Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu JSON formatında tarayıcıya yollamak ~25MB payload yaratıyor ve JavaScript JSON.parse ana iş parçacığını 800ms'den fazla kilitliyordu. Ayrıca üretilen raporların yasal delil niteliği taşıması için resmi e-imza ve zaman damgası zorunluydu."
       : "Querying a 30-day thermal history returned ~250,000 datapoints. Serializing to JSON generated a 25MB payload that froze browser JavaScript threads for 800ms+. Reports also required legally binding digital signatures and RFC 3161 timestamping.",
@@ -73,7 +87,27 @@ const caseDossiers = [
     whatDifferently: isTr 
       ? "İlk sürümde HTML-to-PDF kütüphanesi olarak Puppeteer kullanılmıştı. Headless Chrome sunucuda konteyner başına 400MB+ RAM tüketip kilitlenmelere yol açtı. C# yerel çizim motoruna baştan geçilmeliydi."
       : "Initially used headless Chromium (Puppeteer) which drew 400MB+ RAM per instance and failed under burst loads. I should have engineered native C# vector rendering from day one.",
-    stack: ["TimescaleDB", "Apache Arrow (IPC)", "C# .NET 10", "X.509 / PKCS#11", "RFC 3161 Timestamp", "QuestPDF"]
+    stack: ["TimescaleDB", "Apache Arrow (IPC)", "C# .NET 10", "X.509 / PKCS#11", "RFC 3161", "QuestPDF"],
+    telemetryDeltas: [
+      {
+        metric: isTr ? "Veri Yükü (250K Satır)" : "Payload (250K Rows)",
+        before: "24.8 MB JSON",
+        after: "3.1 MB Arrow IPC",
+        gain: isTr ? "%87 ağ tasarrufu" : "87% bandwidth saved"
+      },
+      {
+        metric: isTr ? "Tarayıcı UI Donması" : "Browser Thread Freeze",
+        before: "850 ms (JSON.parse)",
+        after: "<15 ms (Float64Array)",
+        gain: isTr ? "56x hızlanma, akıcı grafik" : "56x speedup, 60fps render"
+      },
+      {
+        metric: isTr ? "Rapor Oluşturma RAM" : "PDF Generation Memory",
+        before: "400 MB+ (Headless Chrome)",
+        after: "15 MB (QuestPDF)",
+        gain: isTr ? "%96 bellek tasarrufu" : "96% RAM reduction"
+      }
+    ]
   },
   {
     anchorId: "case-auth",
@@ -81,8 +115,8 @@ const caseDossiers = [
     slug: "auth-servisi",
     primaryMetric: isTr ? "<1ms İptal Gecikmesi" : "<1ms Revocation Latency",
     subMetrics: isTr 
-      ? "O(1) Redis Kontrolü · <400B Token Boyutu" 
-      : "O(1) Redis Complexity · <400B Token Overhead",
+      ? "O(1) Redis Karmaşıklığı · <400B Token Boyutu" 
+      : "O(1) Redis Complexity · <400B Token Size",
     title: isTr 
       ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali" 
       : "Common Auth Service: Instant Revocation in Distributed Microservices",
@@ -90,11 +124,8 @@ const caseDossiers = [
       ? "Yetkileri JWT payload'undan çıkarıp Redis'te versiyonlama; Plasmon, Sapmapayı ve Diventra WMS ortak omurgası"
       : "Decoupling roles from JWT payloads into versioned Redis claims; unified across Plasmon, Sapmapayı & Diventra WMS",
     testedScale: isTr 
-      ? "<1ms yetki doğrulama gecikmesi · Anında (sub-millisecond) oturum feshi"
-      : "<1ms permission check overhead · Sub-millisecond session termination",
-    context: isTr 
-      ? "Diverjans bünyesinde geliştirilen Plasmon (IoT telemetri), Sapmapayı (soğuk zincir uyum) ve Diventra WMS (depo yönetim sistemi) platformlarının tümü heterojen mikroservislerden oluşur. Bu sistemlerin tümü, hem kullanıcı oturumlarını hem de saha teknisyeni ve B2B entegrasyon haklarını yöneten tek bir ortak kimlik ve yetki mimarisi üzerinde birleştirildi."
-      : "Across Diverjans products—Plasmon (IoT telemetry), Sapmapayı (compliance), and Diventra WMS (warehouse operations)—microservices run on heterogeneous stacks (.NET 10 and Spring Boot 3). A single unified identity and authorization plane was required to govern warehouse personnel, field technicians, and B2B integrations.",
+      ? "<1ms Yetki Doğrulama Gecikmesi · Anında Oturum Feshi"
+      : "<1ms Verification Overhead · Sub-millisecond Session Termination",
     problem: isTr 
       ? "Tamamen durumsuz (stateless) JWT yaklaşımı kurumsal sahada kritik bir açık oluşturdu: Bir operatör işten çıkarıldığında veya yetkisi alındığında, elindeki token süresi (örn. 60 dk) bitene kadar sisteme erişebiliyordu. Rollerin token içine gömülmesi HTTP başlıklarını 6KB'a kadar şişiriyordu."
       : "Pure stateless JWTs created a severe vulnerability: revoked operators retained full access until token expiry (e.g. 60 mins). Embedding deep role trees inflated Authorization headers to 6KB, wasting bandwidth across millions of IoT calls.",
@@ -107,479 +138,331 @@ const caseDossiers = [
     whatDifferently: isTr 
       ? "Redis kümesindeki geçici ağ bölünmelerinde (network partition) meşru isteklerin fail-closed reddedilmesini önlemek için kısa süreli (5 saniye) yerel RAM önbellek (fallback cache) mekanizmasını en baştan kurmalıydım."
       : "An in-memory local fallback cache (5s TTL) should have been included earlier to handle transient Redis cluster partitions gracefully, avoiding fail-closed rejection during momentary network blips.",
-    stack: ["Spring Boot 3", "C# .NET 10", "Redis (Redlock)", "Keycloak SSO", "OAuth2 / OIDC", "OpenAPI"]
+    stack: ["Spring Boot 3", "C# .NET 10", "Redis (Redlock)", "Keycloak SSO", "OAuth2 / OIDC"],
+    telemetryDeltas: [
+      {
+        metric: isTr ? "Yetki İptal Gecikmesi" : "Revocation Propagation",
+        before: "60 Dakika (Token TTL)",
+        after: "<1 Milisaniye (Redis Bump)",
+        gain: isTr ? "Anında oturum feshi" : "Instant breach defense"
+      },
+      {
+        metric: isTr ? "HTTP Başlık Boyutu" : "Auth Header Size",
+        before: "5.2 KB (Şişkin Rol JWT)",
+        after: "<400 Bayt (Kompakt ID)",
+        gain: isTr ? "%92 başlık tasarrufu" : "92% overhead slashed"
+      },
+      {
+        metric: isTr ? "Arama Karmaşıklığı" : "Lookup Complexity",
+        before: "O(N) Büyüyen Kara Liste",
+        after: "O(1) Redis Sürüm Kontrolü",
+        gain: isTr ? "Sabit bellek & CPU" : "Deterministic memory & CPU"
+      }
+    ]
   }
 ];
 ---
 
-<section id="cases" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
-  <!-- 12-Column Swiss Grid Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-    <!-- Left 4 Columns: Sticky Section Header & Dossier Index -->
-    <div class="lg:col-span-4 space-y-4">
-      <div class="lg:sticky lg:top-24 space-y-4">
-        <!-- Section Number -->
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-            02 · {isTr ? 'VAKA ÇALIŞMALARI' : 'CASE STUDIES'}
-          </span>
-          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
-        </div>
+<section id="cases" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+  <!-- Section Title & Narrative -->
+  <div class="space-y-4 mb-14 max-w-3xl">
+    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+      {isTr ? 'Seçilmiş Vaka Çalışmaları' : 'Engineering Dossiers'}
+    </h2>
+    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+      {isTr 
+        ? "Saha kısıtları, ağ kopmaları ve yüksek veri hacmi altında çalışan 3 kritik sistemin mimari dökümü. Problem kökü, mühendislik kararları, canlı telemetri deltalari ve veri akış topolojisi." 
+        : "Architectural breakdowns of three critical production systems engineered for harsh field constraints and high-throughput telemetry. Root problems, technical tradeoffs, telemetry deltas, and data topology."}
+    </p>
+  </div>
 
-        <!-- Editorial Title -->
-        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-          {isTr ? 'Birincil Vaka Analizleri' : 'Engineering Dossiers'}
-        </h2>
-
-        <!-- Index / Tag -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
-          {isTr ? '3 Seçilmiş Sistem · Üretimde Doğrulandı' : '3 Selected Systems · Production Verified'}
-        </div>
-
-        <!-- Editorial Description -->
-        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
-          {isTr 
-            ? "Saha kısıtları, ağ kopmaları ve yüksek veri yoğunluğu altında inşa edilmiş 3 kritik sistemin mimari dökümü. Doğrudan problem kökü, mimari kararlar, canlı metrikler ve üretim kodu çekirdeği." 
-            : "Architectural blueprints of three critical systems engineered for harsh industrial environments and high-throughput telemetry. Focusing on root problems, architectural trade-offs, live metrics, and real code kernels."}
-        </p>
-
-        <!-- Quick Jump Dossier Nav -->
-        <div class="pt-3 border-t border-[var(--border)] space-y-2 font-mono text-xs">
-          <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-            {isTr ? 'Dosya Kısayolları' : 'Dossier Jump Index'}
+  <!-- 3 Full Case Studies -->
+  <div class="space-y-20">
+    {caseDossiers.map((item) => (
+      <article id={item.anchorId} class="pt-10 border-t border-[var(--border)] space-y-8 scroll-mt-20">
+        <!-- Dossier Header -->
+        <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-4 pb-4 border-b border-[var(--border)]">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
+              <span class="text-[var(--text-accent)] font-semibold">{item.fileNo}</span>
+              <span>·</span>
+              <span>{item.testedScale}</span>
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+              {item.title}
+            </h3>
+            <p class="font-serif italic text-sm text-[var(--text-muted)]">
+              {item.tagline}
+            </p>
           </div>
-          <a href="#case-plasmon" class="block p-2 border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
-            <div class="text-[11px] text-[var(--text-accent)] font-semibold">01 · Plasmon</div>
-            <div class="font-serif text-sm truncate">{caseDossiers[0].primaryMetric}</div>
-          </a>
-          <a href="#case-sapmapayi" class="block p-2 border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
-            <div class="text-[11px] text-[var(--text-accent)] font-semibold">02 · Sapmapayı</div>
-            <div class="font-serif text-sm truncate">{caseDossiers[1].primaryMetric}</div>
-          </a>
-          <a href="#case-auth" class="block p-2 border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] rounded-none text-[var(--text)] transition-colors">
-            <div class="text-[11px] text-[var(--text-accent)] font-semibold">03 · {isTr ? 'Ortak Auth' : 'Common Auth'}</div>
-            <div class="font-serif text-sm truncate">{caseDossiers[2].primaryMetric}</div>
-          </a>
-        </div>
-      </div>
-    </div>
 
-    <!-- Right 8 Columns: 3 Open Panels with Balanced Side-by-Side (6:6) Layout -->
-    <div class="lg:col-span-8 space-y-12 sm:space-y-16">
-      {caseDossiers.map((item) => (
-        <article 
-          id={item.anchorId} 
-          class="relative border-t border-[var(--border-strong)] pt-8 pb-4 space-y-6 scroll-mt-24 transition-colors"
-        >
-          <!-- Dossier Header -->
-          <div class="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-[var(--border)]">
-            <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-mono text-xs px-2 py-0.5 bg-[var(--accent)] text-white dark:text-[#0A0F1D] font-semibold rounded-none">
-                  {item.fileNo}
-                </span>
-                <span class="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-green)]">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
-                  <span>{isTr ? 'ÜRETİMDE DOĞRULANDI' : 'PROD VERIFIED'}</span>
-                </span>
-                <span class="font-mono text-xs text-[var(--text-dim)] hidden sm:inline">
-                  · {item.testedScale}
-                </span>
-              </div>
-              <h3 class="text-xl sm:text-2xl font-serif text-[var(--text)] tracking-tight pt-1">
-                {item.title}
-              </h3>
-              <p class="font-serif italic text-xs sm:text-sm text-[var(--text-muted)]">
-                {item.tagline}
+          <!-- Stack Tags -->
+          <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs text-[var(--text-muted)] md:text-right shrink-0">
+            {item.stack.map((t) => (
+              <span class="px-2 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[11px]">
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <!-- 2-Column Content: Narrative (Left 6) & Architecture Topology / Delta (Right 6) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          <!-- Left 6 Columns: Narrative, Problem, Solution, Result, Retrospective -->
+          <div class="lg:col-span-6 space-y-6">
+            <!-- Typographic Metric Strip -->
+            <div class="flex items-baseline gap-4 py-2 border-b border-[var(--border)]">
+              <span class="font-mono text-xl sm:text-2xl font-semibold text-[var(--text-accent)]">
+                {item.primaryMetric}
+              </span>
+              <span class="font-mono text-xs text-[var(--text-dim)]">
+                {item.subMetrics}
+              </span>
+            </div>
+
+            <!-- Problem -->
+            <div class="space-y-2">
+              <h4 class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+                {isTr ? 'Problem' : 'The Problem'}
+              </h4>
+              <p class="text-[var(--text)] leading-relaxed text-[14.5px] font-sans">
+                {item.problem}
               </p>
             </div>
 
-            <!-- Tech Stack Monospace Line -->
-            <div class="font-mono text-xs text-[var(--text-muted)] md:text-right shrink-0 pt-1">
-              <span class="text-[var(--text-dim)]">{isTr ? 'Yığın: ' : 'Stack: '}</span>
-              <span class="text-[var(--text)]">{item.stack.slice(0, 3).join(' · ')}</span>
+            <!-- Architectural Solution -->
+            <div class="space-y-2 pt-3 border-t border-[var(--border)]">
+              <h4 class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider">
+                {isTr ? 'Mimari Karar ve Savunma' : 'Architectural Decisions'}
+              </h4>
+              <p class="text-[var(--text-muted)] leading-relaxed text-[14px] font-sans">
+                {item.decisions}
+              </p>
+            </div>
+
+            <!-- Result -->
+            <div class="space-y-2 pt-3 border-t border-[var(--border)]">
+              <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
+                {isTr ? 'Üretim Sonucu' : 'Production Result'}
+              </h4>
+              <p class="text-[var(--text-muted)] leading-relaxed text-[14px] font-sans">
+                {item.result}
+              </p>
+            </div>
+
+            <!-- Retrospective (Geriye Bakış) -->
+            <div class="p-3.5 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)] text-xs font-mono space-y-1">
+              <span class="text-[var(--text-accent)] font-semibold">
+                {isTr ? 'Geriye Bakış (Neyi Farklı Yapardım?):' : 'Retrospective:'}
+              </span>
+              <p class="text-[var(--text-muted)] font-sans text-xs leading-relaxed">
+                {item.whatDifferently}
+              </p>
+            </div>
+
+            <!-- Full Dossier Page Link -->
+            <div class="pt-2">
+              <a
+                href={isTr ? `/cases/${item.slug}` : `/en/cases/${item.slug}`}
+                class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] font-medium inline-flex items-center gap-1.5 hover:underline"
+              >
+                <span>{isTr ? 'Tam Mühendislik Dosyasını Oku' : 'Open Full Engineering Dossier'}</span>
+                <span aria-hidden="true">→</span>
+              </a>
             </div>
           </div>
 
-          <!-- Side-by-Side (Balanced 6:6) Layout -->
-          <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-            <!-- Left 6 Columns: Problem, Decisions, High-Impact Live Metrics -->
-            <div class="xl:col-span-6 space-y-5">
-              <!-- Live High-Impact Typography Metric Block -->
-              <div class="p-3.5 bg-[var(--bg-subtle)] border-l-2 border-[var(--accent)] space-y-1">
-                <div class="text-2xl sm:text-3xl font-mono text-[var(--text-accent)] font-bold tracking-tight">
-                  {item.primaryMetric}
-                </div>
-                <div class="font-mono text-[11px] text-[var(--text-muted)]">
-                  {item.subMetrics}
-                </div>
+          <!-- Right 6 Columns: Bespoke Architectural Topology & Telemetry Delta -->
+          <div class="lg:col-span-6 space-y-8">
+            <!-- Telemetry Delta Table (Engineering Gain) -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)] font-mono text-xs text-[var(--text-dim)]">
+                <span class="font-semibold text-[var(--text)] uppercase tracking-wider">
+                  {isTr ? 'Telemetri Deltası & Mühendislik Kazancı' : 'Telemetry Delta & Performance Gain'}
+                </span>
+                <span class="text-[var(--status-green)] font-medium">✓ {isTr ? 'Ölçüldü' : 'Measured'}</span>
               </div>
 
-              <!-- Problem -->
-              <div class="space-y-1.5 border-l-2 border-[var(--border-strong)] pl-3">
-                <div class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 bg-[var(--text-dim)] shrink-0" aria-hidden="true"></span>
-                  <span>{isTr ? 'Problem' : 'Problem'}</span>
-                </div>
-                <p class="text-sm text-[var(--text)] leading-relaxed font-sans">
-                  {item.problem}
-                </p>
-              </div>
-
-              <!-- Mimari Karar -->
-              <div class="space-y-1.5 border-l-2 border-[var(--accent)] pl-3">
-                <div class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
-                  <span>{isTr ? 'Mimari Karar' : 'Architectural Decisions'}</span>
-                </div>
-                <p class="text-sm text-[var(--text-muted)] leading-relaxed font-sans">
-                  {item.decisions}
-                </p>
-              </div>
-
-              <!-- Neyi Farklı Yapardım? -->
-              <div class="pt-2 text-xs font-mono text-[var(--text-dim)] border-t border-[var(--border)]">
-                <span class="text-[var(--text-accent)] font-semibold">{isTr ? 'Neyi Farklı Yapardım?: ' : 'What I\'d Do Differently: '}</span>
-                <span class="text-[var(--text-muted)] font-sans text-xs">{item.whatDifferently}</span>
-              </div>
-
-              <!-- Link to Full Standalone Dossier Page -->
-              <div class="pt-1">
-                <a
-                  href={isTr ? `/cases/${item.slug}` : `/en/cases/${item.slug}`}
-                  class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] hover:underline inline-flex items-center gap-1.5 font-semibold group tactile-btn"
-                >
-                  <span>{isTr ? 'Tam Mühendislik Dosyasını Oku' : 'Open Full Dossier Page'}</span>
-                  <span class="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
-                </a>
-              </div>
-            </div>
-
-            <!-- Right 6 Columns: Visual Architecture Flowchart -->
-            <div class="xl:col-span-6">
-              <div class="border border-[var(--border)] rounded-none bg-[var(--bg-code)] overflow-hidden shadow-xs">
-                <!-- Schematic Window Header Bar -->
-                <div class="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-subtle)] border-b border-[var(--border)]">
-                  <div class="flex items-center gap-2 font-mono text-xs">
-                    <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)]" aria-hidden="true"></span>
-                    <span class="font-semibold text-[var(--text)] uppercase tracking-wider text-[11px]">
-                      {isTr ? 'Mimari Şema & Veri Akışı' : 'Architecture & Data Flow'}
+              <div class="divide-y divide-[var(--border)] text-xs font-mono">
+                {item.telemetryDeltas.map((delta) => (
+                  <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span class="text-[var(--text-muted)] font-medium sm:w-1/3">
+                      {delta.metric}
                     </span>
+                    <div class="flex items-center gap-2 sm:w-2/3 justify-between sm:justify-end">
+                      <span class="text-[var(--text-dim)] line-through">
+                        {delta.before}
+                      </span>
+                      <span class="text-[var(--text-dim)]">→</span>
+                      <span class="text-[var(--text)] font-semibold">
+                        {delta.after}
+                      </span>
+                    </div>
                   </div>
-                  <span class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-                    {item.slug === 'plasmon' && (isTr ? 'Failover Topolojisi' : 'Failover Topology')}
-                    {item.slug === 'sapmapayi' && (isTr ? 'Zero-Copy Hattı' : 'Zero-Copy Pipeline')}
-                    {item.slug === 'auth-servisi' && (isTr ? 'Doğrulama Akışı' : 'Revocation Flow')}
-                  </span>
-                </div>
-
-                <!-- Schematic Canvas Body -->
-                <div class="p-3.5 sm:p-5">
-                  {item.slug === 'plasmon' && (
-                    <div class="space-y-4 font-mono text-xs">
-                      <!-- Stage 1: Edge Equipment to Gateway -->
-                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)]">
-                          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-                            {isTr ? 'Saha Cihazı / Ekipman' : 'Field Equipment'}
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">
-                            {isTr ? 'Endüstriyel Chiller & HVAC' : 'Industrial Chiller & HVAC'}
-                          </div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'Sıcaklık, Basınç, Kompresör Akımı' : 'Temperature, Pressure, Motor Current'}
-                          </div>
-                        </div>
-
-                        <div class="flex sm:flex-col items-center justify-center py-1 sm:py-0 px-2 text-[var(--text-dim)] shrink-0">
-                          <span class="text-[9px] uppercase tracking-wider font-semibold text-[var(--text-dim)]">RS-485 Modbus</span>
-                          <span class="text-xs sm:rotate-0 rotate-90 text-[var(--text-accent)]">→</span>
-                        </div>
-
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border-strong)]">
-                          <div class="flex items-center justify-between mb-1">
-                            <span class="text-[10px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-                              {isTr ? 'Uç Ağ Geçidi (Edge)' : 'Edge Gateway'}
-                            </span>
-                            <span class="text-[9px] px-1 bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] font-mono">
-                              FreeRTOS
-                            </span>
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">ESP32 Firmware (C)</div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'Statik RAM Tahsisi · Donanımsal Watchdog' : 'Static RAM Allocations · HW Watchdog'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Stage 2: Dual-Route Failover Branch -->
-                      <div class="p-3.5 bg-[var(--bg-subtle)] border border-[var(--border)] space-y-3">
-                        <div class="flex items-center justify-between text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">
-                          <div class="flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 bg-[var(--accent)]" aria-hidden="true"></span>
-                            <span>{isTr ? 'Hücresel Ağ Durumuna Göre İkili Yönlendirme' : 'Dual-Path Cellular Routing'}</span>
-                          </div>
-                          <span class="text-[9px] text-[var(--text-muted)] font-mono">4G LTE / GSM Failover</span>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <!-- Route A: Offline -->
-                          <div class="p-3 bg-[var(--bg)] border border-dashed border-[var(--border-strong)] space-y-1">
-                            <div class="flex items-center gap-1.5 text-[var(--text-dim)] font-semibold text-[10px] uppercase">
-                              <span class="w-1.5 h-1.5 rounded-none bg-[var(--text-dim)]"></span>
-                              <span>{isTr ? 'Ağ Kesintisi (Offline)' : 'Network Outage (Offline)'}</span>
-                            </div>
-                            <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                              {isTr ? 'Flash Ring-Buffer (~320KB)' : 'Flash Ring-Buffer (~320KB)'}
-                            </div>
-                            <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                              {isTr 
-                                ? 'Dahili flaşta döngüsel kayıt. RAM fragmentasyonu sıfırlanır, hat gelene kadar telemetri korunur.'
-                                : 'Circular logging on internal flash. Zero RAM fragmentation, telemetry preserved until link recovers.'}
-                            </p>
-                          </div>
-
-                          <!-- Route B: Online -->
-                          <div class="p-3 bg-[var(--bg)] border border-[var(--border-strong)] space-y-1">
-                            <div class="flex items-center gap-1.5 text-[var(--text-accent)] font-semibold text-[10px] uppercase">
-                              <span class="w-1.5 h-1.5 rounded-none bg-[var(--accent)]"></span>
-                              <span>{isTr ? 'Bağlantı Aktif (Online)' : 'Connected (Online)'}</span>
-                            </div>
-                            <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                              EMQX MQTT Broker (TLS 1.3)
-                            </div>
-                            <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                              {isTr 
-                                ? 'Persistent QoS 1 soket. %85 hücresel veri tasarrufu; biriken tampon 0 paket kaybıyla boşaltılır.'
-                                : 'Persistent QoS 1 socket. 85% cellular quota saved; drained with 0 packet loss.'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Stage 3: Central Ingest -->
-                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)]">
-                          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-                            {isTr ? 'Mesaj Kuyruğu' : 'Message Ingestion'}
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">RabbitMQ Cluster</div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'Dead-Letter Exchange (DLX) · Backpressure Koruması' : 'Dead-Letter Exchange (DLX) · Backpressure Guard'}
-                          </div>
-                        </div>
-
-                        <div class="flex sm:flex-col items-center justify-center py-1 sm:py-0 px-2 text-[var(--text-dim)] shrink-0">
-                          <span class="text-[9px] uppercase tracking-wider font-semibold text-[var(--text-dim)]">Ingest</span>
-                          <span class="text-xs sm:rotate-0 rotate-90 text-[var(--text-accent)]">→</span>
-                        </div>
-
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)]">
-                          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-                            {isTr ? 'Zaman Serisi Veritabanı' : 'Time-Series Store'}
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">TimescaleDB</div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'Hypertables · Sıkıştırma · 100K+ Cihaz Ölçeği' : 'Hypertables · Continuous Compression · 100K+'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {item.slug === 'sapmapayi' && (
-                    <div class="space-y-4 font-mono text-xs">
-                      <!-- Stage 1: Database Source & Aggregation -->
-                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)]">
-                          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-                            {isTr ? 'Telemetri Deposu' : 'Telemetry Store'}
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">TimescaleDB Hypertables</div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? '250K+ Yüksek Frekanslı Sıcaklık & Nem' : '250K+ High-Frequency Temp & Humidity Rows'}
-                          </div>
-                        </div>
-
-                        <div class="flex sm:flex-col items-center justify-center py-1 sm:py-0 px-2 text-[var(--text-dim)] shrink-0">
-                          <span class="text-[9px] uppercase tracking-wider font-semibold text-[var(--text-dim)]">Continuous Aggs</span>
-                          <span class="text-xs sm:rotate-0 rotate-90 text-[var(--text-accent)]">→</span>
-                        </div>
-
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border-strong)]">
-                          <div class="flex items-center justify-between mb-1">
-                            <span class="text-[10px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-                              {isTr ? 'İkili Akış Motoru' : 'Binary Streamer'}
-                            </span>
-                            <span class="text-[9px] px-1 bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] font-mono">
-                              .NET 10
-                            </span>
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">Apache Arrow IPC Streamer</div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'RecordBatch Sütunsal Akış · Sıfır JSON Maliyeti' : 'RecordBatch Columnar Stream · Zero JSON Cost'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Stage 2: Highway Metric Bar -->
-                      <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                          <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)]" aria-hidden="true"></span>
-                          <span class="font-semibold text-[var(--text)] text-xs">
-                            {isTr ? 'Sıfır Kopyalama İkili Akış (Zero-Copy Binary Highway)' : 'Zero-Copy Binary Highway'}
-                          </span>
-                        </div>
-                        <div class="text-[11px] text-[var(--text-accent)] font-semibold">
-                          {isTr ? '24.8MB JSON → 3.1MB Arrow (%87 Ağ Tasarrufu)' : '24.8MB JSON → 3.1MB Arrow (87% Saved)'}
-                        </div>
-                      </div>
-
-                      <!-- Stage 3: Two Delivery Targets -->
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <!-- Target A: Browser GPU -->
-                        <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] space-y-1.5">
-                          <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-                              {isTr ? '01 · Ön Yüz Sunumu' : '01 · Frontend Visualization'}
-                            </span>
-                            <span class="text-[11px] font-mono text-[var(--status-green)] font-semibold">&lt;15ms Render</span>
-                          </div>
-                          <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                            {isTr ? 'Tarayıcı GPU Canvas' : 'Browser Canvas GPU'}
-                          </div>
-                          <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                            {isTr 
-                              ? 'İkili tampon doğrudan Float64Array belleğine eşlenir. JSON.parse ana iş parçacığını kitlemez, 250K nokta pürüzsüz çizilir.'
-                              : 'Binary buffers map directly into Float64Array memory without JSON.parse thread blocking, smoothly plotting 250K points.'}
-                          </p>
-                        </div>
-
-                        <!-- Target B: HSM Sealed Audit PDF -->
-                        <div class="p-3.5 bg-[var(--bg)] border border-[var(--border)] space-y-1.5">
-                          <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-                              {isTr ? '02 · Yasal Denetim' : '02 · Legal Compliance'}
-                            </span>
-                            <span class="text-[9px] font-mono text-[var(--text-accent)] font-semibold">5070 Sayılı Kanun</span>
-                          </div>
-                          <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                            PKCS#11 HSM + QuestPDF
-                          </div>
-                          <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                            {isTr 
-                              ? 'TÜBİTAK Kamu SM RFC 3161 zaman damgası ve X.509 dijital sertifikasıyla mühürlenen delil niteliğinde denetim raporu.'
-                              : 'Certified RFC 3161 timestamps and X.509 digital seals produce legally admissible audit compliance documentation.'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {item.slug === 'auth-servisi' && (
-                    <div class="space-y-4 font-mono text-xs">
-                      <!-- Stage 1: Inbound Request & Gateway JWT Sig Check -->
-                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)]">
-                          <div class="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-                            {isTr ? 'İstemci / Saha Cihazı' : 'Client / Field Device'}
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">
-                            {isTr ? 'HTTP Yetkilendirme Başlığı' : 'Authorization Header'}
-                          </div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            <span class="text-[var(--text-accent)] font-semibold">Bearer JWT</span> (ver=3, &lt;400 bayt)
-                          </div>
-                        </div>
-
-                        <div class="flex sm:flex-col items-center justify-center py-1 sm:py-0 px-2 text-[var(--text-dim)] shrink-0">
-                          <span class="text-[9px] uppercase tracking-wider font-semibold text-[var(--text-dim)]">JWKS</span>
-                          <span class="text-xs sm:rotate-0 rotate-90 text-[var(--text-accent)]">→</span>
-                        </div>
-
-                        <div class="flex-1 p-3 bg-[var(--bg)] border border-[var(--border-strong)]">
-                          <div class="flex items-center justify-between mb-1">
-                            <span class="text-[10px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-                              {isTr ? 'Aşama 1: Durumsuz Doğrulama' : 'Phase 1: Stateless Validation'}
-                            </span>
-                            <span class="text-[9px] px-1 bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] font-mono">
-                              Gateway
-                            </span>
-                          </div>
-                          <div class="font-serif font-semibold text-sm text-[var(--text)]">
-                            {isTr ? 'Yerel Kriptografik İmza Kontrolü' : 'Local Cryptographic Signature'}
-                          </div>
-                          <div class="text-[11px] text-[var(--text-muted)] mt-1">
-                            {isTr ? 'Asimetrik açık anahtarla yerel CPU doğrulama (Ağ çağrısı yok)' : 'Asymmetric public key check on local CPU (0 network call)'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Stage 2: Redis In-Memory Verification Check -->
-                      <div class="p-3.5 bg-[var(--bg-subtle)] border border-[var(--border)] space-y-2">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] uppercase tracking-wider">
-                          <div class="flex items-center gap-1.5 font-semibold text-[var(--text-accent)]">
-                            <span class="w-1.5 h-1.5 bg-[var(--accent)]" aria-hidden="true"></span>
-                            <span>{isTr ? 'Aşama 2: Redis Versiyon Karşılaştırması' : 'Phase 2: Redis In-Memory Version Check'}</span>
-                          </div>
-                          <span class="text-[10px] font-mono text-[var(--text-dim)] font-semibold">&lt;0.3ms Gecikme · O(1) Sabit Karmaşıklık</span>
-                        </div>
-                        <div class="p-2 bg-[var(--bg)] border border-[var(--border)] font-mono text-[11px] text-[var(--text-muted)]">
-                          <span class="text-[var(--text-dim)]">Komut: </span>
-                          <code class="text-[var(--text)]">GET auth:ver:&#123;userId&#125;</code>
-                          <span class="text-[var(--text-dim)]"> → </span>
-                          <span>{isTr ? "Redis'teki güncel sürüm ile token'daki ver iddiası karşılaştırılır." : "Matches current Redis version integer against token 'ver' claim."}</span>
-                        </div>
-                      </div>
-
-                      <!-- Stage 3: Instant Decision Branching -->
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <!-- Route A: Match / Granted -->
-                        <div class="p-3.5 bg-[var(--bg)] border border-[var(--status-green)]/40 space-y-1.5">
-                          <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-1.5 text-[var(--status-green)] font-semibold text-[11px] uppercase tracking-wider">
-                              <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
-                              <span>ver == 3 ({isTr ? 'Eşleşti / Aktif' : 'Match / Active'})</span>
-                            </div>
-                            <span class="text-[11px] font-mono text-[var(--status-green)] font-semibold">HTTP 200 OK</span>
-                          </div>
-                          <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                            {isTr ? 'Yetkilendirme Onaylandı' : 'Permission Authorized'}
-                          </div>
-                          <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                            {isTr 
-                              ? 'İstek hedef mikroservise (Plasmon, Sapmapayı, Diventra WMS) gecikmesiz yönlendirilir.'
-                              : 'Request immediately routed downstream to Plasmon, Sapmapayı, or Diventra WMS.'}
-                          </p>
-                        </div>
-
-                        <!-- Route B: Revoked / 401 -->
-                        <div class="p-3.5 bg-[var(--bg)] border border-[var(--status-red)]/40 space-y-1.5">
-                          <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-1.5 text-[var(--status-red)] font-semibold text-[11px] uppercase tracking-wider">
-                              <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-red)]" aria-hidden="true"></span>
-                              <span>ver != 3 ({isTr ? 'Uyuşmazlık / İptal' : 'Mismatch / Revoked'})</span>
-                            </div>
-                            <span class="text-[11px] font-mono text-[var(--status-red)] font-semibold">HTTP 401</span>
-                          </div>
-                          <div class="font-serif font-semibold text-xs text-[var(--text)]">
-                            {isTr ? 'Anında Oturum Feshi (<1ms)' : 'Instant Session Revocation (<1ms)'}
-                          </div>
-                          <p class="text-[11px] text-[var(--text-muted)] leading-relaxed font-sans">
-                            {isTr 
-                              ? 'Sürüm tamsayısı artırıldığında tüm eski token\'lar anında iptal olur. Şişen token kara listesi tutulmaz.'
-                              : 'Incrementing the version integer instantly invalidates all active tokens. Zero blacklist overhead.'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
+
+            <!-- Architectural Data Flow Diagram (Bespoke SVG & Flow Line) -->
+            <div class="space-y-3 pt-4 border-t border-[var(--border)]">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)] font-mono text-xs text-[var(--text-dim)]">
+                <span class="font-semibold text-[var(--text)] uppercase tracking-wider">
+                  {isTr ? 'Veri Akış Topolojisi' : 'Signal & Data Topology'}
+                </span>
+                <span class="text-[var(--text-accent)]">
+                  {item.slug === 'plasmon' && 'Failover Bus'}
+                  {item.slug === 'sapmapayi' && 'Zero-Copy Pipeline'}
+                  {item.slug === 'auth-servisi' && 'O(1) Verification'}
+                </span>
+              </div>
+
+              {item.slug === 'plasmon' && (
+                <div class="space-y-3 font-mono text-xs">
+                  <!-- Node 1 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Saha Donanımı & Sensörler</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Endüstriyel Chiller & HVAC Panoları</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">RS-485 Modbus RTU · Optik İzolasyon · CRC Doğrulama</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">UART RX/TX (C / FreeRTOS Statik Bellek)</span>
+                  </div>
+
+                  <!-- Node 2: Firmware & Modem -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · Uç Geçit Firmware (ESP32)</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">FreeRTOS Görevleri + Watchdog Güç Döngüsü</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Transistör tabanlı hücresel modem resetleme · Sıfır Dinamik Malloc</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">İkili Ağ Durumu (Failover Routing)</span>
+                  </div>
+
+                  <!-- Node 3: Split Failover -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
+                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">Online (4G Var)</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">MQTT/TLS QoS 1</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">%85 hücresel tasarruf · Anında RabbitMQ DLX</div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
+                      <div class="text-[11px] text-[var(--text-dim)] font-semibold uppercase">Offline (Kesinti)</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">320KB Flash Ring-Buffer</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">Dairesel tampon · Bağlanınca 0 paket kaybı</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {item.slug === 'sapmapayi' && (
+                <div class="space-y-3 font-mono text-xs">
+                  <!-- Node 1 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Yüksek Frekanslı Zaman Serisi</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">TimescaleDB Hypertables</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">250.000+ periyodik sıcaklık, nem ve kapı sensörü kaydı</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">Sütunsal Okuma (Binary RecordBatch Stream)</span>
+                  </div>
+
+                  <!-- Node 2 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · İkili Akış Motoru (.NET 10)</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Apache Arrow IPC Streamer</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">24.8MB JSON yerine 3.1MB ikili paket · Sıfır JSON.parse serialize maliyeti</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">Sıfır Kopyalama Eşleme (Memory Mapping)</span>
+                  </div>
+
+                  <!-- Node 3: Two Targets -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
+                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">Ön Yüz İkili Çizim</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">Canvas / Float64Array</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">&lt;15ms thread kilitsiz 60fps render</div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">Resmi Yasal Rapor</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">PKCS#11 HSM + QuestPDF</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">X.509 + Kamu SM RFC 3161 Zaman Damgası</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {item.slug === 'auth-servisi' && (
+                <div class="space-y-3 font-mono text-xs">
+                  <!-- Node 1 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Gelen İstemci İsteği</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Authorization: Bearer &lt;JWT&gt;</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Kompakt token (&lt;400B): Sabit kimlik + ver (sürüm tamsayısı)</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">İki Aşamalı Doğrulama (CPU + Redis)</span>
+                  </div>
+
+                  <!-- Node 2 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · Doğrulama Katmanı</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Asimetrik İmza + Redis GET auth:ver:&#123;id&#125;</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">&lt;0.3ms ağ gecikmesi · O(1) deterministik arama</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">Sürüm Karşılaştırması</span>
+                  </div>
+
+                  <!-- Node 3: Outcome -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
+                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">Eşleşti (ver == 3)</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">HTTP 200 OK</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">Hedef mikroservise iletildi</div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-red)]">
+                      <div class="text-[11px] text-[var(--status-red)] font-semibold uppercase">İptal Edildi (ver != 3)</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">HTTP 401 Unauthorized</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">&lt;1ms anında oturum feshi</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </article>
-      ))}
-    </div>
+        </div>
+      </article>
+    ))}
   </div>
 </section>

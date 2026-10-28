@@ -9,68 +9,49 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="secondary-projects" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+<section id="secondary-projects" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+  <!-- Section Title & Narrative -->
+  <div class="space-y-4 mb-10 max-w-3xl">
+    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+      {isTr ? 'Sistem Kayıt Defteri' : 'System Registry'}
+    </h2>
+    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+      {isTr 
+        ? "Üretim ortamlarında bizzat kurduğum, idame ettiğim ve otomatize ettiğim operasyonel sistemler, hipervizör kümeleri ve kurumsal altyapılar." 
+        : "Operational systems, bare-metal hypervisor clusters, and enterprise infrastructure architected and maintained across production environments."}
+    </p>
+  </div>
 
-  <!-- 12-Column Swiss Grid Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-    <!-- Left 4 Columns: Sticky Section Header -->
-    <div class="lg:col-span-4 space-y-4">
-      <div class="lg:sticky lg:top-24 space-y-4">
-        <!-- Section Number -->
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-            03 · {isTr ? 'İKİNCİL İŞLER' : 'SECONDARY WORKS'}
-          </span>
-          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
-        </div>
-
-        <!-- Editorial Title -->
-        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-          {isTr ? 'Sistem Kayıt Defteri' : 'System Registry'}
-        </h2>
-
-        <!-- Index / Tag -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
-          {isTr ? '5 Sistem · Operasyonel Altyapı' : '5 Systems · Operational Infrastructure'}
-        </div>
-
-        <!-- Short Description -->
-        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
-          {isTr 
-            ? "Üretim ortamlarında bizzat kurduğum, idame ettiğim ve otomatize ettiğim sistemler, ağ altyapıları, hipervizör kümeleri ve açık kaynak araçlar." 
-            : "Production systems, bare-metal hypervisors, network infrastructures, and open-source developer tooling maintained across operational environments."}
-        </p>
-      </div>
-    </div>
-
-    <!-- Right 8 Columns: Wide, Airy Technical Registry Ledger -->
-    <div class="lg:col-span-8">
-      <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
-        {SECONDARY_PROJECTS.map((project, idx) => (
-          <div class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-3 sm:gap-6 hover:bg-[var(--bg-subtle)] hover:pl-3 transition-all px-2 -mx-2 rounded-none border-l-2 border-transparent hover:border-[var(--accent)]">
-            <div class="flex-1 space-y-2">
-              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span class="font-mono text-[11px] text-[var(--text-accent)] font-semibold tracking-wider">
-                  REG-{String(idx + 1).padStart(2, '0')}
-                </span>
-                <span class="font-serif text-lg sm:text-xl font-medium text-[var(--text)]">
-                  {project.name}
-                </span>
-              </div>
-              <p class="text-sm text-[var(--text)] font-sans leading-relaxed max-w-[65ch]">
-                {project.whatItDid[lang]}
-              </p>
-              <div class="font-mono text-xs text-[var(--text-muted)] pt-1 flex flex-wrap gap-x-2 gap-y-1">
-                <span class="text-[var(--text-dim)]">Stack:</span>
-                <span>{project.stack.split(',').map((item) => item.trim()).join(' · ')}</span>
-              </div>
-            </div>
-            <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto flex items-center gap-2">
-              <span>{typeof project.year === 'string' ? project.year : project.year[lang]}</span>
-            </div>
+  <!-- Full-Width Registry Ledger -->
+  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+    {SECONDARY_PROJECTS.map((project, idx) => (
+      <div class="py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-4 hover:bg-[var(--bg-subtle)]/50 transition-colors px-2 -mx-2 rounded-[2px]">
+        <!-- Left: ID & Name & Scope -->
+        <div class="flex-1 space-y-2">
+          <div class="flex items-center gap-3">
+            <span class="font-mono text-xs text-[var(--text-accent)] font-semibold">
+              SYS-{String(idx + 1).padStart(2, '0')}
+            </span>
+            <h3 class="font-sans text-base sm:text-lg font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors">
+              {project.name}
+            </h3>
           </div>
-        ))}
+
+          <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed max-w-[72ch]">
+            {project.whatItDid[lang]}
+          </p>
+
+          <div class="font-mono text-xs text-[var(--text-dim)] pt-1 flex flex-wrap gap-x-2 gap-y-1">
+            <span class="text-[var(--text-muted)] font-medium">Stack:</span>
+            <span>{project.stack.split(',').map((item) => item.trim()).join(' · ')}</span>
+          </div>
+        </div>
+
+        <!-- Right: Year & Scope Badge -->
+        <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto">
+          <span>{typeof project.year === 'string' ? project.year : project.year[lang]}</span>
+        </div>
       </div>
-    </div>
+    ))}
   </div>
 </section>

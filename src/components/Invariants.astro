@@ -9,126 +9,74 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="invariants" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+<section id="invariants" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+  <!-- Section Title & Narrative -->
+  <div class="space-y-4 mb-12 max-w-3xl">
+    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+      {isTr ? 'Mimari İlkeler ve Değişmezler' : 'Architectural Invariants'}
+    </h2>
+    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+      {isTr 
+        ? "Saha kısıtları ve donanım gerçeklikleriyle sınanmış mühendislik kuralları. Bir kuralın nasıl bozulacağı öngörülmeden ve üretimde test edilmeden hiçbir mimari karar alınmaz." 
+        : "Rigid engineering rules forged under production stress and hardware limits. No architecture is established without defining its failure mode and production defense."}
+    </p>
+  </div>
 
-  <!-- 12-Column Swiss Grid Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-    <!-- Left 4 Columns: Sticky Section Header -->
-    <div class="lg:col-span-4 space-y-4">
-      <div class="lg:sticky lg:top-24 space-y-4">
-        <!-- Section Number -->
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-            04 · {isTr ? 'DEĞİŞMEZLER' : 'ARCHITECTURAL INVARIANTS'}
+  <!-- Invariants List -->
+  <div class="space-y-12">
+    {INVARIANTS.map((item) => (
+      <article class="pt-8 border-t border-[var(--border)] space-y-5">
+        <!-- Invariant Header -->
+        <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-1">
+          <div class="flex items-center gap-3">
+            <span class="font-mono text-xs text-[var(--text-accent)] font-semibold">
+              {item.badge}
+            </span>
+            <h3 class="font-serif text-xl sm:text-2xl font-medium text-[var(--text)]">
+              {item.title[lang]}
+            </h3>
+          </div>
+          <span class="font-mono text-[11px] text-[var(--status-green)] font-medium">
+            ✓ {isTr ? 'Üretimde Doğrulandı' : 'Production Verified'}
           </span>
-          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
         </div>
 
-        <!-- Editorial Title -->
-        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-          {isTr ? 'Mimari İlkeler ve Değişmez Kurallar' : 'Invariants & Failure Modes'}
-        </h2>
+        <!-- The Invariant Law -->
+        <blockquote class="text-[15px] sm:text-base font-sans font-medium text-[var(--text)] leading-relaxed max-w-[75ch] italic pl-4 border-l border-[var(--text-accent)]">
+          "{item.rule[lang]}"
+        </blockquote>
 
-        <!-- Index / Tag -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
-          {isTr ? 'Kural → Nasıl Bozulur → Çözüm → Nerede Doğruladım' : 'Rule → Failure Mode → Solution → Verification'}
+        <!-- Two Columns: How It Breaks vs Engineering Defense (Open Editorial Flow) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm font-sans pt-2">
+          <!-- Failure Mode -->
+          <div class="space-y-2">
+            <h4 class="font-mono text-xs font-semibold text-[var(--status-red)] uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-red)]" aria-hidden="true"></span>
+              <span>{isTr ? 'Hata Modu (Nasıl Bozulur?)' : 'Failure Mode (How It Breaks)'}</span>
+            </h4>
+            <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px]">
+              {item.failureMode[lang]}
+            </p>
+          </div>
+
+          <!-- Solution -->
+          <div class="space-y-2">
+            <h4 class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--text-accent)]" aria-hidden="true"></span>
+              <span>{isTr ? 'Mühendislik Savunması' : 'Engineering Defense'}</span>
+            </h4>
+            <p class="text-[var(--text)] leading-relaxed text-[13.5px]">
+              {item.solution[lang]}
+            </p>
+          </div>
         </div>
 
-        <!-- Editorial Description -->
-        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
-          {isTr 
-            ? "Saha kısıtları ve donanım gerçeklikleriyle sınanmış mühendislik kuralları. Bir kuralın nasıl bozulacağı öngörülmeden ve üretimde test edilmeden hiçbir mimari karar alınmaz." 
-            : "Rigid engineering rules forged under production stress and hardware limits. No architecture is established without defining its failure mode and production defense."}
-        </p>
-      </div>
-    </div>
-
-    <!-- Right 8 Columns: 2-Column Asymmetric Bento Grid -->
-    <div class="lg:col-span-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {INVARIANTS.map((item, idx) => {
-          const isHero = idx === 0;
-
-          return (
-            <article 
-              class={`relative border border-[var(--border)] bg-[var(--bg)] rounded-none p-5 sm:p-6 space-y-5 hover:border-[var(--border-strong)] transition-all ${isHero ? 'md:col-span-2 bg-[var(--bg-subtle)]/30' : 'md:col-span-1'}`}
-            >
-              <!-- Invariant Header -->
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
-                <div class="flex items-center gap-2.5">
-                  <span class="font-mono text-[11px] font-semibold text-[var(--text-accent)]">
-                    {item.badge}
-                  </span>
-                  <span class="text-[var(--text-dim)]" aria-hidden="true">·</span>
-                  <h3 class={`font-serif font-medium text-[var(--text)] ${isHero ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'}`}>
-                    {item.title[lang]}
-                  </h3>
-                </div>
-
-                <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                  <span class="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-green)]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
-                    <span>{isTr ? 'KURAL: KORUNUYOR' : 'ENFORCED'}</span>
-                  </span>
-                </div>
-              </div>
-
-              <!-- 4 Structured Fields in Bento Rhythm -->
-              <div class={`grid grid-cols-1 ${isHero ? 'md:grid-cols-2 gap-6' : 'gap-4'} text-xs font-sans pt-1`}>
-                <!-- 1. Kural -->
-                <div class="border-l-2 border-[var(--accent)] pl-3.5 space-y-1">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-accent)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
-                    <span>{isTr ? 'Kural' : 'Invariant Rule'}</span>
-                  </div>
-                  <p class="text-[var(--text)] leading-relaxed text-sm max-w-[65ch]">
-                    {item.rule[lang]}
-                  </p>
-                </div>
-
-                <!-- 2. Nasıl Bozulur -->
-                <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--text-dim)] shrink-0" aria-hidden="true"></span>
-                    <span>{isTr ? 'Nasıl Bozulur' : 'How It Breaks'}</span>
-                  </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-sm max-w-[65ch]">
-                    {item.failureMode[lang]}
-                  </p>
-                </div>
-
-                <!-- 3. Çözüm -->
-                <div class="border-l-2 border-[var(--accent)] pl-3.5 space-y-1">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
-                    <span>{isTr ? 'Mühendislik Çözümü' : 'Engineering Solution'}</span>
-                  </div>
-                  <p class="text-[var(--text)] leading-relaxed text-sm max-w-[65ch]">
-                    {item.solution[lang]}
-                  </p>
-                </div>
-
-                <!-- 4. Nerede Doğruladım -->
-                <div class="border-l-2 border-[var(--border-strong)] pl-3.5 space-y-1">
-                  <div class="font-mono text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-[var(--border-strong)] shrink-0" aria-hidden="true"></span>
-                    <span>{isTr ? 'Nerede Doğruladım' : 'Production Verification'}</span>
-                  </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-sm max-w-[65ch]">
-                    {item.verification[lang]}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Footer Context Note -->
-              <div class="pt-2.5 flex justify-between items-center text-[11px] font-mono border-t border-[var(--border)] text-[var(--text-dim)]">
-                <span>{isTr ? 'Hata Modu Güvencesi' : 'Failure Mode Assurance'}</span>
-                <span class="text-[var(--text-muted)]">{item.badge}</span>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </div>
+        <!-- Verification Footnote -->
+        <div class="text-xs font-mono text-[var(--text-dim)] pt-2 border-t border-[var(--border)] flex items-center gap-2">
+          <span class="text-[var(--text-muted)] font-medium">{isTr ? 'Doğrulama Alanı:' : 'Verification Context:'}</span>
+          <span>{item.verification[lang]}</span>
+        </div>
+      </article>
+    ))}
   </div>
 </section>

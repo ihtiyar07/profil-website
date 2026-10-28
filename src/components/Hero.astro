@@ -7,29 +7,27 @@ export interface Props {
 
 const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
-
-const headline = SITE_META.headline[lang];
-const nowLine = SITE_META.nowLine[lang];
 ---
 
-<section class="relative py-12 sm:py-18 border-b border-[var(--border)]">
-
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-    <!-- Left 8 Columns: Editorial Headline, Bio, and Industrial CTA -->
-    <div class="lg:col-span-8 space-y-6">
-      <!-- Monospace Section Tag -->
-      <div class="flex items-center gap-2">
-        <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-          00 · {isTr ? 'GİRİŞ & KONUMLANDIRMA' : 'POSITIONING & DOSSIER'}
+<section class="py-12 sm:py-20 border-b border-[var(--border)]">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+    <!-- Left 8 Columns: Narrative & Headline -->
+    <div class="lg:col-span-8 space-y-7">
+      <!-- Live Status Telemetry Bar -->
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--status-green)] font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
+          <span>{isTr ? 'Üretimde Aktif' : 'Production Active'}</span>
         </span>
-        <span class="h-px w-8 bg-[var(--border-strong)]"></span>
+        <span class="text-[var(--border-strong)]">·</span>
+        <span>{isTr ? 'Diverjans IT · Dağıtık Telemetri ve Sistem Mimarisi' : 'Diverjans IT · Distributed Telemetry & Systems'}</span>
       </div>
 
-      <!-- H1 Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.85rem] font-serif leading-[1.16] tracking-tight text-[var(--text)]">
+      <!-- Main Headline -->
+      <h1 class="text-3xl sm:text-4xl lg:text-[3.25rem] font-serif leading-[1.14] tracking-tight text-[var(--text)]">
         {isTr ? (
           <>
-            Sensörden imzalı rapora, <span class="italic font-normal">verinin yolunu</span> baştan sona kuran mühendis.
+            Sensörden imzalı rapora: <span class="italic font-normal">verinin yolunu</span> baştan sona kuran mühendis.
           </>
         ) : (
           <>
@@ -38,74 +36,89 @@ const nowLine = SITE_META.nowLine[lang];
         )}
       </h1>
 
-      <!-- "Now" Line -->
-      <div class="font-mono text-xs sm:text-[13px] text-[var(--text-muted)] border-l-2 border-[var(--accent)] pl-3.5 py-1 leading-relaxed bg-[var(--bg-subtle)]/40">
-        <div class="flex items-start gap-2">
-          <span class="w-1.5 h-1.5 bg-[var(--accent)] mt-1.5 inline-block shrink-0" aria-hidden="true"></span>
-          <span>{nowLine}</span>
-        </div>
-      </div>
-
-      <!-- Bio / Context -->
+      <!-- Bio / Context Narrative -->
       <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
         {isTr ? (
           <>
-            Diverjans Bilgi Teknolojileri bünyesinde; donanım seviyesinden (ESP32, Modbus) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) Apache Arrow sıfır kopyalama veri aktarımına ve resmi e-imzalı denetim raporlarına kadar uzanan uçtan uca veri hatlarını kuruyorum.
+            Diverjans IT bünyesinde; donanım seviyesinden (ESP32, Modbus RTU/TCP) dağıtık mikroservislere, zaman serisi depolamadan (TimescaleDB) Apache Arrow sıfır-kopyalama veri aktarımına ve resmi e-imzalı denetim raporlarına kadar uzanan telemetri ve sistem hatlarını bizzat tasarlıyor ve idame ediyorum.
           </>
         ) : (
           <>
-            Based in Istanbul, engineering distributed data infrastructure at Diverjans IT. Building end-to-end telemetry pipelines from physical microcontrollers (ESP32, Modbus) and message brokers up to high-throughput time-series storage (TimescaleDB), Apache Arrow zero-copy streams, and legally binding audit reports.
+            Engineering distributed telemetry infrastructure at Diverjans IT in Istanbul. Architecting end-to-end data pipelines from physical microcontrollers (ESP32, Modbus RTU/TCP) up to high-throughput time-series storage (TimescaleDB), Apache Arrow zero-copy memory streaming, and legally binding X.509 audit reports.
           </>
         )}
       </p>
 
-      <!-- Industrial CTA Actions -->
-      <div class="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs pt-2">
-        <!-- Main Industrial Inverting CTA -->
+      <!-- Integrated Architectural Telemetry Matrix -->
+      <div class="pt-2 border-t border-[var(--border)]">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 py-3 font-mono">
+          <div>
+            <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">100K+</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Uç Cihaz (Modbus/ESP32)' : 'Edge Devices (Modbus)'}</div>
+          </div>
+          <div>
+            <div class="text-xl sm:text-2xl font-semibold text-[var(--text-accent)] tracking-tight">&lt;15ms</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Arrow IPC Render' : 'Arrow IPC Stream'}</div>
+          </div>
+          <div>
+            <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">&lt;1ms</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'O(1) Yetki İptali' : 'O(1) Revocation'}</div>
+          </div>
+          <div>
+            <div class="text-xl sm:text-2xl font-semibold text-[var(--status-green)] tracking-tight">0</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Kayıpsız Ring-Buffer' : 'Loss Flash Buffer'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clean Action Links -->
+      <div class="flex flex-wrap items-center gap-4 pt-1">
         <a
-          href={isTr ? '#cases' : '/en#cases'}
-          class="px-5 py-3 bg-[var(--text)] text-[var(--bg)] border border-[var(--text)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-3 tactile-btn group"
+          href={isTr ? '#pipeline' : '/en#pipeline'}
+          class="px-5 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
-          <span>{isTr ? 'Vaka Çalışmalarını İncele' : 'Inspect Case Studies'}</span>
-          <span class="font-mono transition-transform group-hover:translate-x-1" aria-hidden="true">-></span>
+          <span>{isTr ? 'Veri Hattını İncele' : 'Explore Data Pipeline'}</span>
+          <span aria-hidden="true">↓</span>
         </a>
 
-        <!-- Secondary Industrial Mail CTA -->
+        <a
+          href={isTr ? '#cases' : '/en#cases'}
+          class="px-5 py-2.5 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
+        >
+          <span>{isTr ? 'Vaka Çalışmaları' : 'Case Studies'}</span>
+          <span aria-hidden="true">→</span>
+        </a>
+
         <a
           href={`mailto:${SITE_META.email}`}
-          class="px-5 py-3 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors rounded-none font-mono text-xs font-semibold tracking-wider uppercase inline-flex items-center gap-2 tactile-btn"
+          class="px-3 py-2.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors text-xs font-mono inline-flex items-center gap-1.5"
         >
-          <span>{isTr ? 'E-posta Gönder' : 'Send Email'}</span>
+          <span>{isTr ? 'Doğrudan İletişim' : 'Direct Contact'}</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
         </a>
       </div>
     </div>
 
-    <!-- Right 4 Columns: High-contrast Monochrome Portrait with Technical Blueprint Coordinates -->
+    <!-- Right 4 Columns: Direct, Architectural Portrait -->
     <div class="lg:col-span-4 flex flex-col items-start lg:items-end">
-      <div class="relative border border-[var(--border-strong)] p-1 bg-[var(--bg-subtle)] rounded-[2px] shadow-xs w-fit">
-        <!-- High-Contrast Monochrome Portrait Container -->
-        <div class="w-40 sm:w-48 h-48 sm:h-56 overflow-hidden bg-[var(--bg)] border border-[var(--border)] relative group/photo">
+      <div class="w-48 sm:w-56 space-y-3">
+        <div class="aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
           <picture>
             <source srcset="/profile.webp" type="image/webp" />
             <img
               src="/profile.png"
-              alt="Ahmet İhtiyar — Portre"
-              width="192"
-              height="224"
+              alt="Ahmet İhtiyar"
+              width="224"
+              height="280"
               loading="eager"
-              class="w-full h-full object-cover object-center transition-all duration-500 filter contrast-[1.05] sm:grayscale sm:contrast-[1.18] sm:brightness-[0.98] sm:group-hover/photo:contrast-[1.05] sm:group-hover/photo:grayscale-0"
+              class="w-full h-full object-cover object-center filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:contrast-100 transition-all duration-500"
             />
           </picture>
         </div>
 
-        <!-- Clean Location & Status Footer -->
-        <div class="px-2 py-1.5 font-mono text-[11px] text-[var(--text-muted)] flex items-center justify-between gap-2 mt-1">
-          <div class="flex items-center gap-1.5 font-medium tracking-wide">
-            <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-            <span>{isTr ? 'İstanbul' : 'Istanbul'}</span>
-          </div>
-          <span class="text-[var(--text-dim)]">Diverjans IT</span>
+        <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] px-0.5">
+          <span>İstanbul · Diverjans IT</span>
+          <span class="text-[var(--status-green)] font-medium">● {isTr ? 'Aktif' : 'Active'}</span>
         </div>
       </div>
     </div>

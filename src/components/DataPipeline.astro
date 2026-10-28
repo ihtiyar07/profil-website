@@ -9,571 +9,234 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 ---
 
-<section id="pipeline" class="relative py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-20 sm:scroll-mt-24">
+<section id="pipeline" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+  <!-- Section Title & Narrative -->
+  <div class="space-y-4 mb-10 max-w-3xl">
+    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+      {isTr ? 'Verinin Yolu' : 'The Path of Data'}
+    </h2>
+    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+      {isTr 
+        ? "Fiziksel sensörden resmi e-imzalı rapora kadar uzanan 6 istasyonlu telemetri omurgası. Saha kısıtlarına, hücresel kesintilere ve yüksek veri hacmine karşı bizzat geliştirdiğim savunma ve aktarım katmanları." 
+        : "A 6-station telemetry and data processing backbone from physical sensor to signed audit report. Hardened against industrial field dropouts, network partitions, and massive data volume."}
+    </p>
+  </div>
 
-  <!-- 12-Column Swiss Grid Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-    <!-- Left 4 Columns: Sticky Section Header & Engineering Console -->
-    <div class="lg:col-span-4 space-y-4">
-      <div class="lg:sticky lg:top-24 space-y-4">
-        <!-- Section Number & Category -->
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-[var(--text-accent)] uppercase tracking-wider font-semibold">
-            01 · {isTr ? 'Omurga Mimarisi' : 'Backbone Architecture'}
-          </span>
-          <span class="h-px w-6 bg-[var(--border-strong)]"></span>
-        </div>
-
-        <!-- Editorial Section Title -->
-        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-          {isTr ? 'Verinin Yolu' : 'The Path of Data'}
-        </h2>
-
-        <!-- Index & Flow Taxonomy -->
-        <div class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider leading-relaxed border-l border-[var(--accent)] pl-2.5">
-          {isTr ? 'Cihaz → Aktarım → Kuyruk → Depolama → Teslimat → Güven' : 'Device → Transport → Queue → Storage → Delivery → Trust'}
-        </div>
-
-        <!-- Editorial Description -->
-        <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed">
-          {isTr 
-            ? "Sensörden resmi e-imzalı rapora kadar uzanan 6 istasyonlu telemetri omurgası. Saha kısıtlarına ve ağ kesintilerine karşı geliştirilen donanım ve yazılım savunma katmanları." 
-            : "A 6-station telemetry and data processing backbone from physical sensor to signed audit report. Hardened against industrial field dropouts and network partitions."}
-        </p>
-
-        <!-- Station Quick-Jump Index in Sidebar -->
-        <div class="pt-3 border-t border-[var(--border)] space-y-2 font-mono text-xs">
-          <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider mb-1">
-            {isTr ? 'İstasyon İndeksi' : 'Station Index'}
-          </div>
-          <div class="space-y-1">
-            {PIPELINE_STOPS.map((stop, idx) => (
-              <button
-                type="button"
-                class="pipeline-sidebar-item w-full text-left p-1.5 border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-all flex items-center justify-between text-xs cursor-pointer rounded-none"
-                data-stop-id={stop.id}
-                data-stop-idx={idx}
-              >
-                <div class="flex items-center gap-2 truncate">
-                  <span class="text-[var(--text-accent)] font-semibold">{stop.order}</span>
-                  <span class="truncate">{stop.name[lang]}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+  <!-- Interactive Telemetry Pipeline Rail -->
+  <div class="space-y-8">
+    <!-- Station Selector Rail (Desktop & Mobile) -->
+    <div class="border-y border-[var(--border)] overflow-x-auto no-scrollbar py-1">
+      <div 
+        class="grid grid-cols-6 min-w-[720px] divide-x divide-[var(--border)]" 
+        role="tablist" 
+        aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stations"}
+      >
+        {PIPELINE_STOPS.map((stop, idx) => (
+          <button
+            type="button"
+            role="tab"
+            class={`pipeline-tab-btn text-left p-3.5 sm:p-4 transition-all cursor-pointer tactile-btn group ${idx === 0 ? 'bg-[var(--bg-subtle)] text-[var(--text)]' : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]/50'}`}
+            data-stop-id={stop.id}
+            data-index={idx}
+            aria-selected={idx === 0 ? "true" : "false"}
+            aria-controls={`panel-${stop.id}`}
+            id={`tab-${stop.id}`}
+            tabindex={idx === 0 ? "0" : "-1"}
+          >
+            <div class="flex items-center justify-between gap-1 mb-2">
+              <span class="font-mono text-xs font-semibold text-[var(--text-accent)]">
+                {stop.order}
+              </span>
+              <span class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider hidden sm:inline">
+                {stop.badge[lang]}
+              </span>
+            </div>
+            <div class="font-sans font-medium text-xs sm:text-sm text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors line-clamp-1">
+              {stop.name[lang]}
+            </div>
+            <div class="font-mono text-[11px] text-[var(--text-dim)] truncate mt-1">
+              {stop.tech[0]}
+            </div>
+          </button>
+        ))}
       </div>
     </div>
 
-    <!-- Right 8 Columns: Hardware Bus Schematic & Inspection Sheet -->
-    <div class="lg:col-span-8 space-y-6">
-      <!-- The Pipeline Stage (Authentic Hardware Bus Schematic Flow) -->
-      <div class="relative bg-[var(--bg)] border border-[var(--border)] rounded-none p-4 sm:p-6">
-        <!-- Industrial Chassis Header Bar -->
-        <div class="flex items-center justify-between pb-3.5 mb-5 border-b border-[var(--border)] font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
-            <span class="font-bold text-[var(--text)]">{isTr ? 'Telemetri Veri Hattı Omurgası' : 'Telemetry Data Bus Spine'}</span>
-            <span class="text-[var(--border-strong)] hidden sm:inline">|</span>
-            <span class="hidden sm:inline">{isTr ? '6 Kritik Durak · 120Ω Sonlandırma' : '6 Critical Stations · 120Ω Termination'}</span>
-          </div>
-          <div class="flex items-center gap-2 font-mono text-[11px]">
-            <span class="text-[var(--status-green)] font-semibold flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 bg-[var(--status-green)] rounded-none inline-block"></span>
-              {isTr ? 'HAT: ÇEVRİMİÇİ' : 'BUS: ACTIVE'}
-            </span>
-          </div>
-        </div>
-
-        <!-- Desktop Flow Schematic (Hardware Bus Track & Tap Nodes) -->
-        <div class="hidden md:block relative mb-6">
-          <div class="relative h-10 w-full">
-            <svg class="w-full h-full block" fill="none" aria-hidden="true">
-              <!-- Termination markers on bus ends (120Ω characteristic impedance) -->
-              <rect x="4" y="9" width="14" height="14" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="2" rx="0" />
-              <line x1="11" y1="5" x2="11" y2="27" stroke="var(--text-dim)" stroke-width="1.5" />
-              <text x="24" y="20" fill="var(--text-dim)" font-family="monospace" font-size="11" font-weight="bold">120Ω</text>
-              
-              <rect x="calc(100% - 18px)" y="9" width="14" height="14" fill="var(--bg-code)" stroke="var(--border-strong)" stroke-width="2" rx="0" />
-              <line x1="calc(100% - 11px)" y1="5" x2="calc(100% - 11px)" y2="27" stroke="var(--text-dim)" stroke-width="1.5" />
-              <text x="calc(100% - 55px)" y="20" fill="var(--text-dim)" font-family="monospace" font-size="11" font-weight="bold">120Ω</text>
-
-              <!-- Main Bus Line (Base Trunk) -->
-              <line x1="18" y1="16" x2="calc(100% - 18px)" y2="16" stroke="var(--border-strong)" stroke-width="3" />
-              
-              <!-- Illuminated Segment Overlays -->
-              <line id="track-seg-0" x1="8.333%" y1="16" x2="25%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.4" class="transition-opacity duration-300" />
-              <line id="track-seg-1" x1="25%" y1="16" x2="41.667%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-2" x1="41.667%" y1="16" x2="58.333%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-3" x1="58.333%" y1="16" x2="75%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
-              <line id="track-seg-4" x1="75%" y1="16" x2="91.667%" y2="16" stroke="var(--accent)" stroke-width="3.5" opacity="0.2" class="transition-opacity duration-300" />
-
-              <!-- Vertical Drop Stubs connecting trunk to station cards -->
-              <line x1="8.333%" y1="16" x2="8.333%" y2="40" stroke="var(--accent)" stroke-width="2.5" class="tap-stub tap-stub-0 transition-colors" />
-              <line x1="25%" y1="16" x2="25%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-1 transition-colors" />
-              <line x1="41.667%" y1="16" x2="41.667%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-2 transition-colors" />
-              <line x1="58.333%" y1="16" x2="58.333%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-3 transition-colors" />
-              <line x1="75%" y1="16" x2="75%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-4 transition-colors" />
-              <line x1="91.667%" y1="16" x2="91.667%" y2="40" stroke="var(--border-strong)" stroke-width="2" class="tap-stub tap-stub-5 transition-colors" />
-
-              <!-- Station Nodes on trunk (Interactive Tap Terminals) -->
-              <circle cx="8.333%" cy="16" r="6.5" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" class="svg-node svg-node-0 transition-all duration-200" id="svg-node-0" aria-hidden="true" />
-              <circle cx="25%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-1 transition-all duration-200" id="svg-node-1" aria-hidden="true" />
-              <circle cx="41.667%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-2 transition-all duration-200" id="svg-node-2" aria-hidden="true" />
-              <circle cx="58.333%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-3 transition-all duration-200" id="svg-node-3" aria-hidden="true" />
-              <circle cx="75%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-4 transition-all duration-200" id="svg-node-4" aria-hidden="true" />
-              <circle cx="91.667%" cy="16" r="5" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="2" class="svg-node svg-node-5 transition-all duration-200" id="svg-node-5" aria-hidden="true" />
-            </svg>
-
-            <!-- Ambient Traveling Packet (Desktop) -->
-            <div class="pipeline-packet-desktop w-3 h-3 bg-[var(--accent)] rounded-none pointer-events-none" aria-hidden="true" title="Veri Paketi" id="pipeline-ambient-packet" style="top: 16px;"></div>
-          </div>
-
-          <!-- 6 Hardware Bus Tap Stations -->
-          <div class="relative z-10 grid grid-cols-6 border-2 border-[var(--border-strong)] divide-x divide-[var(--border)] rounded-none bg-[var(--bg)]" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
-            {PIPELINE_STOPS.map((stop, idx) => (
-              <button
-                type="button"
-                role="tab"
-                class={`pipeline-stop-btn group text-left px-3 py-3 border-t-[3px] ${idx === 0 ? 'border-t-[var(--accent)] bg-[var(--bg-subtle)]' : 'border-t-transparent bg-transparent'} hover:border-t-[var(--accent)]/60 focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-all cursor-pointer flex flex-col justify-between tactile-btn rounded-none`}
-                data-stop-id={stop.id}
-                data-index={idx}
-                aria-selected={idx === 0 ? "true" : "false"}
-                aria-controls={`panel-${stop.id}`}
-                id={`btn-${stop.id}`}
-                tabindex={idx === 0 ? "0" : "-1"}
-              >
-                <div class="flex items-center justify-between w-full mb-1.5">
-                  <span class="font-mono text-xs font-bold text-[var(--text-accent)] flex items-center gap-1 group-hover:text-[var(--text)]">
-                    <span>[{stop.order}]</span>
-                  </span>
-                  <span class="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-wider hidden lg:inline font-semibold">
-                    {stop.badge[lang].split(' ')[0]}
-                  </span>
-                </div>
-                <div>
-                  <div class="font-serif text-[14px] sm:text-[14.5px] font-semibold text-[var(--text)] leading-tight mb-1 group-hover:text-[var(--text-accent)] transition-colors">
-                    {stop.name[lang]}
-                  </div>
-                  <div class="font-mono text-[11px] text-[var(--text-dim)] truncate">
-                    {stop.tech[0]}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <!-- Mobile Vertical Flow (Continuous Vertical Bus Line with Tap Stubs) -->
-        <div class="md:hidden relative mb-6 pl-8 space-y-2.5" role="tablist" aria-label={isTr ? "Veri Hattı Durakları" : "Data Pipeline Stops"}>
-          <!-- Vertical Trunk Line -->
-          <div class="absolute left-[11px] top-3 bottom-3 w-[3px] bg-[var(--border-strong)]" aria-hidden="true"></div>
-          <div class="absolute left-[6px] top-0 w-3 h-3 bg-[var(--bg-code)] border-2 border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
-          <div class="absolute left-[6px] bottom-0 w-3 h-3 bg-[var(--bg-code)] border-2 border-[var(--border-strong)] rounded-none" aria-hidden="true"></div>
-
-          <!-- Mobile moving packet -->
-          <div class="pipeline-packet-mobile w-2.5 h-2.5 bg-[var(--accent)] rounded-none pointer-events-none" aria-hidden="true"></div>
-
-          {PIPELINE_STOPS.map((stop, idx) => (
-            <div class="mobile-stop-wrapper relative" data-stop-id={stop.id} data-index={idx}>
-              <!-- Tap branch from vertical trunk to card -->
-              <div class="absolute -left-8 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" aria-hidden="true">
-                <span class={`mobile-tap-node w-2.5 h-2.5 rounded-none border-2 ${idx === 0 ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'} transition-colors ml-1 z-10`}></span>
-                <span class={`mobile-tap-stub w-5 h-0.5 ${idx === 0 ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'} transition-colors`}></span>
+    <!-- Active Station Detailed Inspector Sheet -->
+    <div class="py-2">
+      {PIPELINE_STOPS.map((stop, idx) => (
+        <div
+          id={`panel-${stop.id}`}
+          class={`pipeline-station-panel ${idx === 0 ? 'block' : 'hidden'} space-y-8`}
+          role="tabpanel"
+          aria-labelledby={`tab-${stop.id}`}
+        >
+          <!-- Station Header -->
+          <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-4 pb-6 border-b border-[var(--border)]">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
+                <span class="text-[var(--text-accent)] font-semibold">{isTr ? 'İstasyon' : 'Station'} {stop.order}</span>
+                <span>·</span>
+                <span>{stop.badge[lang]}</span>
               </div>
-
-              <button
-                type="button"
-                role="tab"
-                class={`pipeline-stop-btn-mobile w-full text-left p-3.5 rounded-none border-y border-r border-l-[3px] ${idx === 0 ? 'border-l-[var(--accent)] border-y-[var(--border)] border-r-[var(--border)] bg-[var(--bg-subtle)]' : 'border-l-transparent border-[var(--border)] bg-[var(--bg)]'} hover:border-l-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors tactile-btn`}
-                data-stop-id={stop.id}
-                data-index={idx}
-                aria-selected={idx === 0 ? "true" : "false"}
-                aria-controls={`panel-${stop.id}`}
-                id={`btn-mobile-${stop.id}`}
-                tabindex={idx === 0 ? "0" : "-1"}
-              >
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="font-mono text-xs text-[var(--text-accent)] font-bold flex items-center gap-1.5">
-                    <span>[{stop.order}]</span>
-                  </span>
-                  <span class="font-mono text-[11px] text-[var(--text-dim)] font-semibold uppercase tracking-wider">{stop.badge[lang]}</span>
-                </div>
-                <div class="font-serif text-base text-[var(--text)] font-semibold">{stop.name[lang]}</div>
-                <div class="font-mono text-xs text-[var(--text-dim)] mt-1">
-                  {stop.tech.slice(0, 3).join(' · ')}
-                </div>
-              </button>
+              <h3 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+                {stop.name[lang]}
+              </h3>
             </div>
-          ))}
-        </div>
 
-        <!-- Stop Detail Inspection Sheet (Single Coherent Sheet) -->
-        <div class="border-t border-[var(--border)] pt-6 mt-4">
-          {PIPELINE_STOPS.map((stop, idx) => (
-            <div
-              id={`panel-${stop.id}`}
-              class={`pipeline-detail-panel ${idx === 0 ? 'block opacity-100' : 'hidden opacity-0'} space-y-6 transition-all duration-200`}
-              role="tabpanel"
-              aria-labelledby={`btn-${stop.id}`}
-            >
-              <!-- Sheet Header -->
-              <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-3 pb-4 border-b border-[var(--border)]">
-                <div class="space-y-1.5">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs px-2.5 py-0.5 bg-[var(--accent)] text-white dark:text-[#0A0F1D] rounded-none font-bold">
-                      {stop.order}
-                    </span>
-                    <span class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
-                      {stop.badge[lang]}
-                    </span>
-                  </div>
-                  <h3 class="text-2xl sm:text-3xl font-serif font-bold text-[var(--text)] pt-0.5 tracking-tight">
-                    {stop.name[lang]}
-                  </h3>
-                </div>
-
-                <!-- Editorial Stack Line in Spec Header Box -->
-                <div class="font-mono text-xs text-[var(--text-muted)] md:text-right max-w-md bg-[var(--bg-subtle)] px-3 py-1.5 border border-[var(--border)]">
-                  <span class="text-[var(--text-dim)] font-semibold">{isTr ? 'PROTOKOL & YIĞIN: ' : 'PROTOCOL & STACK: '}</span>
-                  <span class="text-[var(--text)] font-medium">{stop.tech.join(' · ')}</span>
-                </div>
-              </div>
-
-              <!-- 4-Section Technical Specification Matrix -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-sans pt-1">
-                <!-- 01. Çekirdek İşlev -->
-                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--accent)] border-y border-r border-[var(--border)]">
-                  <div class="font-mono text-[11px] font-bold text-[var(--text-accent)] uppercase tracking-wider flex items-center justify-between">
-                    <span class="flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 bg-[var(--accent)] rounded-none" aria-hidden="true"></span>
-                      <span>{isTr ? '[01 / ÇEKİRDEK İŞLEV]' : '[01 / CORE FUNCTION]'}</span>
-                    </span>
-                  </div>
-                  <p class="text-[var(--text)] leading-relaxed text-[13.5px] sm:text-sm">
-                    {stop.whatIDid[lang]}
-                  </p>
-                </div>
-
-                <!-- 02. Mimari Karar Gerekçesi -->
-                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--border-strong)] border-y border-r border-[var(--border)]">
-                  <div class="font-mono text-[11px] font-bold text-[var(--text)] uppercase tracking-wider flex items-center justify-between">
-                    <span class="flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 bg-[var(--border-strong)] rounded-none" aria-hidden="true"></span>
-                      <span>{isTr ? '[02 / MİMARİ KARAR]' : '[02 / ARCHITECTURAL RATIONALE]'}</span>
-                    </span>
-                  </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px] sm:text-sm">
-                    {stop.whyDecision[lang]}
-                  </p>
-                </div>
-
-                <!-- 03. Elenen Yöntem -->
-                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--border-strong)] border-y border-r border-[var(--border)]">
-                  <div class="font-mono text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider flex items-center justify-between">
-                    <span class="flex items-center gap-1.5">
-                      <span class="text-[var(--text-dim)] font-bold" aria-hidden="true">✕</span>
-                      <span>{isTr ? '[03 / ELENEN YÖNTEM]' : '[03 / ELIMINATED ALTERNATIVE]'}</span>
-                    </span>
-                  </div>
-                  <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px] sm:text-sm">
-                    {stop.alternativeEliminated[lang]}
-                  </p>
-                </div>
-
-                <!-- 04. Saha Riski & Çözüm -->
-                <div class="space-y-2 p-3.5 sm:p-4 bg-[var(--bg-subtle)] border-l-[3px] border-l-[var(--accent)] border-y border-r border-[var(--border)]">
-                  <div class="font-mono text-[11px] font-bold text-[var(--text-accent)] uppercase tracking-wider flex items-center justify-between">
-                    <span class="flex items-center gap-1.5">
-                      <span class="text-[var(--text-accent)] font-bold" aria-hidden="true">⚡</span>
-                      <span>{isTr ? '[04 / SAHA RİSKİ & ÇÖZÜM]' : '[04 / FIELD DEFENSE & RECOVERY]'}</span>
-                    </span>
-                  </div>
-                  <p class="text-[var(--text)] leading-relaxed text-[13.5px] sm:text-sm">
-                    {stop.challenge[lang]}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Deep Link to Relevant Case Study -->
-              <div class="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-                <span class="text-[11px] text-[var(--text-dim)] flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 bg-[var(--accent)]" aria-hidden="true"></span>
-                  <span>{isTr ? 'İlgili Mühendislik Dosyası' : 'Related Engineering Dossier'}</span>
+            <!-- Tech Stack Pills -->
+            <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs text-[var(--text-muted)]">
+              {stop.tech.map((t) => (
+                <span class="px-2 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[var(--text-muted)] text-[11px]">
+                  {t}
                 </span>
+              ))}
+            </div>
+          </div>
 
+          <!-- 2-Column Deep Architecture Specification -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 text-sm font-sans">
+            <!-- Left 6 Columns: Core Function & Architectural Rationale -->
+            <div class="lg:col-span-6 space-y-6">
+              <div class="space-y-2">
+                <h4 class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider">
+                  {isTr ? 'Çekirdek İşlev' : 'Core Function'}
+                </h4>
+                <p class="text-[var(--text)] leading-relaxed text-[14.5px]">
+                  {stop.whatIDid[lang]}
+                </p>
+              </div>
+
+              <div class="space-y-2 pt-4 border-t border-[var(--border)]">
+                <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
+                  {isTr ? 'Mimari Karar Gerekçesi' : 'Architectural Rationale'}
+                </h4>
+                <p class="text-[var(--text-muted)] leading-relaxed text-[14px]">
+                  {stop.whyDecision[lang]}
+                </p>
+              </div>
+
+              <div class="space-y-2 pt-4 border-t border-[var(--border)]">
+                <h4 class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+                  {isTr ? 'Elenen Alternatif Yöntem' : 'Eliminated Alternative'}
+                </h4>
+                <p class="text-[var(--text-muted)] leading-relaxed text-[13.5px]">
+                  {stop.alternativeEliminated[lang]}
+                </p>
+              </div>
+            </div>
+
+            <!-- Right 6 Columns: Field Defense, Edge Cases & Case Link -->
+            <div class="lg:col-span-6 space-y-6">
+              <!-- Field Defense Specification (Clean, No Box-in-Box) -->
+              <div class="space-y-3 pt-1">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <h4 class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider">
+                    {isTr ? 'Saha Riski ve Savunma Mekanizması' : 'Field Risk & Defense Strategy'}
+                  </h4>
+                </div>
+                <p class="text-[var(--text)] leading-relaxed text-[14px] pl-6 border-l border-[var(--border-strong)]">
+                  {stop.challenge[lang]}
+                </p>
+              </div>
+
+              <!-- Case Link -->
+              <div class="pt-6 border-t border-[var(--border)] flex items-center justify-between text-xs font-mono">
+                <span class="text-[var(--text-dim)]">
+                  {isTr ? 'Doğrulandığı Dosya:' : 'Verified Dossier:'}
+                </span>
                 <a
                   href={stop.caseLink.href}
-                  class="text-[var(--text-accent)] hover:text-[var(--accent)] hover:underline font-medium inline-flex items-center gap-1.5 p-1 group tactile-btn"
+                  class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] font-medium inline-flex items-center gap-1 hover:underline"
                 >
                   <span>{stop.caseLink.text[lang]}</span>
-                  <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+                  <span aria-hidden="true">→</span>
                 </a>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      ))}
+    </div>
 
-      <!-- Infrastructure Ground Plane (Altyapı Topraklama ve Zemin Hattı) -->
-      <div class="border-2 border-[var(--border-strong)] bg-[var(--bg-subtle)] rounded-none px-4 py-3.5 relative">
-        <div class="absolute -top-2.5 left-4 px-2 bg-[var(--bg)] border border-[var(--border-strong)] font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-bold">
-          {isTr ? 'GND / ORTAK ZEMİN HATTI' : 'GND / COMMON GROUND PLANE'}
+    <!-- Infrastructure Ground Plane Strip -->
+    <div class="pt-8 border-t border-[var(--border)]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-[var(--text-dim)]">
+        <div class="flex items-center gap-2 text-[var(--text)] font-medium">
+          <svg class="w-3.5 h-3.5 text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          <span>{isTr ? 'Altyapı Temeli' : 'Infrastructure Bedrock'}</span>
         </div>
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 bg-[var(--accent)] rounded-none inline-block"></span>
-            <span class="font-mono text-xs uppercase tracking-wider text-[var(--text)] font-bold">
-              {isTr ? 'Altyapı Katmanı' : 'Bare-Metal Infrastructure'}
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {INFRASTRUCTURE_STRIP.map((infra) => (
+            <span class="hover:text-[var(--text)] transition-colors" title={infra.desc[lang]}>
+              {infra.name}
             </span>
-          </div>
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-mono text-[var(--text-muted)]">
-            {INFRASTRUCTURE_STRIP.map((infra) => (
-              <span class="inline-flex items-center gap-1.5 hover:text-[var(--text)] transition-colors group cursor-default" title={infra.desc[lang]}>
-                <span class="text-[var(--accent)] font-bold">⏚</span>
-                <span class="font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)]">{infra.name}</span>
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Interactive Pipeline & Telemetry Ping Simulator Script -->
+<!-- Interactive Station Switcher Script -->
 <script is:inline>
   (function() {
-    function setupPipeline() {
-      const desktopBtns = Array.from(document.querySelectorAll('.pipeline-stop-btn'));
-      const mobileWrappers = Array.from(document.querySelectorAll('.mobile-stop-wrapper'));
-      const mobileBtns = Array.from(document.querySelectorAll('.pipeline-stop-btn-mobile'));
-      const sidebarItems = Array.from(document.querySelectorAll('.pipeline-sidebar-item'));
-      const panels = Array.from(document.querySelectorAll('.pipeline-detail-panel'));
-      const svgNodes = Array.from(document.querySelectorAll('.svg-node'));
-      const trackSegments = [
-        document.getElementById('track-seg-0'),
-        document.getElementById('track-seg-1'),
-        document.getElementById('track-seg-2'),
-        document.getElementById('track-seg-3'),
-        document.getElementById('track-seg-4')
-      ];
+    function setupPipelineTabs() {
+      const tabs = Array.from(document.querySelectorAll('.pipeline-tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.pipeline-station-panel'));
 
-      const isTurkish = document.documentElement.lang === 'tr';
-
-      const STOP_IDS = ['device', 'transport', 'queue', 'storage', 'delivery', 'security'];
-      const NODE_PCT_COORDS = ['8.333%', '25%', '41.667%', '58.333%', '75%', '91.667%'];
-
-      function updateTrackIllumination(activeIdx) {
-        trackSegments.forEach((seg, sIdx) => {
-          if (!seg) return;
-          if (sIdx < activeIdx) {
-            seg.setAttribute('opacity', '0.9');
-            seg.setAttribute('stroke', 'var(--accent)');
-          } else if (sIdx === activeIdx) {
-            seg.setAttribute('opacity', '0.5');
-            seg.setAttribute('stroke', 'var(--accent)');
-          } else {
-            seg.setAttribute('opacity', '0.15');
-            seg.setAttribute('stroke', 'var(--border-strong)');
-          }
-        });
-      }
-
-      function updateTapStubs(activeIdx) {
-        for (let i = 0; i < 6; i++) {
-          const stubs = document.querySelectorAll(`.tap-stub-${i}`);
-          stubs.forEach(stub => {
-            if (i === activeIdx) {
-              stub.setAttribute('stroke', 'var(--accent)');
-              stub.setAttribute('stroke-width', '2.5');
-            } else {
-              stub.setAttribute('stroke', 'var(--border-strong)');
-              stub.setAttribute('stroke-width', '2');
-            }
-          });
-        }
-      }
-
-      function activateStop(stopId, shouldFocus = false) {
-        const activeIdx = STOP_IDS.indexOf(stopId);
-        if (activeIdx === -1) return;
-
-        // Desktop button states
-        desktopBtns.forEach((btn, idx) => {
-          const isSelected = idx === activeIdx;
-          btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-          btn.tabIndex = isSelected ? 0 : -1;
+      function activateStation(index) {
+        tabs.forEach((tab, i) => {
+          const isSelected = i === index;
+          tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+          tab.tabIndex = isSelected ? 0 : -1;
           if (isSelected) {
-            btn.classList.add('border-t-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-            btn.classList.remove('border-t-transparent', 'bg-transparent');
-            if (shouldFocus) btn.focus();
+            tab.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text)]');
+            tab.classList.remove('bg-transparent', 'text-[var(--text-muted)]');
           } else {
-            btn.classList.remove('border-t-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-            btn.classList.add('border-t-transparent', 'bg-transparent');
+            tab.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text)]');
+            tab.classList.add('bg-transparent', 'text-[var(--text-muted)]');
           }
         });
 
-        // Mobile button & tap states
-        mobileWrappers.forEach((wrap, idx) => {
-          const isSelected = idx === activeIdx;
-          const node = wrap.querySelector('.mobile-tap-node');
-          const stub = wrap.querySelector('.mobile-tap-stub');
-          const btn = wrap.querySelector('.pipeline-stop-btn-mobile');
-
-          if (node) {
-            node.className = `mobile-tap-node w-2.5 h-2.5 rounded-none border-2 transition-colors ml-1 z-10 ${isSelected ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border-strong)]'}`;
-          }
-          if (stub) {
-            stub.className = `mobile-tap-stub w-5 h-0.5 transition-colors ${isSelected ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'}`;
-          }
-          if (btn) {
-            btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-            btn.tabIndex = isSelected ? 0 : -1;
-            if (isSelected) {
-              btn.classList.add('border-l-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-              btn.classList.remove('border-l-transparent', 'bg-[var(--bg)]');
-            } else {
-              btn.classList.remove('border-l-[var(--accent)]', 'bg-[var(--bg-subtle)]');
-              btn.classList.add('border-l-transparent', 'bg-[var(--bg)]');
-            }
-          }
-        });
-
-        // Sidebar Index items state
-        sidebarItems.forEach((item, idx) => {
-          const isSelected = idx === activeIdx;
-          if (isSelected) {
-            item.classList.add('border-[var(--accent)]', 'bg-[var(--bg-subtle)]', 'text-[var(--text)]');
-            item.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+        panels.forEach((panel, i) => {
+          if (i === index) {
+            panel.classList.remove('hidden');
+            panel.classList.add('block');
           } else {
-            item.classList.remove('border-[var(--accent)]', 'bg-[var(--bg-subtle)]', 'text-[var(--text)]');
-            item.classList.add('border-transparent', 'text-[var(--text-muted)]');
+            panel.classList.remove('block');
+            panel.classList.add('hidden');
           }
         });
-
-        // SVG Nodes on Desktop Track
-        svgNodes.forEach((node, idx) => {
-          if (idx === activeIdx) {
-            node.setAttribute('fill', 'var(--accent)');
-            node.setAttribute('stroke', 'var(--accent)');
-            node.setAttribute('r', '6.5');
-          } else {
-            node.setAttribute('fill', 'var(--bg)');
-            node.setAttribute('stroke', 'var(--border-strong)');
-            node.setAttribute('r', '5');
-          }
-        });
-
-        updateTrackIllumination(activeIdx);
-        updateTapStubs(activeIdx);
-
-        // Switch panels with crisp display transition
-        panels.forEach((p, idx) => {
-          if (idx === activeIdx) {
-            p.classList.remove('hidden', 'opacity-0');
-            p.classList.add('block', 'opacity-100');
-          } else {
-            p.classList.remove('block', 'opacity-100');
-            p.classList.add('hidden', 'opacity-0');
-          }
-        });
-
-        // Update URL hash without scroll jump
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '#pipeline-' + stopId);
-        }
       }
 
-      // Desktop Tab Click & Keyboard Arrow Navigation
-      desktopBtns.forEach((btn, idx) => {
-        btn.addEventListener('click', () => {
-          const stopId = btn.getAttribute('data-stop-id');
-          if (stopId) activateStop(stopId);
-        });
+      tabs.forEach((tab, idx) => {
+        tab.addEventListener('click', () => activateStation(idx));
+        tab.addEventListener('keydown', (e) => {
+          let nextIdx = null;
+          if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length;
+          else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length;
+          else if (e.key === 'Home') nextIdx = 0;
+          else if (e.key === 'End') nextIdx = tabs.length - 1;
 
-        btn.addEventListener('keydown', (e) => {
-          let targetIdx = null;
-          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          if (nextIdx !== null) {
             e.preventDefault();
-            targetIdx = (idx + 1) % desktopBtns.length;
-          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            targetIdx = (idx - 1 + desktopBtns.length) % desktopBtns.length;
-          } else if (e.key === 'Home') {
-            e.preventDefault();
-            targetIdx = 0;
-          } else if (e.key === 'End') {
-            e.preventDefault();
-            targetIdx = desktopBtns.length - 1;
-          }
-
-          if (targetIdx !== null) {
-            const nextStopId = desktopBtns[targetIdx].getAttribute('data-stop-id');
-            if (nextStopId) activateStop(nextStopId, true);
+            activateStation(nextIdx);
+            tabs[nextIdx].focus();
           }
         });
       });
-
-      // Mobile Tab Click & Keyboard Arrow Navigation
-      mobileBtns.forEach((btn, idx) => {
-        btn.addEventListener('click', () => {
-          const stopId = btn.getAttribute('data-stop-id');
-          if (stopId) activateStop(stopId);
-        });
-
-        btn.addEventListener('keydown', (e) => {
-          let targetIdx = null;
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            targetIdx = (idx + 1) % mobileBtns.length;
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            targetIdx = (idx - 1 + mobileBtns.length) % mobileBtns.length;
-          }
-
-          if (targetIdx !== null) {
-            const nextStopId = mobileBtns[targetIdx].getAttribute('data-stop-id');
-            if (nextStopId) {
-              activateStop(nextStopId, true);
-              mobileBtns[targetIdx].focus();
-            }
-          }
-        });
-      });
-
-      // SVG Tap Nodes Click
-      svgNodes.forEach((node, idx) => {
-        node.addEventListener('click', () => {
-          const stopId = STOP_IDS[idx];
-          if (stopId) activateStop(stopId);
-        });
-      });
-
-      // Sidebar Index Items Click
-      sidebarItems.forEach((item) => {
-        item.addEventListener('click', () => {
-          const stopId = item.getAttribute('data-stop-id');
-          if (stopId) activateStop(stopId);
-        });
-      });
-
-      // Initialize from current URL hash if present, otherwise default to first stop
-      const currentHash = window.location.hash;
-      let initialStop = 'device';
-      if (currentHash && currentHash.startsWith('#pipeline-')) {
-        const parsed = currentHash.replace('#pipeline-', '');
-        if (STOP_IDS.includes(parsed)) {
-          initialStop = parsed;
-        }
-      }
-      activateStop(initialStop);
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupPipeline);
+      document.addEventListener('DOMContentLoaded', setupPipelineTabs);
     } else {
-      setupPipeline();
+      setupPipelineTabs();
     }
   })();
 </script>

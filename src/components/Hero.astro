@@ -40,11 +40,11 @@ const isTr = lang === 'tr';
       <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
         {isTr ? (
           <>
-            Diverjans IT bünyesinde; saha donanımlarından (ESP32, Modbus RTU/TCP) dağıtık mikroservislere, zaman serisi veritabanlarından (TimescaleDB) Apache Arrow tabanlı veri aktarımına ve e-imzalı denetim raporlarına uzanan sistem altyapıları tasarlıyor ve yönetiyorum.
+            Diverjans IT bünyesinde telemetri, dağıtık arka uç servisleri ve veri altyapıları üzerine çalışıyorum. Endüstriyel saha cihazlarının haberleşmesi, zaman serisi verilerinin güvenilir aktarımı ve sistem kararlılığı odaklandığım temel alanlar.
           </>
         ) : (
           <>
-            Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Designing end-to-end pipelines from physical edge devices (ESP32, Modbus RTU/TCP) to time-series storage (TimescaleDB), Apache Arrow zero-copy streaming, and certified X.509 audit reports.
+            Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Focused on industrial edge communication, reliable time-series data pipelines, and high-availability backend services.
           </>
         )}
       </p>
@@ -54,7 +54,7 @@ const isTr = lang === 'tr';
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 py-3 font-mono">
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">100K+</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Saha Cihaz Kapasitesi' : 'Field Device Fleet'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Hedef Cihaz Kapasitesi' : 'Target Fleet Capacity'}</div>
           </div>
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--text-accent)] tracking-tight">&lt;15ms</div>
@@ -66,7 +66,7 @@ const isTr = lang === 'tr';
           </div>
           <div>
             <div class="text-xl sm:text-2xl font-semibold text-[var(--status-green)] tracking-tight">0</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Saha Kesintisi Paket Kaybı' : 'Outage Packet Loss'}</div>
+            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Kesintide Veri Kaybı' : 'Outage Data Loss'}</div>
           </div>
         </div>
       </div>

@@ -13,12 +13,12 @@ const isTr = lang === 'tr';
   <!-- Section Title & Narrative -->
   <div class="space-y-4 mb-10 max-w-3xl">
     <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-      {isTr ? 'Verinin Yolu' : 'The Path of Data'}
+      {isTr ? 'Veri Akış Hattı' : 'Data Pipeline Architecture'}
     </h2>
     <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
       {isTr 
-        ? "Fiziksel sensörden e-imzalı rapora uzanan 6 istasyonlu telemetri omurgası. Saha kısıtlarına, hücresel kesintilere ve yüksek veri hacmine karşı kurgulanan savunma ve aktarım katmanları." 
-        : "A 6-station telemetry and data processing backbone from physical sensor to signed audit report, structured for industrial field reliability, intermittent networks, and high-throughput ingestion."}
+        ? "Uç donanımlardan kalıcı depolamaya ve raporlama servislerine uzanan telemetri mimarisi. Saha kısıtları, hücresel kesintiler ve yüksek veri hacmine karşı uygulanan savunma katmanları." 
+        : "Telemetry and data architecture spanning edge hardware to persistence and audit services. Defensive engineering patterns for field constraints, intermittent networks, and high data volume."}
     </p>
   </div>
 

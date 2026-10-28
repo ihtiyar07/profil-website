@@ -29,7 +29,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Developed FreeRTOS firmware polling Modbus holding registers from industrial chillers and environmental sensors, with a circular flash ring-buffer for offline durability."
     },
     whyDecision: {
-      tr: "Dinamik heap tahsisini (malloc) en aza indirip statik bellek yapıları kullandım; böylece bellek fragmentasyonunu sıfırlayarak sahadaki cihazların aylarca yeniden başlamadan çalışmasını sağladım.",
+      tr: "Dinamik bellek tahsisi (malloc) yerine statik bellek yapıları tercih ettim; bellek parçalanmasını önleyerek cihazların uzun süre yeniden başlamadan kararlı çalışmasını sağladım.",
       en: "Enforced static memory allocations over dynamic malloc to eliminate heap fragmentation, ensuring devices operate for months without watchdog resets."
     },
     alternativeEliminated: {
@@ -62,7 +62,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Engineered dual-channel edge-to-cloud connectivity using Wi-Fi as primary and GSM 4G LTE as automatic failover, supporting secure remote OTA and RPC parameters."
     },
     whyDecision: {
-      tr: "HTTP yoklamaları yerine kalıcı TLS şifreli MQTT (QoS 1) soketi seçtim; her istekte el sıkışma maliyetini önleyerek hücresel SIM kotasını %85 korudum ve Last Will ile anlık kopmaları yakaladım.",
+      tr: "HTTP yoklamaları yerine kalıcı TLS şifreli MQTT (QoS 1) soketi tercih ettim; tekrarlayan TCP/TLS el sıkışma maliyetini ortadan kaldırarak hücresel veri tüketimini düşürdüm ve Last Will ile anlık kopmaları yakaladım.",
       en: "Chose persistent MQTT over TLS (QoS 1) over HTTP polling to eliminate per-request handshakes, saving 85% cellular quota while gaining instant Last Will & Testament offline alerts."
     },
     alternativeEliminated: {
@@ -91,7 +91,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
     },
     tech: ["RabbitMQ", "AMQP", "Dead Letter Exchange (DLX)", "Consistent Hash", "RPC Worker Pool"],
     whatIDid: {
-      tr: "Yüz binlerce cihazdan gelen eşzamanlı telemetri akışını karşılayan, anlık yük patlamalarını emen ve arka uç işleyicilerine dağıtan RabbitMQ kümesi kurdum.",
+      tr: "Saha cihazlarından gelen telemetri akışını karşılayan, anlık yük dalgalanmalarını tamponlayan ve arka uç işleyicilerine dağıtan RabbitMQ mesaj hattını yapılandırdım.",
       en: "Configured a RabbitMQ cluster ingesting concurrent telemetry bursts across high-density device fleets, buffering incoming load and dispatching to worker queues."
     },
     whyDecision: {
@@ -124,8 +124,8 @@ export const PIPELINE_STOPS: PipelineStop[] = [
     },
     tech: ["PostgreSQL", "TimescaleDB Hypertables", "Continuous Aggregates", "Columnar Compression"],
     whatIDid: {
-      tr: "Milyarlarca sensör okumasını zaman dilimli (chunked) hypertables üzerinde depolayan TimescaleDB mimarisini kurdum. Otomatik sıkıştırma ve continuous aggregates özet tabloları uyguladım.",
-      en: "Architected a TimescaleDB persistence layer chunking billions of sensor readings across hypertables, paired with automated continuous aggregates and columnar compression."
+      tr: "Yüksek hacimli sensör kayıtlarını zaman dilimli (chunked) hypertables üzerinde depolayan TimescaleDB mimarisini kurguladım. Otomatik sıkıştırma ve continuous aggregates özet tablolarını yapılandırdım.",
+      en: "Architected a TimescaleDB persistence layer chunking high-volume sensor readings across hypertables, paired with automated continuous aggregates and columnar compression."
     },
     whyDecision: {
       tr: "NoSQL doküman veritabanı yerine ilişkisel PostgreSQL + TimescaleDB seçtim; cihaz metaverileri, müşteri hiyerarşisi ve sensör okumalarını tek bir ACID işlem sınırında, güçlü SQL analitiğiyle birleştirdim.",
@@ -136,7 +136,7 @@ export const PIPELINE_STOPS: PipelineStop[] = [
       en: "Eliminated MongoDB and InfluxDB; lacking native relational JOIN performance and strict transaction boundaries required for enterprise audit reports."
     },
     challenge: {
-      tr: "Eski hypertable verileri üzerinde disk tüketiminin yüzlerce gigabayta fırlaması; 7 günden eski chunk'ları sütunsal sıkıştırmaya (columnar compression) alarak disk kullanımını %90 düşürdüm.",
+      tr: "Eski hypertable dilimlerinde disk büyümesini kontrol altında tutmak için 7 günden eski kayıtları sütunsal sıkıştırmaya (columnar compression) alarak disk kullanımını %90 oranında azalttım.",
       en: "Uncompressed disk growth exploding across historical hypertables; resolved by applying TimescaleDB columnar compression on chunks older than 7 days, cutting disk size by 90%."
     },
     caseLink: {
@@ -190,15 +190,15 @@ export const PIPELINE_STOPS: PipelineStop[] = [
     },
     tech: ["Redis RBAC", "Keycloak SSO", "X.509 e-İmza", "RFC 3161 Zaman Damgası", "TÜBİTAK Kamu SM"],
     whatIDid: {
-      tr: "Mikroservisler arasında yetkileri JWT içine gömmek yerine Redis tabanlı anında iptal edilebilir (instant revocation) model kurdum. Üretilen soğuk zincir raporlarını X.509 e-imza ve RFC 3161 zaman damgasıyla mühürledim.",
+      tr: "Mikroservisler arasında yetkileri JWT içine gömmek yerine Redis tabanlı anında iptal edilebilir bir model tasarladım. Üretilen soğuk zincir raporlarını X.509 e-imza ve RFC 3161 zaman damgasıyla mühürledim.",
       en: "Architected a Redis-backed permission registry enabling instant revocation across microservices, sealing compliance PDF reports with certified X.509 signatures and RFC 3161 timestamps."
     },
     whyDecision: {
-      tr: "Durumsuz JWT'nin 'iptal edilememe' güvenlik açığını kapattım; operatörün yetkisi alındığında token süresini beklemeden, <1 milisaniyede tüm servislerde oturumunun kesilmesini sağladım.",
-      en: "Neutralized the security hole of stateless JWT expiration; when an operator is suspended, permissions revoke in <1ms without awaiting token TTL expiration."
+      tr: "Durumsuz JWT mimarisindeki oturum feshi gecikmesini önlemek için; operatör yetkisi geri alındığında token süresinin bitmesini beklemeden alt milisaniyede oturumu geçersiz kılan Redis doğrulamasını uyguladım.",
+      en: "Addressed the revocation delay inherent to stateless JWTs; when an operator's access is removed, sessions revoke in <1ms across all services without awaiting token TTL expiration."
     },
     alternativeEliminated: {
-      tr: "Token karalama listesi (blacklist) tutmak elendi; milyonlarca hash saklamak yerine kullanıcı başına tekil bir integer 'yetki versiyonu' (versioned claims) ile tüm eski token'lar tek işlemle geçersiz kılındı.",
+      tr: "Genişleyen token karalama listesi (blacklist) tutmak yerine kullanıcı bazında tekil bir tamsayı sürüm damgası (versioned claims) kullanıldı; sürüm artırımı ile eski token'lar tek işlemde geçersiz hale getirildi.",
       en: "Eliminated token blacklists; replaced unbounded ID caches with a single incrementing user version integer that atomically invalidates all prior tokens."
     },
     challenge: {

@@ -2,7 +2,7 @@
 
 Bu depo, **Ahmet İhtiyar**'ın kişisel mühendislik sitesinin kaynak kodlarını içerir. 
 
-Şablon veya tipik "developer portfolio" yaklaşımı yerine; **iyi editörlüğü yapılmış bir mühendislik dosyası** konseptiyle sıfırdan tasarlandı. Ziyaretçiye sensörden resmi e-imzalı rapora kadar verinin tüm yolunu kuran bir mühendisin mimari kararlarını, değişmezlerini ve vaka analizlerini sunar.
+Şablon veya tipik "developer portfolio" yaklaşımı yerine; **iyi editörlüğü yapılmış bir mühendislik dosyası** konseptiyle sıfırdan tasarlandı. Ziyaretçiye uç sistemlerden dağıtık mimarilere telemetri altyapılarını kurgulayan bir mühendisin mimari kararlarını, değişmezlerini ve vaka analizlerini sunar.
 
 ---
 

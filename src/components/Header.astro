@@ -7,13 +7,13 @@ const { lang = 'tr' } = Astro.props;
 const isTr = lang === 'tr';
 
 const navItems = isTr ? [
-  { href: '#pipeline', label: 'Verinin Yolu' },
+  { href: '#pipeline', label: 'Veri Hattı' },
   { href: '#cases', label: 'Vakalar' },
   { href: '#secondary-projects', label: 'Sistemler' },
   { href: '#invariants', label: 'İlkeler' },
   { href: '#contact', label: 'İletişim' }
 ] : [
-  { href: '/en#pipeline', label: 'Path of Data' },
+  { href: '/en#pipeline', label: 'Pipeline' },
   { href: '/en#cases', label: 'Cases' },
   { href: '/en#secondary-projects', label: 'Systems' },
   { href: '/en#invariants', label: 'Invariants' },

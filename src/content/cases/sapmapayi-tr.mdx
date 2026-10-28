@@ -24,7 +24,7 @@ Sapmapayı; aşı, ilaç ve bozulabilir gıda depolarındaki soğuk zincir gerek
 
 ## 2. Problem
 Sistem iki ana tıkanıklıkla karşılaştı:
-1. **Büyük Zaman Serisi Sorgularında Tarayıcı Donması:** Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu geleneksel JSON formatında serileştirip tarayıcıya yollamak ~25MB payload yaratıyor ve JavaScript `JSON.parse()` ana iş parçacığını (main thread) 800ms'den fazla kilitliyordu.
+1. **Büyük Zaman Serisi Sorgularında Tarayıcı Donması:** Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu geleneksel JSON formatında serileştirip tarayıcıya iletmek ~25MB yük yaratıyor ve tarayıcının ana iş parçacığını 800ms'den fazla kilitliyordu.
 2. **Yasal Delil Niteliği:** Raporların sonradan değiştirilmediğini kanıtlamak için her raporun resmi X.509 nitelikli e-imza ve RFC 3161 zaman damgası ile damgalanması şarttı.
 
 ## 3. Mimari ve İkili Veri Yolu
@@ -33,7 +33,7 @@ Soğuk zincir telemetrisi ve yasal raporlama hattı dört entegre katman üzerin
 
 1. **Zaman Serisi Depolama (TimescaleDB):** Sensörlerden gelen yüksek frekanslı sıcaklık ve nem kayıtları hypertables üzerinde tutulur. 1 dakikalık ham veriler, continuous aggregate görünümleri aracılığıyla arka planda diskte saatlik ortalamalara özetlenir.
 2. **İkili Akış Motoru (.NET 10 & Apache Arrow):** İstemci sorgu başlattığında veritabanı kayıtları geleneksel nesne modellerine ve JSON döngülerine sokulmaz. Veriler doğrudan Apache Arrow RecordBatch sütunsal ikili tamponlarına aktarılır ve PipeWriter üzerinden sıkıştırmasız ikili akış olarak iletilir.
-3. **Ön Yüz İkili Eşleme (Canvas & Float64Array):** Tarayıcı tarafında Arrow ikili akışı `Float64Array` tip dizilerine sıfır kopyalama (zero-copy) ile bağlanır. JSON.parse() maliyeti ve çöp toplayıcı (GC) baskısı olmadan grafikler 60 FPS hızında çizilir.
+3. **Ön Yüz İkili Eşleme (Canvas & Float64Array):** Tarayıcı tarafında Arrow ikili akışı `Float64Array` tip dizilerine sıfır kopyalama (zero-copy) ile bağlanır. Metin ayrıştırma maliyeti ve çöp toplayıcı (GC) baskısı olmadan grafikler akıcı biçimde çizilir.
 4. **Resmi Rapor Mühürleme (PKCS#11 HSM & QuestPDF):** Denetim raporları oluşturulurken headless browser yerine doğrudan C# yerel vektör motoru (`QuestPDF`) kullanılır. Üretilen PDF belgeleri izole bir arka plan işçi havuzunda X.509 nitelikli elektronik sertifika ve TÜBİTAK Kamu SM RFC 3161 zaman damgasıyla imzalanır.
 
 ## 4. Kararlar ve Elenen Alternatifler
@@ -49,8 +49,8 @@ Sapmapayı platformundaki performans ve uyum güvencesi iki çekirdek mimari kar
 ### Apache Arrow ile Sıfır Kopyalama (Zero-Copy) Veri Akışı
 Geleneksel web servislerinde 250.000 satırlık bir veri kümesi sorgulandığında süreç ağır serileştirme katmanlarından geçer:
 - Veritabanı satırları C# nesnelerine dönüştürülür (milyonlarca geçici nesne tahsisi ve bellek yükü).
-- Nesneler JSON string formatına serileştirilir (~25MB veri büyüklüğü).
-- Tarayıcı gelen veriyi `JSON.parse()` ile JavaScript nesne ağacına çevirir (~800ms UI thread bloklanması).
+- Nesneler JSON metin formatına serileştirilir (~25MB veri büyüklüğü).
+- Tarayıcı gelen veriyi nesne ağacına ayrıştırırken kullanıcı arayüzü iş parçacığını ~800ms kilitler.
 
 Sapmapayı bu döngüyü Apache Arrow IPC akışı ile kırar. Veritabanından okunan ikili sütunsal bloklar doğrudan Arrow bellek düzenine eşlenir. Tarayıcıya aktarılan veri boyutu 24.8MB'tan 3.1MB'a düşer (%87 ağ tasarrufu). İstemci tarafında Arrow tamponu doğrudan JavaScript `Float64Array` belleğine kopyalamasız eşlenir; UI kilitlenmesi 800ms'den &lt;15ms'ye geriler.
 
@@ -61,7 +61,7 @@ Bunun yanı sıra, yasal geçerlilik sağlayan e-imza donanım güvenlik modüll
 
 ## 6. Sonuç ve Ölçülebilir Çıktılar
 - **Ağ Yükü:** 250.000 satırlık telemetri seti, JSON formatında ~24.8MB iken Apache Arrow IPC ile `~3.1MB` seviyesine indi (~%87 tasarruf).
-- **Tarayıcı CPU Tıkanıklığı:** `JSON.parse` işleminde görülen 750–900ms'lik UI donması, Arrow typed array doğrudan eşlemesi ile `<15ms` seviyesine çekildi.
+- **Tarayıcı CPU Tıkanıklığı:** Geleneksel JSON çözümlemesinde görülen 750–900ms'lik UI donması, Arrow doğrudan bellek eşlemesi ile `<15ms` seviyesine çekildi.
 - **Yasal Güvenlik:** Üretilen her PDF rapor, 5070 sayılı Elektronik İmza Kanunu'na tam uyumlu biçimde nitelikli elektronik sertifika ve TÜBİTAK Kamu SM RFC 3161 zaman damgasıyla mühürlendi.
 - **Doğrulanan Ölçek:** Günlük 500K+ işlenen telemetri satırı; `<15ms` tarayıcı IPC ayrıştırma gecikmesi.
 

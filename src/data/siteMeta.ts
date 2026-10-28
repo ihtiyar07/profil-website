@@ -6,16 +6,16 @@ export const SITE_META = {
     en: "Ahmet İhtiyar — Systems & Backend Engineer | Istanbul"
   },
   headline: {
-    tr: "Gömülü uç sistemlerden dağıtık arka uç mimarilerine uzanan telemetri ve veri altyapıları geliştiriyorum.",
-    en: "Engineering telemetry and data infrastructure from embedded edge systems to distributed backends."
+    tr: "Gömülü uç sistemlerden dağıtık mimarilere telemetri ve veri altyapıları geliştiriyorum.",
+    en: "Engineering telemetry and data infrastructure from embedded edge to distributed backends."
   },
   nowLine: {
     tr: "Diverjans Bilgi Teknolojileri · Telemetri, Dağıtık Sistemler ve Veri Altyapısı",
     en: "Diverjans IT · Telemetry, Distributed Systems & Data Infrastructure"
   },
   bioShort: {
-    tr: "Saha donanımlarından (ESP32, Modbus) dağıtık mikroservislere, zaman serisi veritabanlarından (TimescaleDB) Apache Arrow tabanlı veri akışına ve yasal denetim raporlarına uzanan sistem altyapıları tasarlıyor ve yönetiyorum.",
-    en: "Engineering data infrastructure from embedded field devices (ESP32, Modbus) to distributed microservices, time-series storage (TimescaleDB), Apache Arrow streaming, and audit compliance."
+    tr: "Diverjans IT bünyesinde telemetri, dağıtık arka uç servisleri ve veri altyapıları üzerine çalışıyorum. Endüstriyel saha cihazlarının haberleşmesi, zaman serisi verilerinin güvenilir aktarımı ve sistem kararlılığı odaklandığım temel alanlar.",
+    en: "Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Focused on industrial edge communication, reliable time-series data pipelines, and high-availability backend services."
   },
   email: "ahmetihtiyar1453@gmail.com",
   github: "https://github.com/ihtiyar07",

@@ -82,7 +82,7 @@ export async function getStaticPaths() {
     {
       params: { slug: 'index' },
       props: {
-        title: 'Gömülü uç sistemlerden dağıtık arka uç mimarilerine telemetri ve veri altyapıları.',
+        title: 'Gömülü uç sistemlerden dağıtık mimarilere telemetri ve veri altyapıları geliştiriyorum.',
         subtitle: 'Ahmet İhtiyar — Sistem ve Arka Uç Mühendisi | Diverjans IT',
         badge: 'Mühendislik Dosyası',
         meta: 'ESP32 · RabbitMQ · TimescaleDB · Arrow · Keycloak',

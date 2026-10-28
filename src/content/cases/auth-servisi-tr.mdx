@@ -38,7 +38,7 @@ Yetkilendirme hattı iki kademeli hibrit doğrulama modeliyle çalışır:
 
 ## 4. Kararlar ve Elenen Alternatifler
 
-- **Hibrit Model (Stateless JWT Kimliği + Redis Claims) seçildi, saf durumsuz JWT elendi:** Token içinde sadece sabit kimlik bilgileri (`sub`, `iss`, `exp`) taşındı. Değişken izinler (`permissions: ["telemetry:write", "chiller:override"]`) Redis'te `user:auth:{id}` anahtarında tutuldu. Böylece bir yönetici "Yetkiyi Kaldır" düğmesine bastığı mikrosaniyede, Redis anahtarı güncellenir ve kullanıcının bir sonraki isteği anında engellenir.
+- **Hibrit Model (Stateless JWT Kimliği + Redis Claims) seçildi, saf durumsuz JWT elendi:** Token içinde sadece sabit kimlik bilgileri (`sub`, `iss`, `exp`) taşındı. Değişken yetki ve roller Redis üzerinde kullanıcı anahtarlarında tutuldu. Böylece bir yönetici yetkiyi kaldırdığı anda Redis anahtarı güncellenir ve kullanıcının bir sonraki isteği anında engellenir.
 - **Versiyonlanmış Haklar (Versioned Claims) seçildi, Karalama Listesi (Blacklist) elendi:** Milyonlarca iptal edilmiş token hash'ini Redis set'inde aramak (blacklist) bellek ve sorgu maliyetini sürekli büyütür. Bunun yerine kullanıcının tek bir `token_version` tamsayı değeri tutuldu; oturum feshedildiğinde bu tamsayı 1 artırıldı. Eski token'lar anında geçersiz kılındı.
 - **Keycloak SSO omurgası korundu:** Kimlik doğrulama, MFA ve federasyon Keycloak üzerinde bırakıldı; yetkilendirme (authorization) ve hızlı oturum iptal motoru ise doğrudan Redis tabanlı özel filtrelerle mikroservis seviyesine indirildi.
 
@@ -50,16 +50,16 @@ Dağıtık mikroservislerde oturum güvenliği iki temel mimari kararla sağland
 Tamamen durumsuz JWT'lerde yetki iptali yapılamaz; her istekte veritabanına gitmek ise mikroservis mimarisinin ölçeklenme amacını yok eder.
 
 Geliştirilen hibrit modelde sorumluluklar ayrıştırıldı:
-- JWT yalnızca sabit kimlik bilgilerini (`sub`, `iss`, `exp`) ve kullanıcının anlık oturum sürüm numarasını (`ver: 3`) taşır.
+- JWT yalnızca sabit kimlik bilgilerini (`sub`, `iss`, `exp`) ve kullanıcının anlık oturum sürüm numarasını taşır.
 - Dinamik yetki setleri ve güncel sürüm damgası Redis kümesinde tutulur.
 - Böylece Authorization başlığı 6KB'lık şişkin rol listelerinden &lt;400 baytlık kompakt bir kimlik kartına indirildi (%90+ HTTP başlık tasarrufu).
 
 ### O(1) Atomik Sürüm Artırımı ile Anında İptal
-Geleneksel oturum iptal yöntemlerinde, iptal edilen her token'ın hash değeri bir kara listede (blacklist) saklanır. Yüz binlerce kullanıcı ve milyonlarca aktif oturumun bulunduğu bir ekosistemde blacklist tutmak bellek tüketimini ve arama maliyetini O(N) karmaşıklıkla sürekli büyütür.
+Geleneksel oturum iptal yöntemlerinde, iptal edilen her token'ın hash değeri bir kara listede (blacklist) saklanır. Yüz binlerce kullanıcı ve aktif oturumun bulunduğu bir ekosistemde blacklist tutmak bellek tüketimini ve arama maliyetini O(N) karmaşıklıkla sürekli büyütür.
 
 Bu sistemde kara liste tamamen terk edildi:
-- Kullanıcı işten çıkarıldığında, şifresini değiştirdiğinde veya rolü güncellendiğinde, Redis'teki `auth:ver:{userId}` değeri tek bir atomik komutla artırılır (`INCR`).
-- Kullanıcının elinde bulunan ve önceki sürüm numarasını (`ver: 3`) taşıyan tüm aktif token'lar (farklı mobil cihazlar veya tarayıcılar dahil) bir sonraki API isteğinde &lt;1ms içinde geçersiz kalır.
+- Kullanıcı işten çıkarıldığında, şifresini değiştirdiğinde veya rolü güncellendiğinde, Redis'teki oturum sürüm sayacı tek bir atomik komutla artırılır.
+- Kullanıcının elinde bulunan ve önceki sürüm numarasını taşıyan tüm aktif token'lar (farklı mobil cihazlar veya tarayıcılar dahil) bir sonraki API isteğinde &lt;1ms içinde geçersiz kalır.
 - İşlem maliyeti O(1) sabit zamanda kalır; bellek ayak izi kullanıcı sayısı artsa dahi minimal seviyede korunur.
 
 ## 6. Sonuç ve Ölçülebilir Çıktılar

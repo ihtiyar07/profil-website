@@ -20,7 +20,7 @@ metrics:
 ---
 
 ## 1. Bağlam
-Plasmon, endüstriyel soğutma ve iklimlendirme ünitelerinin saha koşullarında kesintisiz izlenmesi ve uzaktan parametre yönetimi amacıyla tasarlandı. Bu mimari, 100K+ edge cihaz için tasarlandı; saha donanımından merkezi bulut broker'ına kadar olan telemetri ve komut-kontrol zincirini uçtan uca kapsar.
+Plasmon, endüstriyel soğutma ve iklimlendirme ünitelerinin saha koşullarında kesintisiz izlenmesi ve uzaktan parametre yönetimi amacıyla geliştirildi. 100K+ uç cihaz hedefiyle kurgulanan mimari; saha donanımından merkezi bulut kuyruğuna kadar olan telemetri ve komut-kontrol zincirini kapsar.
 
 ## 2. Problem
 Endüstriyel sahada iki büyük zorluk vardı:
@@ -47,7 +47,7 @@ Telemetri akışı sahadan merkezi veritabanına kadar dört ana aşamada yürü
 Sistemin üretim sahasındaki kararlılığı iki temel mühendislik kararına dayanır:
 
 ### Statik Halka Bellek (Circular Ring-Buffer) Mimarisi
-FreeRTOS üzerinde 7/24 çalışan mikrodenetleyicilerin en sık karşılaştığı arıza kök nedeni dinamik bellek (malloc) parçalanmasıdır. Ağ kesintilerinde gelen telemetriyi heap belleğinde dinamik olarak biriktirmek birkaç dakika içinde bellek taşmasına ve cihazın çökmesine yol açar.
+FreeRTOS üzerinde 7/24 çalışan mikrodenetleyicilerin en sık karşılaştığı arıza kök nedeni dinamik bellek tahsisinden kaynaklanan parçalanmadır (heap fragmentation). Ağ kesintilerinde gelen telemetriyi heap belleğinde dinamik olarak biriktirmek birkaç dakika içinde bellek taşmasına ve cihazın çökmesine yol açar.
 
 Bu sorunu çözmek için SPIFFS/LittleFS üzerinde sabit boyutlu (~320KB) bir dairesel tampon kurgulandı. Bellek tahsisi sistem başlangıcında statik olarak sabitlenir. GSM kesintisi 48 saate kadar uzasa dahi telemetri paketleri dairesel dosya bloklarına yazılır. Kapasite sınırına ulaşıldığında en eski kayıtlar FIFO prensibiyle üzerine yazılarak sistemin kilitlenmesi engellenir. Hücresel hat yeniden bağlandığında tampon bloklar kronolojik sırayla kuyruğa aktarılır ve veri kaybı yaşanmaz.
 

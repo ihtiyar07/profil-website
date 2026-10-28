@@ -24,7 +24,7 @@ Sapmapayı is an enterprise compliance platform auditing cold-chain integrity ac
 
 ## 2. Problem
 The system encountered two architectural bottlenecks:
-1. **Browser Thread Lock on Large Time-Series:** Inspecting a 30-day thermal history for a cold room yielded ~250,000 datapoints. Serializing this into conventional JSON produced a 25MB payload that froze browser JavaScript `JSON.parse()` threads for 800ms+.
+1. **Browser Thread Lock on Large Time-Series:** Inspecting a 30-day thermal history for a cold room yielded ~250,000 datapoints. Serializing this into conventional JSON produced a 25MB payload that froze browser JavaScript threads for 800ms+.
 2. **Legal Enforceability:** Proving that audit data had not been retroactively altered required cryptographic digital signatures (X.509) and certified RFC 3161 timestamps on all exported reports.
 
 ## 3. Architecture & Data Path
@@ -33,7 +33,7 @@ Telemetry streaming and notarized compliance reporting operate through four unif
 
 1. **Time-Series Persistence (TimescaleDB):** High-frequency temperature and humidity readings reside in hypertable partitions. 1-minute raw sensor logs are continuously aggregated into hourly rollups on disk.
 2. **Binary IPC Streamer (.NET 10 & Apache Arrow):** Query handlers bypass traditional object serialization and JSON loops. Records are transformed directly into Apache Arrow RecordBatch columnar buffers and streamed via PipeWriter over HTTP/WebSocket.
-3. **Frontend Zero-Copy Buffer (Canvas & Float64Array):** Incoming Arrow IPC chunks bind directly into JavaScript `Float64Array` typed memory without JSON parsing overhead, driving 60 FPS graphics without thread stutter.
+3. **Frontend Zero-Copy Buffer (Canvas & Float64Array):** Incoming Arrow IPC chunks bind directly into JavaScript `Float64Array` typed memory without JSON parsing overhead, driving smooth graphics rendering without thread stutter.
 4. **Compliance Document Notarization (PKCS#11 HSM & QuestPDF):** Reports render via native vector PDF layouts (`QuestPDF`) rather than heavy headless browsers. Documents are asynchronously signed using certified X.509 keys and RFC 3161 timestamps via a dedicated PKCS#11 queue.
 
 ## 4. Decisions & Rejected Alternatives
@@ -50,7 +50,7 @@ Performance and compliance guarantees in Sapmapayı rely upon two foundational a
 Querying a 250,000-row dataset through conventional REST architectures induces heavy memory and compute friction:
 - Database records are deserialized into C# domain objects (millions of short-lived heap allocations causing GC pauses).
 - Objects serialize into JSON strings (~25MB payload over the wire).
-- The browser parses the text via `JSON.parse()`, blocking the main UI thread for ~800ms.
+- The browser parses the text stream, blocking the main execution thread for ~800ms.
 
 Sapmapayı replaces this pipeline with Apache Arrow IPC streams. Columnar byte buffers from TimescaleDB map directly into Arrow RecordBatches. Network transfer drops from 24.8MB to 3.1MB (87% bandwidth savings). In the browser, Arrow arrays map directly into `Float64Array` memory buffers without copying, slashing thread latency from 800ms to &lt;15ms.
 

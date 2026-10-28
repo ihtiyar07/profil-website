@@ -47,7 +47,7 @@ Telemetry flows from industrial field controllers up to central persistence thro
 Production stability in the field rests upon two architectural defenses:
 
 ### Static Circular Ring-Buffer Architecture
-On microcontrollers operating 24/7, dynamic heap allocation (`malloc`) causes memory fragmentation, which inevitably leads to out-of-memory resets during network outages.
+On microcontrollers operating 24/7, dynamic heap allocations cause memory fragmentation, which inevitably leads to out-of-memory resets during network outages.
 
 To guarantee bounded memory usage, a fixed-size (~320KB) circular ring-buffer was implemented on SPIFFS/LittleFS flash. Buffer memory is allocated statically at boot. During cellular carrier outages lasting up to 48 hours, telemetry frames append to circular flash blocks. Upon capacity exhaustion, the buffer wraps around and overwrites the oldest frames (FIFO), maintaining deterministic operation without heap panics. When cellular connectivity resumes, buffered frames drain chronologically to RabbitMQ without data loss.
 

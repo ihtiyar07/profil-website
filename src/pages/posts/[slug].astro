@@ -15,7 +15,15 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
+
+const allPosts = await getCollection('posts');
+const otherPosts = allPosts
+  .filter((p) => getPostSlug(p) !== Astro.params.slug)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 3);
+
+const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
 
 <BaseLayout 
@@ -23,67 +31,215 @@ const { Content } = await render(entry);
   description={entry.data.summary}
   articleMeta={{ publishDate: entry.data.date, tags: entry.data.tags }}
 >
-  <article class="py-4 sm:py-8 space-y-8 max-w-3xl">
-    <!-- Header -->
-    <div class="space-y-4 pb-6 border-b border-[var(--border)]">
-      <div class="flex items-center justify-between">
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12 items-start py-4 sm:py-8">
+    <!-- Main Article Body (8 cols on XL) -->
+    <article class="xl:col-span-8 min-w-0 space-y-8">
+      <!-- Header -->
+      <div class="space-y-4 pb-6 border-b border-[var(--border)]">
+        <div class="flex items-center justify-between">
+          <a
+            href="/#articles"
+            class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
+            aria-label="Yazılar ve notlar listesine dön"
+          >
+            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+            <span>Yazılara Dön</span>
+          </a>
+          <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
+            <time datetime={entry.data.date}>{entry.data.date}</time>
+            <span>·</span>
+            <span>{entry.data.readingTime}</span>
+          </div>
+        </div>
+
+        <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]">
+          {entry.data.title}
+        </h1>
+
+        <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
+          {entry.data.summary}
+        </p>
+
+        <div class="flex flex-wrap items-center gap-1.5 pt-1">
+          {entry.data.tags.map((tag) => (
+            <a
+              href={`/?tag=${encodeURIComponent(tag)}#articles`}
+              class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors cursor-pointer"
+              title={`#${tag} etiketine ait yazıları filtrele`}
+            >
+              #{tag}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <!-- Mobile/Tablet Inline TOC (visible when xl sidebar is hidden) -->
+      {tocHeadings.length > 0 && (
+        <div class="xl:hidden p-4 bg-[var(--bg-subtle)]/60 border border-[var(--border)] rounded-[2px] space-y-2">
+          <div class="text-xs font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+            İçindekiler
+          </div>
+          <nav class="space-y-1 text-xs">
+            {tocHeadings.map((h) => (
+              <a
+                href={`#${h.slug}`}
+                class:list={[
+                  'block py-0.5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors',
+                  h.depth === 3 ? 'pl-3 text-[11px]' : 'font-medium'
+                ]}
+              >
+                {h.text}
+              </a>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      <!-- Article Content with Optimal Reading Typography -->
+      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
+        <Content />
+      </div>
+
+      <!-- Footer Back Link & Feedback -->
+      <div class="pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between sm:items-center gap-4 font-mono text-xs">
         <a
           href="/#articles"
-          class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-          aria-label="Yazılar ve notlar listesine dön"
+          class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
         >
           <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
           <span>Yazılara Dön</span>
         </a>
-        <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
-          <time datetime={entry.data.date}>{entry.data.date}</time>
-          <span>·</span>
-          <span>{entry.data.readingTime}</span>
+        <a
+          href="mailto:ahmetihtiyar1453@gmail.com"
+          class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+        >
+          <span>Yazı Hakkında Geri Bildirim Ver</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </article>
+
+    <!-- Sticky Right Sidebar (Right 4 cols on XL): TOC & Meta -->
+    <aside class="hidden xl:block xl:col-span-4 sticky top-6 space-y-5">
+      <!-- TOC Card -->
+      {tocHeadings.length > 0 && (
+        <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4 rounded-[2px] space-y-3">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+            <span class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+              Bu Yazıda (İçindekiler)
+            </span>
+            <span>{tocHeadings.length} Başlık</span>
+          </div>
+
+          <nav aria-label="İçindekiler" class="space-y-1 text-xs font-sans max-h-[calc(100vh-20rem)] overflow-y-auto pr-1">
+            {tocHeadings.map((h) => (
+              <a
+                href={`#${h.slug}`}
+                data-heading-slug={h.slug}
+                class:list={[
+                  'toc-anchor-link block py-1 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors leading-snug rounded-[2px] px-1.5',
+                  h.depth === 3 ? 'pl-4 text-[11.5px] text-[var(--text-dim)]' : 'font-medium'
+                ]}
+              >
+                {h.text}
+              </a>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      <!-- Article Meta Card -->
+      <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/30 p-4 rounded-[2px] space-y-2.5 font-mono text-xs">
+        <div class="text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold border-b border-[var(--border)] pb-2 flex items-center justify-between">
+          <span>Yazı Künyesi</span>
+          <span class="text-[var(--text-accent)]">● Canlı Not</span>
+        </div>
+        <div class="space-y-1.5 text-[var(--text-muted)] text-[11px]">
+          <div class="flex justify-between">
+            <span class="text-[var(--text-dim)]">Tarih:</span>
+            <span class="text-[var(--text)]">{entry.data.date}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-[var(--text-dim)]">Okuma Süresi:</span>
+            <span class="text-[var(--text)]">{entry.data.readingTime}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-[var(--text-dim)]">Yazar:</span>
+            <span class="text-[var(--text)]">Ahmet İhtiyar</span>
+          </div>
         </div>
       </div>
 
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]">
-        {entry.data.title}
-      </h1>
+      <!-- Related Posts Card -->
+      {otherPosts.length > 0 && (
+        <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/30 p-4 rounded-[2px] space-y-2.5">
+          <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] font-semibold border-b border-[var(--border)] pb-2">
+            Diğer Teknik Notlar
+          </div>
+          <div class="space-y-1.5">
+            {otherPosts.map((other) => (
+              <a
+                href={`/posts/${getPostSlug(other)}`}
+                class="block group text-xs hover:bg-[var(--bg)] p-1.5 -mx-1.5 rounded-[2px] transition-colors"
+              >
+                <span class="font-serif text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-1 block leading-snug">
+                  {other.data.title}
+                </span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)]">
+                  {other.data.readingTime} · {other.data.date}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
-        {entry.data.summary}
-      </p>
-
-      <div class="flex flex-wrap items-center gap-1.5 pt-1">
-        {entry.data.tags.map((tag) => (
-          <a
-            href={`/?tag=${encodeURIComponent(tag)}#articles`}
-            class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors cursor-pointer"
-            title={`#${tag} etiketine ait yazıları filtrele`}
-          >
-            #{tag}
-          </a>
-        ))}
+      <!-- Jump to Top Link -->
+      <div class="pt-1">
+        <a
+          href="#main-content"
+          class="font-mono text-[11px] text-[var(--text-dim)] hover:text-[var(--text)] inline-flex items-center gap-1 transition-colors"
+        >
+          <span>↑ Başa Dön</span>
+        </a>
       </div>
-    </div>
+    </aside>
+  </div>
 
-    <!-- Article Content with Optimal Reading Typography -->
-    <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
-      <Content />
-    </div>
+  <!-- Scrollspy script for Table of Contents -->
+  <script is:inline>
+    (function() {
+      const tocLinks = document.querySelectorAll('.toc-anchor-link');
+      if (!tocLinks.length) return;
 
-    <!-- Footer Back Link & Feedback -->
-    <div class="pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between sm:items-center gap-4 font-mono text-xs">
-      <a
-        href="/#articles"
-        class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-      >
-        <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-        <span>Yazılara Dön</span>
-      </a>
-      <a
-        href="mailto:ahmetihtiyar1453@gmail.com"
-        class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1"
-      >
-        <span>Yazı Hakkında Geri Bildirim Ver</span>
-        <span aria-hidden="true">↗</span>
-      </a>
-    </div>
-  </article>
+      const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+      if (!headings.length) return;
+
+      function onScroll() {
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const offset = 120;
+
+        let currentActive = null;
+        for (let i = 0; i < headings.length; i++) {
+          const top = headings[i].getBoundingClientRect().top + scrollY - offset;
+          if (scrollY >= top) {
+            currentActive = headings[i].id;
+          }
+        }
+
+        tocLinks.forEach(link => {
+          const slug = link.getAttribute('data-heading-slug');
+          if (slug === currentActive) {
+            link.classList.add('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+          } else {
+            link.classList.remove('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+          }
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    })();
+  </script>
 </BaseLayout>

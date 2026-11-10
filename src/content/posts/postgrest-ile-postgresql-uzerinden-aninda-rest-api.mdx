@@ -1,0 +1,275 @@
+---
+title: "PostgREST ile PostgreSQL'den Sıfır Kodla Güvenli REST API ve RLS Mimarisi"
+date: "2026-03-25"
+readingTime: "7 dk"
+summary: "PostgreSQL şemasını doğrudan yüksek performanslı, JWT ve Row-Level Security (RLS) korumalı REST API'ye dönüştürme: Resource embedding, lateral join CTE derlemesi, RPC fonksiyonları ve Docker üzerinde üretim mimarisi."
+tags: ["PostgreSQL", "PostgREST", "Docker", "Veritabanı", "Mimari", "Performans"]
+---
+
+import PostgrestInteractiveExplorer from '../../components/PostgrestInteractiveExplorer.astro';
+
+Modern web ve veri altyapılarında en çok tekrarlanan ve en çok kaynak tüketen katman genellikle "CRUD backend" katmanıdır: Bir istemci HTTP isteği atar, web çatısı (Spring, Express, FastAPI, ASP.NET) isteği karşılar, yetkiyi kontrol eder, ORM ile SQL üretir, veritabanına sorgu atar, gelen satırları bellekte nesnelere (DTO/Entity) dönüştürür ve ardından tekrar JSON'a serileştirip HTTP soketine yazar.
+
+Bu geleneksel boru hattında iki büyük darboğaz vardır:
+1. **Çift Serileştirme Yükü:** Veri diskten PostgreSQL belleğine okunur, oradan TCP üzerinden backend'e taşınır, backend belleğinde yüz binlerce nesne tahsis edilir (GC baskısı), ardından JSON string'ine çevrilir.
+2. **N+1 ve Verimsiz Sorgu Üretimi:** ORM katmanları ilişkili tabloları çekerken veritabanının `LATERAL JOIN` veya analitik yeteneklerini kullanmak yerine arka arkaya yüzlerce gereksiz sorgu üretir.
+
+**PostgREST**, bu ara katmanı tamamen ortadan kaldıran bağımsız bir web sunucusudur. PostgreSQL veritabanının katalog şemasını (`pg_catalog`) okur ve veritabanını doğrudan OpenAPI uyumlu, yüksek hızlı ve tam güvenlikli bir REST API'ye dönüştürür.
+
+---
+
+## İnteraktif PostgREST Sorgu ve SQL Simülatörü
+
+Aşağıdaki canlı simülatörde, istemciden gönderilen bir HTTP REST isteğinin PostgREST tarafından PostgreSQL içinde nasıl tek bir **parametrik CTE ve `json_agg()`** sorgusuna dönüştürüldüğünü ve dönen çıktıyı inceleyebilirsiniz:
+
+<PostgrestInteractiveExplorer />
+
+---
+
+## 1. PostgREST Nasıl Çalışır? İstek Yaşam Döngüsü
+
+PostgREST uygulamanın iş mantığını veya nesne modellerini bilmez; yalnızca PostgreSQL katalog tablolarını (`pg_class`, `pg_attribute`, `pg_constraint`, `pg_proc`) okuyarak veritabanının güncel bir AST (Soyut Sözdizimi Ağacı) haritasını çıkarır.
+
+İstemciden bir HTTP isteği geldiğinde süreç şu şekilde işler:
+
+```
+[İstemci HTTP İsteği]
+         │
+         ▼
+[PostgREST (Haskell Web Daemon)]
+   • JWT Token doğrulaması (HMAC/RSA)
+   • HTTP URL parametrelerinin AST sözdizimine çözümlenmesi
+         │
+         ▼ (Tekil SQL İfadesi)
+[PostgreSQL Veritabanı Çekirdeği]
+   • SET LOCAL "request.jwt.claims" = '...'
+   • SET LOCAL ROLE web_anon / api_user
+   • Kernel Seviyesinde RLS (Row-Level Security) Filtresi
+   • CTE + LEFT JOIN LATERAL (İlişkili Veriler)
+   • json_agg() ile bellekte tekil JSON string üretimi
+         │
+         ▼ (Doğrudan Soket Akışı)
+[HTTP Yanıtı (JSON)]
+```
+
+Bu mimarinin en çarpıcı yanı, **PostgREST'in gelen JSON verisini parse etmemesi veya veritabanından dönen satırları nesneye dönüştürmemesidir**. PostgreSQL, `row_to_json()` ve `json_agg()` sayesinde JSON yanıtını doğrudan C düzeyinde oluşturur. PostgREST yalnızca bu baytları HTTP soketine borular (pipe).
+
+---
+
+## 2. Docker ile 60 Saniyede PostgREST ve PostgreSQL Kurulumu
+
+PostgREST'i bir üretim ortamında çalıştırmanın en temiz yolu, izole bir veritabanı şeması (`api`) ve yetki hiyerarşisi oluşturmaktır.
+
+Aşağıdaki `docker-compose.yml` yapılandırması, PostgreSQL 16 ve PostgREST'i birbirine bağlar:
+
+```yaml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: telemetri_db
+      POSTGRES_PASSWORD: secretpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: postgrest_api
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: "postgres://authenticator:secretpassword@db:5432/telemetri_db"
+      PGRST_DB_SCHEMA: "api"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_JWT_SECRET: "guclu-ve-en-az-32-karakterli-jwt-gizli-anahtari-12345"
+      PGRST_OPENAPI_SERVER_PROXY_URI: "http://localhost:3000"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+```
+
+### PostgreSQL Rol ve İzin Mimarisi (`init.sql`)
+
+PostgREST'in güvenlik felsefesi iki ana role dayanır:
+1. `authenticator`: PostgREST'in veritabanına bağlanırken kullandığı, oturum açma yetkisi olan ancak tablo okuma yetkisi kısıtlı havuz rolü.
+2. `web_anon`: Giriş yapmamış anonim kullanıcıların çalıştığı rol.
+
+```sql
+-- API şeması (public şemasından izole)
+CREATE SCHEMA api;
+
+-- Roller
+CREATE ROLE web_anon NOLOGIN;
+CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'secretpassword';
+GRANT web_anon TO authenticator;
+
+-- Anonim okuma izinleri
+GRANT USAGE ON SCHEMA api TO web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA api TO web_anon;
+```
+
+---
+
+## 3. Resource Embedding: SQL JOIN Mantığının REST Karşılığı
+
+Geleneksel REST mimarilerinde ilişkili verileri çekmek için istemci ya ayrı ayrı uç noktalara istek atar (örneğin önce istasyonu, sonra o istasyonun cihazlarını çeker) ya da backend geliştiricisinin özel bir DTO yazması gerekir.
+
+PostgREST, veritabanındaki yabancı anahtar (`FOREIGN KEY`) kısıtlarını okuyarak **Resource Embedding** özelliğini otomatik olarak sunar.
+
+Örneğin, bir istasyon ve altındaki cihazları tek istekte çekmek için:
+
+```bash
+GET /istasyonlar?select=ad,sehir,cihazlar(seri_no,model,ip_adresi)&durum=eq.aktif
+```
+
+PostgREST bu isteği PostgreSQL'in en verimli optimizasyonlarından biri olan `LEFT JOIN LATERAL` sorgusuna dönüştürür:
+
+```sql
+WITH pgrst_source AS (
+  SELECT 
+    "api"."istasyonlar"."ad", 
+    "api"."istasyonlar"."sehir", 
+    COALESCE("istasyonlar_cihazlar_1"."istasyonlar_cihazlar_1", '[]') AS "cihazlar"
+  FROM "api"."istasyonlar"
+  LEFT JOIN LATERAL (
+    SELECT json_agg("istasyonlar_cihazlar_1")::jsonb AS "istasyonlar_cihazlar_1"
+    FROM (
+      SELECT "cihazlar_1"."seri_no", "cihazlar_1"."model", "cihazlar_1"."ip_adresi"
+      FROM "api"."cihazlar" AS "cihazlar_1"
+      WHERE "cihazlar_1"."istasyon_id" = "api"."istasyonlar"."id"
+    ) AS "istasyonlar_cihazlar_1"
+  ) AS "istasyonlar_cihazlar_1" ON TRUE
+  WHERE "api"."istasyonlar"."durum" = 'aktif'
+)
+SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
+FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
+```
+
+Sonuç olarak veritabanı, iç içe geçmiş ilişkisel JSON verisini tek bir disk erişiminde istemciye teslim eder:
+
+```json
+[
+  {
+    "ad": "Kadıköy Telemetri İstasyonu",
+    "sehir": "İstanbul",
+    "cihazlar": [
+      {
+        "seri_no": "ESP32-KDK-001",
+        "model": "ESP32-WROOM-32U",
+        "ip_adresi": "192.168.10.15"
+      },
+      {
+        "seri_no": "MODBUS-KDK-002",
+        "model": "RTU-TCP-GATEWAY",
+        "ip_adresi": "192.168.10.16"
+      }
+    ]
+  }
+]
+```
+
+---
+
+## 4. Güvenliğin Kalbi: Row-Level Security (RLS) ve JWT
+
+PostgREST'te "Controller seviyesinde yetkilendirme" diye bir kavram yoktur. Güvenlik doğrudan **PostgreSQL Çekirdeği (Kernel)** tarafından Row-Level Security politikalarıyla zorunlu kılınır.
+
+İstemci bir JWT ile istek attığında:
+1. PostgREST token'ı doğrular ve içindeki `role` ve diğer claim'leri okur.
+2. PostgreSQL oturumunun başında şu komutları atomik olarak çalıştırır:
+   ```sql
+   SET LOCAL ROLE api_user;
+   SET LOCAL "request.jwt.claims" = '{"role":"api_user","kiraci_id":"KADIKOY_GRP"}';
+   ```
+3. PostgreSQL, sorgu yürütülürken tablodaki RLS politikasını otomatik uygular:
+
+```sql
+-- RLS aktif et
+ALTER TABLE api.telemetri ENABLE ROW LEVEL SECURITY;
+
+-- Yalnızca kendi kiracı ID'sine ait satırları görme kuralı
+CREATE POLICY kiraci_telemetri_izolasyonu ON api.telemetri
+  FOR ALL
+  TO api_user
+  USING (
+    kiraci_id = (current_setting('request.jwt.claims', true)::json->>'kiraci_id')
+  );
+```
+
+Bu mimari sayesinde bir geliştirici sorguda `WHERE kiraci_id = ...` yazmayı unutsa bile, başka bir kiracının verisi veritabanı motoru düzeyinde engellenir. Güvenlik açığı oluşma riski sıfıra iner.
+
+---
+
+## 5. Stored Procedure'ler ile RPC (Remote Procedure Call)
+
+PostgREST yalnızca tabloları değil, `api` şemasındaki saklı yordamları (stored procedure / function) da otomatik olarak birer REST uç noktasına çevirir:
+
+```sql
+CREATE OR REPLACE FUNCTION api.istasyon_ozet(istasyon_kodu text)
+RETURNS TABLE (
+    istasyon_adi text,
+    toplam_cihaz bigint,
+    ortalama_sicaklik numeric
+) LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        i.ad::text,
+        COUNT(DISTINCT c.id)::bigint,
+        ROUND(AVG(t.sicaklik), 2)::numeric
+    FROM api.istasyonlar i
+    LEFT JOIN api.cihazlar c ON c.istasyon_id = i.id
+    LEFT JOIN api.telemetri t ON t.cihaz_id = c.id
+    WHERE i.kod = istasyon_kodu
+    GROUP BY i.ad;
+END;
+$$;
+```
+
+İstemci bu fonksiyonu tek bir POST isteğiyle çağırabilir:
+
+```bash
+curl -X POST "http://localhost:3000/rpc/istasyon_ozet" \
+  -H "Content-Type: application/json" \
+  -d '{"istasyon_kodu": "IST_01"}'
+```
+
+Dönen yanıt doğrudan hesaplanmış JSON sonucudur:
+
+```json
+[
+  {
+    "istasyon_adi": "Kadıköy Telemetri İstasyonu",
+    "toplam_cihaz": 2,
+    "ortalama_sicaklik": 23.03
+  }
+]
+```
+
+---
+
+## 6. Üretim Notları ve Performans Kıyaslaması
+
+| Kriter | Node.js / Python ORM API | PostgREST + PostgreSQL |
+|---|---|---|
+| **P99 Gecikme (Latency)** | 18ms – 45ms | 0.8ms – 3.5ms |
+| **Throughput (İstek/sn)** | ~1.500 req/s | ~18.000 req/s |
+| **Bellek Tüketimi (RAM)** | 250MB – 600MB (V8 / Python Heap) | ~30MB (Haskell Binary) |
+| **N+1 Sorgu Riski** | Yüksek (Eager/Lazy fetch hataları) | İmkansız (Tekil Lateral Join CTE) |
+| **Güvenlik Yeri** | Uygulama Kodu (Bypass riski) | Veritabanı Kernel (RLS) |
+
+### Ne Zaman Tercih Edilmeli?
+* **Veri odaklı dashboard'lar, PWA'lar ve mobil uygulamalar:** Backend yazmadan doğrudan frontend'e güvenli veri sunmak için benzersizdir.
+* **Yüksek frekanslı telemetri ve IoT:** Ağır ORM serialization maliyetini ortadan kaldırmak istediğinizde.
+* **PostgreSQL gücünü sonuna kadar kullanan ekipler:** View'lar, RLS, Generated Columns ve Fonksiyonlar üzerinden mimari kuran yapılar.
+
+### Ne Zaman Tercih Edilmemeli?
+* Ağır üçüncü parti API orkestrasyonu gerektiren (örneğin aynı anda Stripe, Twilio ve AWS S3 çağrısı yapan) iş akışları. (Bu gibi durumlar için PostgREST önüne hafif bir API Gateway veya Lambda yerleştirmek en iyi pratiktir).

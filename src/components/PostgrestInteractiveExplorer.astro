@@ -1,0 +1,518 @@
+---
+// Interactive PostgREST Explorer Component
+---
+
+<div class="postgrest-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm">
+  <!-- Component Header -->
+  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
+      <span class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
+        PostgREST Canlı Sorgu & SQL Derleyici Simülatörü
+      </span>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)]">
+      PostgreSQL 16 · PostgREST 16.5
+    </span>
+  </div>
+
+  <!-- Interactive Scenario Selector Tabs -->
+  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)] flex flex-wrap gap-1.5" role="tablist" aria-label="PostgREST Senaryoları">
+    <button
+      type="button"
+      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
+      data-scenario="filter"
+      role="tab"
+      aria-selected="true"
+    >
+      01 · Filtre & Sıralama
+    </button>
+    <button
+      type="button"
+      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="join"
+      role="tab"
+      aria-selected="false"
+    >
+      02 · Resource Embedding (Join)
+    </button>
+    <button
+      type="button"
+      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="rpc"
+      role="tab"
+      aria-selected="false"
+    >
+      03 · Stored Procedure (RPC)
+    </button>
+    <button
+      type="button"
+      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="rls"
+      role="tab"
+      aria-selected="false"
+    >
+      04 · RLS & Çok Kiracılı Güvenlik
+    </button>
+    <button
+      type="button"
+      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="upsert"
+      role="tab"
+      aria-selected="false"
+    >
+      05 · Toplu Yazma & Upsert
+    </button>
+  </div>
+
+  <!-- Interactive Pipeline Flow Diagram -->
+  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)]">
+    <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
+      İstek Yaşam Döngüsü (Request Lifecycle)
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">1. İstemci</span>
+        <span class="font-semibold text-[var(--text)]" id="flow-step-1">HTTP REST İsteği</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">2. PostgREST</span>
+        <span class="font-semibold text-[var(--accent)]" id="flow-step-2">AST → SQL CTE Derleme</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">3. PostgreSQL</span>
+        <span class="font-semibold text-[var(--text)]" id="flow-step-3">RLS + Tekil json_agg()</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">4. Yanıt</span>
+        <span class="font-semibold text-[var(--status-green)]" id="flow-step-4">Sıfır Kopyalama JSON</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Mode Switcher: HTTP Request | Generated SQL | Response JSON -->
+  <div class="p-4 space-y-4">
+    <!-- Summary Description of Scenario -->
+    <div class="text-xs sm:text-sm font-sans text-[var(--text-muted)] bg-[var(--bg)] p-3 border border-[var(--border)] rounded-[2px]" id="scenario-description">
+      Telemetri tablosunda sıcaklığı 20 dereceden büyük olan son 3 kaydı zaman sırasına göre getiren sorgu.
+    </div>
+
+    <!-- Inspector Tabs -->
+    <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden">
+      <!-- Tab Header Buttons -->
+      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active"
+            data-target="http"
+          >
+            HTTP İsteği (cURL)
+          </button>
+          <button
+            type="button"
+            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            data-target="sql"
+          >
+            PostgreSQL İçinde Üretilen SQL
+          </button>
+          <button
+            type="button"
+            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            data-target="json"
+          >
+            Dönen JSON Yanıtı
+          </button>
+        </div>
+
+        <button
+          type="button"
+          id="pgrst-copy-btn"
+          class="px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1"
+        >
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="pgrst-copy-text">Kopyala</span>
+        </button>
+      </div>
+
+      <!-- Tab Content 1: HTTP -->
+      <div id="panel-http" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+        <pre><code id="code-http">curl -s "http://localhost:3000/telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3"</code></pre>
+      </div>
+
+      <!-- Tab Content 2: SQL -->
+      <div id="panel-sql" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
+        <pre><code id="code-sql">-- PostgREST tarafından PostgreSQL oturumunda üretilen tekil CTE sorgusu:
+BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY;
+
+WITH pgrst_source AS (
+  SELECT "api"."telemetri".*
+  FROM "api"."telemetri"
+  WHERE "api"."telemetri"."sicaklik" > 20
+  ORDER BY "api"."telemetri"."kayit_zamani" DESC
+  LIMIT 3
+)
+SELECT coalesce(json_agg(_postgrest_t), '[]')::character varying AS body
+FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
+
+COMMIT;</code></pre>
+      </div>
+
+      <!-- Tab Content 3: JSON -->
+      <div id="panel-json" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
+        <pre><code id="code-json">{`[
+  {
+    "id": 3,
+    "cihaz_id": 1,
+    "sicaklik": 24.80,
+    "nem": 47.50,
+    "voltaj": 3.26,
+    "kayit_zamani": "2026-11-10T16:50:15.900579+00:00"
+  },
+  {
+    "id": 5,
+    "cihaz_id": 3,
+    "sicaklik": 42.50,
+    "nem": 31.00,
+    "voltaj": 3.12,
+    "kayit_zamani": "2026-11-10T16:49:15.900579+00:00"
+  },
+  {
+    "id": 2,
+    "cihaz_id": 1,
+    "sicaklik": 24.10,
+    "nem": 47.90,
+    "voltaj": 3.27,
+    "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
+  }
+]`}</code></pre>
+      </div>
+    </div>
+
+    <!-- Architectural Insights Callout -->
+    <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-start gap-2.5 text-xs font-mono">
+      <span class="text-[var(--accent)] font-bold">⚡ Mimari Çıkarım:</span>
+      <span class="text-[var(--text-muted)] font-sans" id="architecture-note">
+        PostgREST, gelen HTTP sorgu parametrelerini doğrudan tek bir AST derleyicisi üzerinden tekil SQL CTE sorgusuna çevirir. PostgreSQL sonucu veritabanı motoru seviyesinde doğrudan JSON olarak üretir; ortada ORM nesnesi veya backend serileştirme yükü bulunmaz.
+      </span>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function() {
+    const scenarios = {
+      filter: {
+        desc: "Telemetri tablosunda sıcaklığı 20 dereceden büyük olan son 3 kaydı zaman sırasına göre getiren sorgu.",
+        step1: "GET /telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3",
+        step2: "AST → Tekil CTE Çözümleme",
+        step3: "Index Scan + json_agg()",
+        step4: "3 Kayıt (0.8 ms)",
+        http: `curl -s "http://localhost:3000/telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3"`,
+        sql: `-- PostgREST tarafından PostgreSQL oturumunda üretilen tekil CTE sorgusu:
+BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY;
+
+WITH pgrst_source AS (
+  SELECT "api"."telemetri".*
+  FROM "api"."telemetri"
+  WHERE "api"."telemetri"."sicaklik" > 20
+  ORDER BY "api"."telemetri"."kayit_zamani" DESC
+  LIMIT 3
+)
+SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
+FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
+
+COMMIT;`,
+        json: `[
+  {
+    "id": 3,
+    "cihaz_id": 1,
+    "sicaklik": 24.80,
+    "nem": 47.50,
+    "voltaj": 3.26,
+    "kayit_zamani": "2026-11-10T16:50:15.900579+00:00"
+  },
+  {
+    "id": 5,
+    "cihaz_id": 3,
+    "sicaklik": 42.50,
+    "nem": 31.00,
+    "voltaj": 3.12,
+    "kayit_zamani": "2026-11-10T16:49:15.900579+00:00"
+  },
+  {
+    "id": 2,
+    "cihaz_id": 1,
+    "sicaklik": 24.10,
+    "nem": 47.90,
+    "voltaj": 3.27,
+    "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
+  }
+]`,
+        note: "PostgREST, gelen HTTP sorgu parametrelerini doğrudan tek bir AST derleyicisi üzerinden tekil SQL CTE sorgusuna çevirir. PostgreSQL sonucu veritabanı motoru seviyesinde doğrudan JSON olarak üretir; ortada ORM nesnesi veya backend serileştirme yükü bulunmaz."
+      },
+      join: {
+        desc: "İstasyon tablosu ile Cihazlar tablosunu yabancı anahtar (FK) üzerinden tek istekte bağlayan Resource Embedding sorgusu.",
+        step1: "GET /istasyonlar?select=ad,sehir,cihazlar(seri_no,model)&durum=eq.aktif",
+        step2: "FK Graph → LEFT JOIN LATERAL",
+        step3: "İç İçe json_agg(cihazlar)",
+        step4: "İlişkili JSON Ağacı",
+        http: `curl -s "http://localhost:3000/istasyonlar?select=ad,sehir,cihazlar(seri_no,model)&durum=eq.aktif"`,
+        sql: `-- PostgREST FK ilişkisini otomatik algılayıp LATERAL JOIN oluşturur:
+BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY;
+
+WITH pgrst_source AS (
+  SELECT 
+    "api"."istasyonlar"."ad", 
+    "api"."istasyonlar"."sehir", 
+    COALESCE("istasyonlar_cihazlar_1"."istasyonlar_cihazlar_1", '[]') AS "cihazlar"
+  FROM "api"."istasyonlar"
+  LEFT JOIN LATERAL (
+    SELECT json_agg("istasyonlar_cihazlar_1")::jsonb AS "istasyonlar_cihazlar_1"
+    FROM (
+      SELECT "cihazlar_1"."seri_no", "cihazlar_1"."model"
+      FROM "api"."cihazlar" AS "cihazlar_1"
+      WHERE "cihazlar_1"."istasyon_id" = "api"."istasyonlar"."id"
+    ) AS "istasyonlar_cihazlar_1"
+  ) AS "istasyonlar_cihazlar_1" ON TRUE
+  WHERE "api"."istasyonlar"."durum" = 'aktif'
+)
+SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
+FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
+
+COMMIT;`,
+        json: `[
+  {
+    "ad": "Kadıköy Telemetri İstasyonu",
+    "sehir": "İstanbul",
+    "cihazlar": [
+      {
+        "seri_no": "ESP32-KDK-001",
+        "model": "ESP32-WROOM-32U"
+      },
+      {
+        "seri_no": "MODBUS-KDK-002",
+        "model": "RTU-TCP-GATEWAY"
+      }
+    ]
+  },
+  {
+    "ad": "Bornova Çevre İzleme",
+    "sehir": "İzmir",
+    "cihazlar": [
+      {
+        "seri_no": "ESP32-BRN-001",
+        "model": "ESP32-WROVER-E"
+      }
+    ]
+  }
+]`,
+        note: "Geleneksel ORM'lerde N+1 sorgu felaketine yol açan ilişkisel veri çekme işlemi, PostgREST'te LEFT JOIN LATERAL ve json_agg() sayesinde veritabanında tek bir atomik sorguda tamamlanır."
+      },
+      rpc: {
+        desc: "Karmaşık iş mantığı ve istatistiki hesaplamayı PL/pgSQL fonksiyonu üzerinden tetikleyen Stored Procedure (RPC) çağrısı.",
+        step1: "POST /rpc/istasyon_ozet",
+        step2: "JSON Payload → Fonksiyon Argümanı",
+        step3: "SELECT * FROM api.istasyon_ozet($1)",
+        step4: "Özet İstatistik JSON",
+        http: `curl -s -X POST "http://localhost:3000/rpc/istasyon_ozet" \\
+  -H "Content-Type: application/json" \\
+  -d '{"istasyon_kodu": "IST_01"}'`,
+        sql: `-- PostgREST fonksiyonu doğrudan çalıştırıp çıktıyı JSON'a dönüştürür:
+BEGIN ISOLATION LEVEL READ COMMITTED;
+
+SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
+FROM (
+  SELECT * FROM "api"."istasyon_ozet"('IST_01')
+) _postgrest_t;
+
+COMMIT;`,
+        json: `[
+  {
+    "istasyon_adi": "Kadıköy Telemetri İstasyonu",
+    "toplam_cihaz": 2,
+    "ortalama_sicaklik": 23.03
+  }
+]`,
+        note: "Sadece CRUD değil; veritabanında yazılmış herhangi bir PL/pgSQL veya SQL fonksiyonu PostgREST tarafından anında bir RPC uç noktasına (POST veya GET) dönüştürülür."
+      },
+      rls: {
+        desc: "JWT içindeki kiracı (tenant_id) veya rol bilgisinin PostgreSQL Row-Level Security (RLS) kuralına otomatik aktarılması.",
+        step1: "GET /telemetri (Bearer JWT)",
+        step2: "SET LOCAL request.jwt.claims",
+        step3: "PostgreSQL Kernel RLS Filtresi",
+        step4: "Yalnızca Yetkili Satırlar",
+        http: `curl -s "http://localhost:3000/telemetri" \\
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`,
+        sql: `-- PostgREST oturum başında JWT claim'lerini PostgreSQL ortamına yazar:
+BEGIN;
+
+SELECT set_config('role', 'api_user', true);
+SELECT set_config('request.jwt.claims', '{"role":"api_user","kiraci_id":"KADIKOY_GRP"}', true);
+
+-- PostgreSQL RLS Motoru kernel seviyesinde satırları filtreler:
+-- CREATE POLICY kiraci_izolasyonu ON api.telemetri
+--   FOR SELECT USING (kiraci_id = current_setting('request.jwt.claims')::json->>'kiraci_id');
+
+SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
+FROM (
+  SELECT * FROM "api"."telemetri"
+  -- PostgreSQL RLS filtresi arka planda otomatik eklenir!
+) _postgrest_t;
+
+COMMIT;`,
+        json: `[
+  {
+    "id": 1,
+    "cihaz_id": 1,
+    "kiraci_id": "KADIKOY_GRP",
+    "sicaklik": 23.40,
+    "nem": 48.20
+  },
+  {
+    "id": 2,
+    "cihaz_id": 1,
+    "kiraci_id": "KADIKOY_GRP",
+    "sicaklik": 24.10,
+    "nem": 47.90
+  }
+]`,
+        note: "Güvenlik uygulama kodunda değil, veritabanı çekirdeğindedir. Bir geliştirici sorguda WHERE kiraci_id = ... yazmayı unutsa bile, PostgreSQL RLS kuralı nedeniyle yetkisiz satırlar veritabanından asla çıkamaz."
+      },
+      upsert: {
+        desc: "Tek bir HTTP POST isteğiyle birden fazla sensör kaydını ekleyen ve çakışmada güncelleyen (ON CONFLICT DO UPDATE) Upsert işlemi.",
+        step1: "POST /telemetri (Prefer: resolution=merge-duplicates)",
+        step2: "JSON Array → INSERT VALUES",
+        step3: "ON CONFLICT DO UPDATE",
+        step4: "HTTP 201 Created (Toplu Kayıt)",
+        http: `curl -s -X POST "http://localhost:3000/telemetri" \\
+  -H "Content-Type: application/json" \\
+  -H "Prefer: resolution=merge-duplicates" \\
+  -d '[
+    {"cihaz_id": 1, "sicaklik": 25.4, "nem": 46.2, "voltaj": 3.25},
+    {"cihaz_id": 2, "sicaklik": 20.1, "nem": 61.5, "voltaj": 3.30}
+  ]'`,
+        sql: `-- PostgREST toplu JSON dizisini tekil INSERT ... ON CONFLICT sorgusuna derler:
+BEGIN;
+
+INSERT INTO "api"."telemetri" ("cihaz_id", "sicaklik", "nem", "voltaj")
+SELECT "cihaz_id", "sicaklik", "nem", "voltaj"
+FROM json_populate_recordset(null::"api"."telemetri", '[
+  {"cihaz_id": 1, "sicaklik": 25.4, "nem": 46.2, "voltaj": 3.25},
+  {"cihaz_id": 2, "sicaklik": 20.1, "nem": 61.5, "voltaj": 3.30}
+]')
+ON CONFLICT ("id") DO UPDATE 
+SET "sicaklik" = EXCLUDED."sicaklik", "nem" = EXCLUDED."nem";
+
+COMMIT;`,
+        json: `// HTTP 201 Created
+// Header: Location: /telemetri?id=in.(6,7)
+// Toplu veri veritabanına tek bir disk flush döngüsünde yazıldı.`,
+        note: "PostgREST toplu veri eklemelerinde (batch insert) her satır için ayrı sorgu atmaz; json_populate_recordset ile tüm JSON dizisini tek hamlede Postgres tablo kaydına eşler."
+      }
+    };
+
+    let activeScenarioKey = 'filter';
+    let activeInspectorTab = 'http';
+
+    const scenarioBtns = document.querySelectorAll('.pgrst-scenario-btn');
+    const inspectorBtns = document.querySelectorAll('.inspector-tab-btn');
+    const descEl = document.getElementById('scenario-description');
+    const step1El = document.getElementById('flow-step-1');
+    const step2El = document.getElementById('flow-step-2');
+    const step3El = document.getElementById('flow-step-3');
+    const step4El = document.getElementById('flow-step-4');
+    const noteEl = document.getElementById('architecture-note');
+
+    const codeHttp = document.getElementById('code-http');
+    const codeSql = document.getElementById('code-sql');
+    const codeJson = document.getElementById('code-json');
+
+    const panelHttp = document.getElementById('panel-http');
+    const panelSql = document.getElementById('panel-sql');
+    const panelJson = document.getElementById('panel-json');
+
+    const copyBtn = document.getElementById('pgrst-copy-btn');
+    const copyText = document.getElementById('pgrst-copy-text');
+
+    function updateScenario(key) {
+      activeScenarioKey = key;
+      const data = scenarios[key];
+      if (!data) return;
+
+      scenarioBtns.forEach(btn => {
+        if (btn.getAttribute('data-scenario') === key) {
+          btn.classList.remove('bg-[var(--bg)]', 'text-[var(--text-muted)]');
+          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium');
+          btn.classList.add('bg-[var(--bg)]', 'text-[var(--text-muted)]');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+
+      if (descEl) descEl.textContent = data.desc;
+      if (step1El) step1El.textContent = data.step1;
+      if (step2El) step2El.textContent = data.step2;
+      if (step3El) step3El.textContent = data.step3;
+      if (step4El) step4El.textContent = data.step4;
+      if (noteEl) noteEl.textContent = data.note;
+
+      if (codeHttp) codeHttp.textContent = data.http;
+      if (codeSql) codeSql.textContent = data.sql;
+      if (codeJson) codeJson.textContent = data.json;
+    }
+
+    function switchInspectorTab(target) {
+      activeInspectorTab = target;
+      inspectorBtns.forEach(btn => {
+        if (btn.getAttribute('data-target') === target) {
+          btn.classList.remove('text-[var(--text-muted)]');
+          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]');
+        } else {
+          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]');
+          btn.classList.add('text-[var(--text-muted)]');
+        }
+      });
+
+      if (panelHttp) panelHttp.classList.toggle('hidden', target !== 'http');
+      if (panelSql) panelSql.classList.toggle('hidden', target !== 'sql');
+      if (panelJson) panelJson.classList.toggle('hidden', target !== 'json');
+    }
+
+    scenarioBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const scenario = btn.getAttribute('data-scenario');
+        if (scenario) updateScenario(scenario);
+      });
+    });
+
+    inspectorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-target');
+        if (target) switchInspectorTab(target);
+      });
+    });
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const currentData = scenarios[activeScenarioKey];
+        let textToCopy = '';
+        if (activeInspectorTab === 'http') textToCopy = currentData.http;
+        else if (activeInspectorTab === 'sql') textToCopy = currentData.sql;
+        else if (activeInspectorTab === 'json') textToCopy = currentData.json;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          if (copyText) copyText.textContent = 'Kopyalandı!';
+          setTimeout(() => {
+            if (copyText) copyText.textContent = 'Kopyala';
+          }, 2000);
+        });
+      });
+    }
+  })();
+</script>

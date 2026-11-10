@@ -1,0 +1,207 @@
+---
+title: "Patroni ile PostgreSQL Yüksek Erişilebilirlik (HA), Konsensüs ve Otomatik Failover Mimarisi"
+date: "2026-03-30"
+readingTime: "8 dk"
+summary: "PostgreSQL streaming replication'ın ötesine geçiş: etcd konsensüs motoru, Patroni yaşam döngüsü, split-brain savunması, pg_rewind ile hızlı kurtarma ve HAProxy yük dengeleme mimarisi."
+tags: ["PostgreSQL", "Patroni", "Yüksek Erişilebilirlik", "etcd", "HAProxy", "Veritabanı", "Mimari"]
+---
+
+import PatroniInteractiveExplorer from '../../components/PatroniInteractiveExplorer.astro';
+
+PostgreSQL, ACID garantileri ve güvenilirliği kanıtlanmış bir depolama motorudur. Ancak tek bir sunucu üzerinde çalışan PostgreSQL, ne kadar güçlü donanıma sahip olursa olsun **tek hata noktasıdır (Single Point of Failure - SPOF)**. 
+
+Birçok ekip işe yerel `Streaming Replication` kurarak başlar: Bir `Primary` sunucu gelen yazma isteklerini karşılar ve WAL (Write-Ahead Log) kayıtlarını ağ üzerinden bir veya daha fazla `Standby` sunucuya aktarır. Kağıt üzerinde bu bir yedeklilik sağlar; ancak sahada gerçek bir donanım arızası veya ağ kesintisi yaşandığında acı bir gerçekle karşılaşılır: **PostgreSQL kendi kendini promote edemez ve küme genelinde kimin lider olduğuna tek başına karar veremez.**
+
+---
+
+### Geleneksel Replikasyonun İki Büyük Çıkmazı
+
+1. **İnsan Müdahalesi Gecikmesi (Yüksek RTO):** Gece yarısı saat 03:00'te Primary sunucunun anakartı yandığında, nöbetçi mühendisin uyanması, VPN ile bağlanması, hangi replikanın en güncel LSN (Log Sequence Number) pozisyonunda olduğunu tespit etmesi ve `pg_ctl promote` komutunu vermesi en iyi ihtimalle 15 ila 45 dakika sürer. Bu süre, yüksek hacimli üretim sistemleri için kabul edilemez bir kesintidir (RTO - Recovery Time Objective).
+2. **Kör Otomasyon ve Split-Brain Felaketi:** Mühendis müdahalesini ortadan kaldırmak için yazılan basit bash script'leri veya kör ping kontrolleri çoğu zaman daha büyük bir felakete yol açar: Bir ağ dalgalanmasında primary ile replikanın iletişimi koptuğunda replika kendini primary ilan ederse, kümede aynı anda iki primary oluşur (**Split-Brain**). Her iki sunucu da farklı istemcilerden bağımsız yazma kabul eder ve veritabanı zaman çizgisi (timeline) geri döndürülemez biçimde çatallanır.
+
+**Patroni**, bu problemi dağıtık konsensüs algoritmaları (Raft/Paxos tabanlı etcd veya Consul) ile çözen, PostgreSQL için endüstri standardı haline gelmiş yüksek erişilebilirlik (HA) orkestratörüdür.
+
+---
+
+## İnteraktif Patroni Küme & Failover Simülatörü
+
+Aşağıdaki interaktif simülatörde 3 düğümlü bir PostgreSQL kümesinde normal senkron akışı, kontrollü switchover operasyonunu, donanım çökmesinde otomatik failover sürecini ve split-brain korumasını canlı olarak test edebilirsiniz:
+
+<PatroniInteractiveExplorer />
+
+---
+
+## 1. Patroni'nin Temel Mantığı: Dağıtık Konsensüs (etcd & Raft)
+
+Patroni, PostgreSQL düğümlerinin durumunu izlemek ve liderlik seçimini yönetmek için bir **DCS (Distributed Consensus Store)** kullanır. En yaygın ve kararlı DCS çözümü **etcd**'dir.
+
+```
+       [ İstemci Uygulamaları ]
+                  │
+        (Port 5000: Yazma / Port 5001: Okuma)
+                  ▼
+         [ HAProxy / Keepalived ]
+           │                 │
+    (200 OK)             (503 Service Unavailable)
+           ▼                 ▼
+   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+   │   pg-node-1   │ │   pg-node-2   │ │   pg-node-3   │
+   │   [PRIMARY]   │ │ [SYNC STANDBY]│ │[ASYNC STANDBY]│
+   │  Patroni 8008 │ │  Patroni 8008 │ │  Patroni 8008 │
+   └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
+           │                 │                 │
+           └─────────┬───────┴─────────┬───────┘
+                     ▼                 ▼
+             [ etcd Kümesi (3 Düğümlü Quorum) ]
+              /service/postgres-ha/leader (TTL: 30s)
+```
+
+Patroni mimarisinde liderlik rastgele bir oylama ile değil, etcd üzerindeki geçici bir anahtarın (lease) sahipliği ile belirlenir:
+
+1. **Lider Anahtarı (`/service/<scope>/leader`):** Kümedeki tekil lider, etcd üzerinde bu anahtarı belirli bir yaşam süresiyle (**TTL: 30 saniye**) kilitler.
+2. **Kalp Atışı Döngüsü (`loop_wait: 10`):** Lider düğümdeki Patroni daemon'u her 10 saniyede bir etcd'ye giderek anahtarın süresini uzatır (lease renewal).
+3. **Liderin Kaybı:** Eğer primary sunucu kilitlenir veya elektrik kesilirse, 30 saniye boyunca yenilenmeyen lider anahtarı etcd tarafından otomatik olarak silinir.
+4. **Yeni Lider Seçimi:** Standby düğümler lider anahtarının düştüğünü anında algılar. En ileri WAL LSN pozisyonuna sahip olan ve `synchronous_standby` listesinde bulunan düğüm, `Compare-And-Swap (CAS)` işlemiyle yeni lider anahtarını oluşturur ve `pg_ctl promote` çalıştırarak birincil düğüm olur.
+
+---
+
+## 2. Split-Brain Savunması & Fencing (Çit Çekme)
+
+Dağıtık sistemlerde en tehlikeli senaryo, eski liderin çöktüğünü sanıp yeni lider seçildiği sırada eski liderin aslında hala ayakta olmasıdır (örneğin yalnızca etcd ile arasındaki ağ kablosu kopmuşsa).
+
+Patroni bu durumu matematiksel olarak imkansız kılan **Fencing** kurallarına sahiptir:
+
+* **Quorum Kuralı:** 3 düğümlü bir etcd kümesinde karar alabilmek için en az 2 düğümün (çoğunluk) onayı şarttır. Eğer primary sunucu ağ bölünmesi nedeniyle etcd çoğunluğuna ulaşamazsa, liderlik anahtarını yenileyemez.
+* **Immediate Demote:** Patroni, `loop_wait` süresi içinde lider anahtarını yenileyemediği anda PostgreSQL'e derhal `SIGQUIT` veya `pg_ctl stop -m immediate` sinyali göndererek motoru kapatır.
+* **Linux Donanım Watchdog (`/dev/watchdog`):** İşletim sistemi veya Patroni'nin kendisi kilitlense bile donanımsal watchdog sayacı sıfırlanamadığı için fiziksel sunucu BIOS/IPMI seviyesinde anında resetlenir. Böylece eski primary'nin tek bir yazma isteği dahi kabul etmesi engellenir.
+
+---
+
+## 3. Senkron Replikasyon ve Sıfır Veri Kaybı (RPO = 0)
+
+Varsayılan PostgreSQL replikasyonu asenkrondur. Asenkron modda primary diske yazar, istemciye "işlem tamam" der ve WAL'ı ağa gönderir. Bu sırada elektrik kesilirse, ağdaki henüz replikaya ulaşmamış WAL kayıtları kaybolur (**Veri Kaybı / RPO > 0**).
+
+Finans, e-ticaret ve telemetri gibi kritik altyapılarda Patroni'nin **`synchronous_mode: true`** özelliği devreye sokulmalıdır:
+
+```yaml
+# patroni.yml içindeki DCS yapılandırması
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    synchronous_mode: true
+    synchronous_mode_strict: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        synchronous_commit: "on"
+        wal_level: replica
+        max_wal_senders: 10
+        max_replication_slots: 10
+```
+
+* **Dinamik `synchronous_standby_names`:** Patroni, kümedeki replikaları sürekli izler ve en sağlıklı olanı etcd `/sync` anahtarına yazar. PostgreSQL motorunun `synchronous_standby_names` parametresini otomatik günceller.
+* **İki Aşamalı Commit:** Primary sunucu, işlemi yerel diske yazdıktan sonra beklemeye geçer. Seçilen senkron replika WAL'ı kendi diskine yazıp `flush` onayı gönderdiği anda istemciye başarılı yanıt döner.
+* **`synchronous_mode_strict` Kararı:** Eğer `strict: true` yapılırsa ve tüm replikalar ölürse, veritabanı veri kaybetmemek için yazma işlemlerini tamamen kilitler. `strict: false` ise replika kalmadığında sistem geçici olarak asenkron moda düşerek erişilebilirliği (availability) korur.
+
+---
+
+## 4. HAProxy ile Akıllı Yönlendirme ve Sağlık Kontrolleri
+
+İstemci uygulamalarının hangi sunucunun primary olduğunu bilmesine gerek yoktur. Patroni, her düğümde HTTP **8008** portundan zengin bir REST API sunar:
+
+* `GET http://<host>:8008/primary` $\rightarrow$ Eğer düğüm Primary ise `HTTP 200 OK`, Standby ise `HTTP 503 Service Unavailable`.
+* `GET http://<host>:8008/replica` $\rightarrow$ Eğer düğüm Standby ise `HTTP 200 OK`, Primary ise `HTTP 503 Service Unavailable`.
+
+Bu uç noktalar, aşağıdaki gibi basit bir `haproxy.cfg` ile doğrudan eşlenir:
+
+```ini
+# HAProxy Yazma Havuzu (Port 5000 -> Sadece Aktif Primary)
+listen pg_cluster_write
+    bind *:5000
+    mode tcp
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg-node-1 192.168.10.11:5432 maxconn 200 check port 8008
+    server pg-node-2 192.168.10.12:5432 maxconn 200 check port 8008
+    server pg-node-3 192.168.10.13:5432 maxconn 200 check port 8008
+
+# HAProxy Okuma Havuzu (Port 5001 -> Sadece Sağlıklı Replikalar)
+listen pg_cluster_read
+    bind *:5001
+    mode tcp
+    balance roundrobin
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server pg-node-1 192.168.10.11:5432 check port 8008
+    server pg-node-2 192.168.10.12:5432 check port 8008
+    server pg-node-3 192.168.10.13:5432 check port 8008
+```
+
+Bu yapılandırma sayesinde failover gerçekleştiğinde HAProxy 3 saniye içinde yeni primary'yi algılar; uygulamalar yalnızca `10.0.0.1:5000` adresine bağlanarak kesintisiz yazmaya devam eder.
+
+---
+
+## 5. Çöken Düğümün Geri Dönüşü: `pg_rewind` Kurtarıcısı
+
+Bir primary çöktüğünde ve yerine bir replika promote edildiğinde, PostgreSQL yeni bir **Timeline (Zaman Çizgisi)** başlatır (örneğin Timeline 1 $\rightarrow$ Timeline 2).
+
+Eski primary saatler sonra yeniden açıldığında kendisi Timeline 1'de kalmıştır ve kümeden ayrışmıştır (diverged). Patroni öncesinde bu sunucuyu kümeye geri katmak için tüm veritabanı dizinini silip yüzlerce gigabaytlık veriyi ağdan `pg_basebackup` ile sıfırdan çekmek gerekirdi.
+
+Patroni, **`use_pg_rewind: true`** parametresi ile bu sorunu kökten çözer:
+
+1. Patroni yerel timeline ile küme timeline'ının ayrıştığı son ortak checkpoint noktasını (fork point) tespit eder.
+2. `pg_rewind` aracını çalıştırarak yalnızca ayrışma anından sonra değişen veri bloklarını yeni primary'den kopyalar.
+3. Kümeye bir `standby.signal` dosyası koyarak sunucuyu anında replika modunda başlatır.
+4. 1 TB'lık bir veritabanında bile geri alma işlemi gigabaytlarca veri transferi yerine birkaç saniye içinde tamamlanır.
+
+---
+
+## 6. Operasyonel Yönetim: `patronictl` Komut Defteri
+
+Üretim ortamında bir veritabanı mimarının en çok kullandığı `patronictl` komutları:
+
+```bash
+# 1. Kümenin güncel topolojisini, lag sürelerini ve timeline'ları listeleme
+patronictl -c /etc/patroni/patroni.yml list
+
+# 2. Planlı bakım için sıfır kesintili kontrollü lider değişimi (Switchover)
+patronictl -c /etc/patroni/patroni.yml switchover --master pg-node-1 --candidate pg-node-2 --scheduled now
+
+# 3. Bakım Modu (Otomatik failover'ı geçici olarak dondurma)
+patronictl -c /etc/patroni/patroni.yml pause
+
+# 4. Bakım Modundan Çıkış
+patronictl -c /etc/patroni/patroni.yml resume
+
+# 5. Bozulmuş veya diski değiştirilmiş bir replikayı sıfırdan bootstrap etme
+patronictl -c /etc/patroni/patroni.yml reinit pg-node-3
+
+# 6. patroni.yml ayarlarını küme geneline yeniden yükleme (Restart gerektirmeyenler için)
+patronictl -c /etc/patroni/patroni.yml reload
+```
+
+---
+
+## 7. Mimari Karar Matrisi: Ne Zaman Patroni Tercih Edilmeli?
+
+| İhtiyaç / Kriter | Standart Streaming Replication | Patroni + etcd HA Kümesi |
+| :--- | :--- | :--- |
+| **Failover Süresi (RTO)** | 15 – 45 dakika (İnsan müdahalesi) | **< 10 – 15 saniye (Tam otomatik)** |
+| **Veri Kaybı Riski (RPO)** | Asenkron ise veri kaybı riski yüksek | **Senkron modda RPO = 0 garantisi** |
+| **Split-Brain Riski** | Yüksek (Manuel promotelarda hata payı) | **Sıfır (Raft consensus + Fencing)** |
+| **Yama & Bakım Süreci** | Servis kesintisi gerektirir | **Sıfır kesintili switchover** |
+| **Altyapı Maliyeti** | Basit (2 sunucu yeterli) | Orta (En az 3 etcd + 3 DB düğümü) |
+
+### Ne Zaman Kullanılmalı?
+* Finans, telemetri, ödeme sistemleri ve sipariş motorları gibi 7/24 kesintisiz çalışması gereken sistemlerde.
+* Yıllık planlı bakım pencerelerinin (downtime window) kabul edilmediği kurumsal altyapılarda.
+* SLA taahhüdü %99.99 (yılda max 52 dakika kesinti) olan tüm kritik PostgreSQL servislerinde.
+
+### Ne Zaman Gereksizdir?
+* Geliştirme/test ortamları veya günlük birkaç saatlik kesintinin tolere edilebildiği dahili raporlama araçlarında.
+* AWS RDS Multi-AZ veya Google Cloud SQL gibi bulut sağlayıcısının yerel HA katmanının kullanıldığı senaryolarda.

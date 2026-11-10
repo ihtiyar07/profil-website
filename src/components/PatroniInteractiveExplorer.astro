@@ -1,0 +1,564 @@
+---
+// Interactive Patroni HA & Failover Explorer Component
+---
+
+<div class="patroni-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm">
+  <!-- Component Header -->
+  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
+      <span class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
+        Patroni PostgreSQL HA & Otomatik Failover Simülatörü
+      </span>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)]">
+      PostgreSQL 16 · Patroni 3.3.0 · etcd v3.5
+    </span>
+  </div>
+
+  <!-- Interactive Scenario Selector Tabs -->
+  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)] flex flex-wrap gap-1.5" role="tablist" aria-label="Patroni Senaryoları">
+    <button
+      type="button"
+      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
+      data-scenario="sync"
+      role="tab"
+      aria-selected="true"
+    >
+      01 · Sağlıklı Küme & Senkron Akış
+    </button>
+    <button
+      type="button"
+      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="switchover"
+      role="tab"
+      aria-selected="false"
+    >
+      02 · Planlı Bakım & Switchover
+    </button>
+    <button
+      type="button"
+      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="failover"
+      role="tab"
+      aria-selected="false"
+    >
+      03 · Primary Çökmesi & Failover
+    </button>
+    <button
+      type="button"
+      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="splitbrain"
+      role="tab"
+      aria-selected="false"
+    >
+      04 · Ağ İzolasyonu & Fencing
+    </button>
+    <button
+      type="button"
+      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+      data-scenario="rewind"
+      role="tab"
+      aria-selected="false"
+    >
+      05 · pg_rewind ile Yeniden Katılma
+    </button>
+  </div>
+
+  <!-- Interactive Consensus & Cluster Flow Diagram -->
+  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)]">
+    <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
+      Konsensüs ve Yönlendirme Durumu (Consensus & Routing Lifecycle)
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">1. İstemci & Yük Dengeleyici</span>
+        <span class="font-semibold text-[var(--text)]" id="patroni-flow-step-1">HAProxy: Port 5000 -> pg-node-1</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">2. DCS (etcd Quorum 2/3)</span>
+        <span class="font-semibold text-[var(--accent)]" id="patroni-flow-step-2">/leader -> pg-node-1 (TTL 28s)</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">3. Patroni Daemon</span>
+        <span class="font-semibold text-[var(--text)]" id="patroni-flow-step-3">loop_wait 10s · Health: 200 OK</span>
+      </div>
+      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
+        <span class="text-[10px] text-[var(--text-dim)] block">4. PostgreSQL Replikasyon</span>
+        <span class="font-semibold text-[var(--status-green)]" id="patroni-flow-step-4">Sync Standby: 0 lag (RPO=0)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3-Node Topology Live Visualizer -->
+  <div class="p-4 bg-[var(--bg)] border-b border-[var(--border)]">
+    <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
+      Canlı Düğüm Topolojisi (Node Topology Matrix)
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <!-- Node 1 -->
+      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node1">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-[var(--text)]">pg-node-1</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--status-green)]/15 text-[var(--status-green)] border border-[var(--status-green)]/30" id="topo-role-node1">Primary</span>
+        </div>
+        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+          <div>IP: 192.168.10.11:5432</div>
+          <div>Timeline: <span id="topo-tl-node1" class="font-semibold text-[var(--text)]">TL 1</span></div>
+          <div>Durum: <span id="topo-state-node1" class="text-[var(--status-green)]">running</span></div>
+        </div>
+      </div>
+
+      <!-- Node 2 -->
+      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node2">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-[var(--text)]">pg-node-2</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/30" id="topo-role-node2">Sync Standby</span>
+        </div>
+        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+          <div>IP: 192.168.10.12:5432</div>
+          <div>Timeline: <span id="topo-tl-node2" class="font-semibold text-[var(--text)]">TL 1</span></div>
+          <div>Durum: <span id="topo-state-node2" class="text-[var(--status-green)]">running (0 lag)</span></div>
+        </div>
+      </div>
+
+      <!-- Node 3 -->
+      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node3">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-[var(--text)]">pg-node-3</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]" id="topo-role-node3">Async Standby</span>
+        </div>
+        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+          <div>IP: 192.168.10.13:5432</div>
+          <div>Timeline: <span id="topo-tl-node3" class="font-semibold text-[var(--text)]">TL 1</span></div>
+          <div>Durum: <span id="topo-state-node3" class="text-[var(--status-green)]">running (0 lag)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Mode Switcher: patronictl list | etcd DCS State | HAProxy & pg_controldata -->
+  <div class="p-4 space-y-4">
+    <!-- Summary Description of Scenario -->
+    <div class="text-xs sm:text-sm font-sans text-[var(--text-muted)] bg-[var(--bg)] p-3 border border-[var(--border)] rounded-[2px]" id="patroni-scenario-description">
+      pg-node-1 lider konumunda, pg-node-2 senkron replika olarak işlem taahhütlerini (commit) doğrular, pg-node-3 asenkron olarak takip eder.
+    </div>
+
+    <!-- Inspector Tabs -->
+    <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden">
+      <!-- Tab Header Buttons -->
+      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active"
+            data-target="cli"
+          >
+            patronictl list (Küme Tablosu)
+          </button>
+          <button
+            type="button"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            data-target="dcs"
+          >
+            etcd / DCS Anahtarları (JSON)
+          </button>
+          <button
+            type="button"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            data-target="haproxy"
+          >
+            HAProxy & Timeline ID
+          </button>
+        </div>
+
+        <button
+          type="button"
+          id="patroni-copy-btn"
+          class="px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+        >
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="patroni-copy-text">Kopyala</span>
+        </button>
+      </div>
+
+      <!-- Tab Content 1: CLI -->
+      <div id="patroni-panel-cli" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+        <pre><code id="patroni-code-cli">{`+ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
+| pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
+| pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
++-----------+---------------+---------+---------+----+-----------+`}</code></pre>
+      </div>
+
+      <!-- Tab Content 2: DCS JSON -->
+      <div id="patroni-panel-dcs" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
+        <pre><code id="patroni-code-dcs">{`// etcdctl get --prefix /service/postgres-ha/
+/service/postgres-ha/leader:
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-1"}
+
+/service/postgres-ha/sync:
+{"leader": "pg-node-1", "sync_standby": "pg-node-2"}
+
+/service/postgres-ha/members/pg-node-1:
+{"conn_url": "postgres://192.168.10.11:5432/postgres", "api_url": "http://192.168.10.11:8008/patroni", "state": "running", "role": "primary", "xlog_location": 184549384}`}</code></pre>
+      </div>
+
+      <!-- Tab Content 3: HAProxy & Timeline -->
+      <div id="patroni-panel-haproxy" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
+        <pre><code id="patroni-code-haproxy">{`# HAProxy Sağlık Kontrolleri (Port 5000 Write Havuzu):
+$ curl -s -i http://192.168.10.11:8008/primary
+HTTP/1.1 200 OK
+Content-Type: application/json
+{"state": "running", "postmaster_start_time": "2026-11-10 14:00:01 UTC", "role": "primary", "server_version": 160002}
+
+$ curl -s -i http://192.168.10.12:8008/primary
+HTTP/1.1 503 Service Unavailable
+
+# pg_controldata /var/lib/postgresql/data (pg-node-1):
+Database cluster state:               in production
+Latest checkpoint's TimeLineID:        1
+Latest checkpoint's REDO WAL file:     00000001000000000000000B`}</code></pre>
+      </div>
+    </div>
+
+    <!-- Architectural Insights Callout -->
+    <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-start gap-2.5 text-xs font-mono">
+      <span class="text-[var(--accent)] font-bold">⚡ Mimari Çıkarım:</span>
+      <span class="text-[var(--text-muted)] font-sans" id="patroni-architecture-note">
+        Senkron replikasyon modunda (synchronous_mode: true), pg-node-1 yerel diske yazdığı WAL bloğunu pg-node-2'ye flush ettirmeden istemciye COMMIT yanıtı dönmez. Bu sayede donanım arızalarında RPO (Recovery Point Objective) tam olarak 0'dır.
+      </span>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function() {
+    const patroniScenarios = {
+      sync: {
+        desc: "pg-node-1 lider konumunda, pg-node-2 senkron replika olarak işlem taahhütlerini (commit) doğrular, pg-node-3 asenkron olarak takip eder.",
+        step1: "HAProxy: Port 5000 -> pg-node-1",
+        step2: "/leader -> pg-node-1 (TTL 28s)",
+        step3: "loop_wait 10s · Health: 200 OK",
+        step4: "Sync Standby: 0 lag (RPO=0)",
+        node1: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 1", state: "running", stateClass: "text-[var(--status-green)]" },
+        node2: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        node3: { role: "Async Standby", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
+| pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
+| pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
++-----------+---------------+---------+---------+----+-----------+`,
+        dcs: `// etcdctl get --prefix /service/postgres-ha/
+/service/postgres-ha/leader:
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-1"}
+
+/service/postgres-ha/sync:
+{"leader": "pg-node-1", "sync_standby": "pg-node-2"}
+
+/service/postgres-ha/members/pg-node-1:
+{"conn_url": "postgres://192.168.10.11:5432/postgres", "api_url": "http://192.168.10.11:8008/patroni", "state": "running", "role": "primary", "xlog_location": 184549384}`,
+        haproxy: `# HAProxy Sağlık Kontrolleri (Port 5000 Write Havuzu):
+$ curl -s -i http://192.168.10.11:8008/primary
+HTTP/1.1 200 OK
+Content-Type: application/json
+{"state": "running", "postmaster_start_time": "2026-11-10 14:00:01 UTC", "role": "primary", "server_version": 160002}
+
+$ curl -s -i http://192.168.10.12:8008/primary
+HTTP/1.1 503 Service Unavailable
+
+# pg_controldata /var/lib/postgresql/data (pg-node-1):
+Database cluster state:               in production
+Latest checkpoint's TimeLineID:        1
+Latest checkpoint's REDO WAL file:     00000001000000000000000B`,
+        note: "Senkron replikasyon modunda (synchronous_mode: true), pg-node-1 yerel diske yazdığı WAL bloğunu pg-node-2'ye flush ettirmeden istemciye COMMIT yanıtı dönmez. Bu sayede donanım arızalarında RPO (Recovery Point Objective) tam olarak 0'dır."
+      },
+      switchover: {
+        desc: "Yama veya donanım yükseltmesi amacıyla liderlik kontrollü olarak pg-node-1'den pg-node-2'ye devredilir. Sıfır veri kaybı, <2 sn kesinti.",
+        step1: "patronictl switchover komutu verildi",
+        step2: "pg-node-1 Demote & Checkpoint",
+        step3: "pg-node-2 Promote (Timeline 1 -> 2)",
+        step4: "HAProxy yazma rotasını pg-node-2'ye çevirdi",
+        node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (demoted)", stateClass: "text-[var(--text-muted)]" },
+        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
+        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        cli: `$ patronictl -c /etc/patroni/patroni.yml switchover --master pg-node-1 --candidate pg-node-2 --scheduled now
+Current cluster topology
++-----------+---------------+---------+---------+----+-----------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
+| pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
+| pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+Are you sure you want to switch over to pg-node-2? [y/N]: y
+2026-11-10 14:32:00.120 Successfully switched over to leader pg-node-2
+
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | running |  2 |         0 |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+`,
+        dcs: `// Switchover sonrası etcd anahtarları anında güncellenir:
+/service/postgres-ha/leader:
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-2"}
+
+/service/postgres-ha/sync:
+{"leader": "pg-node-2", "sync_standby": "pg-node-3"}`,
+        haproxy: `# pg-node-2 artık Primary olarak 200 OK döner:
+$ curl -s -i http://192.168.10.12:8008/primary
+HTTP/1.1 200 OK
+{"role": "primary", "server_version": 160002}
+
+# pg_controldata (pg-node-2):
+Database cluster state:               in production
+Latest checkpoint's TimeLineID:        2  # <-- Timeline 1'den 2'ye geçti!`,
+        note: "Switchover sırasında Patroni eski primary'ye checkpoint aldırıp WAL akışını durdurur. İki düğümün LSN'leri birebir eşitlendikten sonra promote gerçekleşir; böylece pg_rewind çalıştırmaya gerek kalmadan eski primary replika olarak yaşamına devam eder."
+      },
+      failover: {
+        desc: "pg-node-1 fiziksel donanımı aniden kilitlendi (Kernel panic / elektrik kesintisi). DCS lease süresi doldu ve en güncel standby otomatik olarak primary ilan edildi.",
+        step1: "pg-node-1 Heartbeat Kesildi (TIMEOUT)",
+        step2: "etcd Leader Lease (TTL 30s) Düştü",
+        step3: "pg-node-2 Liderlik Kilidini Aldı",
+        step4: "pg_ctl promote (Timeline 1 -> 2, Kesinti ~8s)",
+        node1: { role: "Unreachable", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "stopped / failed", stateClass: "text-[var(--status-red)]" },
+        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
+        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State       | TL | Lag in MB |
++-----------+---------------+---------+-------------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | stopped     |  1 |   unknown |
+| pg-node-2 | 192.168.10.12 | Primary | running     |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running     |  2 |         0 |
++-----------+---------------+---------+-------------+----+-----------+
+WARNING: Member pg-node-1 is unreachable and marked stopped`,
+        dcs: `// etcd failover kaydı ve yeni lider:
+/service/postgres-ha/failover:
+{"leader": "pg-node-2", "candidate": "pg-node-2", "scheduled_at": "2026-11-10T14:45:10Z"}
+
+/service/postgres-ha/leader:
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-2"}`,
+        haproxy: `# HAProxy sağlık kontrolü pg-node-1'i havuzdan anında düşürür:
+$ curl -s -i --connect-timeout 1 http://192.168.10.11:8008/primary
+curl: (7) Failed to connect to 192.168.10.11: Connection refused
+
+# pg-node-2 yazma trafiğini üstlenir:
+$ curl -s -i http://192.168.10.12:8008/primary
+HTTP/1.1 200 OK`,
+        note: "Otomatik failover sırasında en kritik kural 'en yüksek WAL LSN' pozisyonuna sahip adayın seçilmesidir. Patroni, etcd içindeki sync anahtarını kontrol ederek yalnızca veri kaybı riski sıfır olan replikayı promote eder."
+      },
+      splitbrain: {
+        desc: "Ağ anahtarı (switch) arızalandı; pg-node-1 diğer sunuculardan ve etcd çoğunluğundan (quorum) izole oldu. Fencing mekanizması devreye girip pg-node-1'i zorla kapatır.",
+        step1: "pg-node-1 etcd Quorum'una Ulaşamadı (1/3)",
+        step2: "Leader Lease Yenilenemedi (loop_wait < ttl)",
+        step3: "Patroni Fencing: pg_ctl stop -m immediate",
+        step4: "Watchdog /dev/watchdog Sunucuyu Resetler",
+        node1: { role: "Fenced", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "demoted / stopped", stateClass: "text-[var(--status-red)]" },
+        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (quorum 2/3)", stateClass: "text-[var(--status-green)]" },
+        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
+        cli: `2026-11-10 15:02:11 [ERROR] Failed to reach etcd quorum (1/3 available)
+2026-11-10 15:02:15 [CRITICAL] Lost leader lease lock! Initiating emergency fencing.
+2026-11-10 15:02:15 [INFO] pg_ctl stop -D /var/lib/postgresql/data -m immediate
+2026-11-10 15:02:16 [INFO] PostgreSQL forcibly terminated. Split-brain prevented.`,
+        dcs: `// pg-node-2 ve pg-node-3 çoğunlukla (2/3) etcd konsensüsünü korur:
+/service/postgres-ha/leader:
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-2"}
+
+/service/postgres-ha/sync:
+{"leader": "pg-node-2", "sync_standby": "pg-node-3"}`,
+        haproxy: `# pg-node-1'in REST API'si 503 döner veya yanıt vermez:
+$ curl -s -i http://192.168.10.11:8008/primary
+HTTP/1.1 503 Service Unavailable
+{"state": "stopped", "role": "demoted", "reason": "lost etcd quorum"}`,
+        note: "Split-Brain felaketinde iki sunucu da kendisini Primary sanıp farklı istemcilerden yazma kabul ederse veritabanı geri döndürülemez şekilde bozulur. Patroni, etcd lease'i yenilenemediği anda PostgreSQL'i 'immediate' modda öldürür (fencing); asla tek başına yazmaya devam etmesine izin vermez."
+      },
+      rewind: {
+        desc: "Çöken veya izole olan eski primary (pg-node-1) sisteme geri döndü. Timeline farkı pg_rewind ile fork noktasından itibaren otomatik eşitlenir.",
+        step1: "pg-node-1 Başlatıldı (TL 1 vs Küme TL 2)",
+        step2: "Patroni Timeline Çatallanmasını Algıladı",
+        step3: "pg_rewind --source-server=pg-node-2",
+        step4: "standby.signal ile Replica Olarak Başladı",
+        node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (rewound)", stateClass: "text-[var(--status-green)]" },
+        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
+        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        cli: `2026-11-10 15:10:02 [INFO] Local timeline 1 diverged from cluster timeline 2 at LSN 0/184549384
+2026-11-10 15:10:02 [INFO] Running pg_rewind from target pg-node-2...
+servers diverged at WAL position 0/184549384 on timeline 1
+rewinding from last common checkpoint at 0/184549300
+Done!
+2026-11-10 15:10:05 [INFO] PostgreSQL started as replica tracking pg-node-2
+
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | running |  2 |         0 |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+`,
+        dcs: `// pg-node-1 artık timeline 2 replikası olarak kaydedilir:
+/service/postgres-ha/members/pg-node-1:
+{"conn_url": "postgres://192.168.10.11:5432/postgres", "api_url": "http://192.168.10.11:8008/patroni", "state": "running", "role": "replica", "timeline": 2}`,
+        haproxy: `# pg-node-1 artık read-only replica havuzuna dahil edilir:
+$ curl -s -i http://192.168.10.11:8008/replica
+HTTP/1.1 200 OK
+{"state": "running", "role": "replica", "timeline": 2}`,
+        note: "pg_rewind olmasaydı, çatallanmış (diverged) eski primary'yi kümeye geri sokmak için yüzlerce gigabaytlık veriyi pg_basebackup ile ağdan baştan çekmek gerekirdi. pg_rewind yalnızca ayrışan birkaç megabaytlık bloğu kopyalayarak saniyeler içinde kurtarma sağlar."
+      }
+    };
+
+    let activeScenarioKey = 'sync';
+    let activeInspectorTab = 'cli';
+
+    const scenarioBtns = document.querySelectorAll('.patroni-scenario-btn');
+    const tabBtns = document.querySelectorAll('.patroni-tab-btn');
+    const descEl = document.getElementById('patroni-scenario-description');
+    const step1El = document.getElementById('patroni-flow-step-1');
+    const step2El = document.getElementById('patroni-flow-step-2');
+    const step3El = document.getElementById('patroni-flow-step-3');
+    const step4El = document.getElementById('patroni-flow-step-4');
+    const noteEl = document.getElementById('patroni-architecture-note');
+
+    const codeCli = document.getElementById('patroni-code-cli');
+    const codeDcs = document.getElementById('patroni-code-dcs');
+    const codeHaproxy = document.getElementById('patroni-code-haproxy');
+
+    const panelCli = document.getElementById('patroni-panel-cli');
+    const panelDcs = document.getElementById('patroni-panel-dcs');
+    const panelHaproxy = document.getElementById('patroni-panel-haproxy');
+
+    const roleNode1 = document.getElementById('topo-role-node1');
+    const tlNode1 = document.getElementById('topo-tl-node1');
+    const stateNode1 = document.getElementById('topo-state-node1');
+
+    const roleNode2 = document.getElementById('topo-role-node2');
+    const tlNode2 = document.getElementById('topo-tl-node2');
+    const stateNode2 = document.getElementById('topo-state-node2');
+
+    const roleNode3 = document.getElementById('topo-role-node3');
+    const tlNode3 = document.getElementById('topo-tl-node3');
+    const stateNode3 = document.getElementById('topo-state-node3');
+
+    const copyBtn = document.getElementById('patroni-copy-btn');
+    const copyText = document.getElementById('patroni-copy-text');
+
+    function updateScenario(key) {
+      activeScenarioKey = key;
+      const data = patroniScenarios[key];
+      if (!data) return;
+
+      scenarioBtns.forEach(btn => {
+        if (btn.getAttribute('data-scenario') === key) {
+          btn.classList.remove('bg-[var(--bg)]', 'text-[var(--text-muted)]');
+          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium');
+          btn.classList.add('bg-[var(--bg)]', 'text-[var(--text-muted)]');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+
+      if (descEl) descEl.textContent = data.desc;
+      if (step1El) step1El.textContent = data.step1;
+      if (step2El) step2El.textContent = data.step2;
+      if (step3El) step3El.textContent = data.step3;
+      if (step4El) step4El.textContent = data.step4;
+      if (noteEl) noteEl.textContent = data.note;
+
+      // Update Node 1
+      if (roleNode1) {
+        roleNode1.textContent = data.node1.role;
+        roleNode1.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node1.roleClass;
+      }
+      if (tlNode1) tlNode1.textContent = data.node1.tl;
+      if (stateNode1) {
+        stateNode1.textContent = data.node1.state;
+        stateNode1.className = data.node1.stateClass;
+      }
+
+      // Update Node 2
+      if (roleNode2) {
+        roleNode2.textContent = data.node2.role;
+        roleNode2.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node2.roleClass;
+      }
+      if (tlNode2) tlNode2.textContent = data.node2.tl;
+      if (stateNode2) {
+        stateNode2.textContent = data.node2.state;
+        stateNode2.className = data.node2.stateClass;
+      }
+
+      // Update Node 3
+      if (roleNode3) {
+        roleNode3.textContent = data.node3.role;
+        roleNode3.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node3.roleClass;
+      }
+      if (tlNode3) tlNode3.textContent = data.node3.tl;
+      if (stateNode3) {
+        stateNode3.textContent = data.node3.state;
+        stateNode3.className = data.node3.stateClass;
+      }
+
+      // Update Code Panes
+      if (codeCli) codeCli.textContent = data.cli;
+      if (codeDcs) codeDcs.textContent = data.dcs;
+      if (codeHaproxy) codeHaproxy.textContent = data.haproxy;
+    }
+
+    function switchInspectorTab(target) {
+      activeInspectorTab = target;
+      tabBtns.forEach(btn => {
+        if (btn.getAttribute('data-target') === target) {
+          btn.classList.remove('text-[var(--text-muted)]');
+          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]');
+        } else {
+          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]');
+          btn.classList.add('text-[var(--text-muted)]');
+        }
+      });
+
+      if (panelCli) panelCli.classList.toggle('hidden', target !== 'cli');
+      if (panelDcs) panelDcs.classList.toggle('hidden', target !== 'dcs');
+      if (panelHaproxy) panelHaproxy.classList.toggle('hidden', target !== 'haproxy');
+    }
+
+    scenarioBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const scenario = btn.getAttribute('data-scenario');
+        if (scenario) updateScenario(scenario);
+      });
+    });
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-target');
+        if (target) switchInspectorTab(target);
+      });
+    });
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const currentData = patroniScenarios[activeScenarioKey];
+        let textToCopy = '';
+        if (activeInspectorTab === 'cli') textToCopy = currentData.cli;
+        else if (activeInspectorTab === 'dcs') textToCopy = currentData.dcs;
+        else if (activeInspectorTab === 'haproxy') textToCopy = currentData.haproxy;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          if (copyText) copyText.textContent = 'Kopyalandı!';
+          setTimeout(() => {
+            if (copyText) copyText.textContent = 'Kopyala';
+          }, 2000);
+        });
+      });
+    }
+  })();
+</script>

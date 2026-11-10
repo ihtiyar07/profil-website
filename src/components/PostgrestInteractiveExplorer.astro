@@ -1,5 +1,5 @@
 ---
-// Interactive PostgREST Explorer Component
+// Interactive PostgREST Explorer Component - Step-by-Step Architecture Pipeline
 ---
 
 <div class="postgrest-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm">
@@ -8,151 +8,120 @@
     <div class="flex items-center gap-2">
       <span class="w-2 h-2 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
       <span class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
-        PostgREST Canlı Sorgu & SQL Derleyici Simülatörü
+        PostgREST Adım Adım Mimari & Çalışma Boru Hattı
       </span>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)]">
-      PostgreSQL 16 · PostgREST 16.5 · OpenAPI 3.0
+      PostgreSQL 16 · PostgREST 16.5 · Adım Adım Akış
     </span>
   </div>
 
-  <!-- Interactive Scenario Selector Tabs -->
-  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)] flex flex-wrap gap-1.5" role="tablist" aria-label="PostgREST Senaryoları">
-    <button
-      type="button"
-      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
-      data-scenario="filter"
-      role="tab"
-      aria-selected="true"
-    >
-      01 · Filtre & Sıralama
-    </button>
-    <button
-      type="button"
-      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="join"
-      role="tab"
-      aria-selected="false"
-    >
-      02 · Resource Embedding (Join)
-    </button>
-    <button
-      type="button"
-      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="rpc"
-      role="tab"
-      aria-selected="false"
-    >
-      03 · Stored Procedure (RPC)
-    </button>
-    <button
-      type="button"
-      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="rls"
-      role="tab"
-      aria-selected="false"
-    >
-      04 · RLS & Çok Kiracılı Güvenlik
-    </button>
-    <button
-      type="button"
-      class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="upsert"
-      role="tab"
-      aria-selected="false"
-    >
-      05 · Toplu Yazma & Upsert
-    </button>
-  </div>
-
-  <!-- Interactive Pipeline Flow Diagram -->
-  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)]">
+  <!-- Interactive Scenario Selector -->
+  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)]">
     <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
-      İstek Yaşam Döngüsü (Request Lifecycle)
+      Senaryo Seçimi:
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">1. İstemci / Web UI</span>
-        <span class="font-semibold text-[var(--text)]" id="flow-step-1">HTTP REST İsteği</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">2. PostgREST</span>
-        <span class="font-semibold text-[var(--accent)]" id="flow-step-2">AST → SQL CTE Derleme</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">3. PostgreSQL</span>
-        <span class="font-semibold text-[var(--text)]" id="flow-step-3">RLS + Tekil json_agg()</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">4. Yanıt</span>
-        <span class="font-semibold text-[var(--status-green)]" id="flow-step-4">Sıfır Kopyalama JSON</span>
-      </div>
+    <div class="flex flex-wrap gap-1.5" role="tablist" aria-label="PostgREST Senaryoları">
+      <button
+        type="button"
+        class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
+        data-scenario="filter"
+        role="tab"
+        aria-selected="true"
+      >
+        01 · Filtre & Sıralama
+      </button>
+      <button
+        type="button"
+        class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="join"
+        role="tab"
+        aria-selected="false"
+      >
+        02 · Resource Embedding (Join)
+      </button>
+      <button
+        type="button"
+        class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="rpc"
+        role="tab"
+        aria-selected="false"
+      >
+        03 · Stored Procedure (RPC)
+      </button>
+      <button
+        type="button"
+        class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="rls"
+        role="tab"
+        aria-selected="false"
+      >
+        04 · RLS & Çok Kiracılı Güvenlik
+      </button>
+      <button
+        type="button"
+        class="pgrst-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="upsert"
+        role="tab"
+        aria-selected="false"
+      >
+        05 · Toplu Yazma & Upsert
+      </button>
     </div>
   </div>
 
-  <!-- View Mode Switcher: HTTP Request | Generated SQL | Response JSON | Swagger UI -->
+  <!-- Step-by-Step Architecture Flow -->
   <div class="p-4 space-y-4">
-    <!-- Summary Description of Scenario -->
+    <!-- Scenario Objective / Narrative -->
     <div class="text-xs sm:text-sm font-sans text-[var(--text-muted)] bg-[var(--bg)] p-3 border border-[var(--border)] rounded-[2px]" id="scenario-description">
       Telemetri tablosunda sıcaklığı 20 dereceden büyük olan son 3 kaydı zaman sırasına göre getiren sorgu.
     </div>
 
-    <!-- Inspector Tabs -->
-    <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden">
-      <!-- Tab Header Buttons -->
-      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2 flex-wrap gap-2">
-        <div class="flex items-center gap-1.5 flex-wrap">
+    <!-- Stepper Container -->
+    <div class="space-y-4">
+      <!-- ADIM 1: İstemci İsteği -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--text)] text-[var(--bg)]">ADIM 1</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">İstemci İsteği (HTTP REST / cURL)</span>
+          </div>
           <button
             type="button"
-            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active cursor-pointer"
-            data-target="http"
+            class="pgrst-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="code-http"
           >
-            HTTP İsteği (cURL)
-          </button>
-          <button
-            type="button"
-            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
-            data-target="sql"
-          >
-            PostgreSQL İçinde Üretilen SQL
-          </button>
-          <button
-            type="button"
-            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
-            data-target="json"
-          >
-            Dönen JSON Yanıtı
-          </button>
-          <button
-            type="button"
-            class="inspector-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--accent)] hover:text-[var(--text)] bg-[var(--accent-subtle)] cursor-pointer flex items-center gap-1"
-            data-target="swagger"
-          >
-            <span>Swagger UI (Web Arayüzü)</span>
+            Kopyala
           </button>
         </div>
-
-        <button
-          type="button"
-          id="pgrst-copy-btn"
-          class="px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
-        >
-          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          <span id="pgrst-copy-text">Kopyala</span>
-        </button>
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="code-http">curl -s "http://localhost:3000/telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3"</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 1: HTTP -->
-      <div id="panel-http" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
-        <pre><code id="code-http">curl -s "http://localhost:3000/telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3"</code></pre>
+      <!-- Connector Note 1 -->
+      <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--accent)] px-2">
+        <span class="text-base leading-none">↓</span>
+        <span id="pgrst-step-note-1">PostgREST URL parametrelerini ayrıştırır ve tekil SQL CTE sorgusu derler.</span>
       </div>
 
-      <!-- Tab Content 2: SQL -->
-      <div id="panel-sql" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
-        <pre><code id="code-sql">-- PostgREST tarafından PostgreSQL oturumunda üretilen tekil CTE sorgusu:
+      <!-- ADIM 2: PostgreSQL İçinde Derlenen SQL -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--accent)] text-white">ADIM 2</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">PostgreSQL İçinde Çalışan SQL (Derlenmiş CTE)</span>
+          </div>
+          <button
+            type="button"
+            class="pgrst-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="code-sql"
+          >
+            Kopyala
+          </button>
+        </div>
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="code-sql">-- PostgREST tarafından PostgreSQL oturumunda üretilen tekil CTE sorgusu:
 BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY;
 
 WITH pgrst_source AS (
@@ -166,11 +135,32 @@ SELECT coalesce(json_agg(_postgrest_t), '[]')::character varying AS body
 FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
 
 COMMIT;</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 3: JSON -->
-      <div id="panel-json" class="inspector-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
-        <pre><code id="code-json">{`[
+      <!-- Connector Note 2 -->
+      <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--status-green)] px-2">
+        <span class="text-base leading-none">↓</span>
+        <span id="pgrst-step-note-2">PostgreSQL C motoru sonucu doğrudan JSON olarak üretir; DTO veya serileştirme yükü yoktur.</span>
+      </div>
+
+      <!-- ADIM 3: Dönen JSON Yanıtı -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--status-green)] text-white">ADIM 3</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Dönen JSON Yanıtı (HTTP 200 OK)</span>
+          </div>
+          <button
+            type="button"
+            class="pgrst-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="code-json"
+          >
+            Kopyala
+          </button>
+        </div>
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="code-json">{`[
   {
     "id": 3,
     "cihaz_id": 1,
@@ -196,76 +186,41 @@ COMMIT;</code></pre>
     "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
   }
 ]`}</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 4: Swagger UI Preview -->
-      <div id="panel-swagger" class="inspector-panel p-4 font-sans text-xs bg-[var(--bg)] hidden space-y-3">
-        <!-- Swagger Endpoint Box -->
-        <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg-subtle)]/70 overflow-hidden">
-          <div class="p-2.5 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]">
+      <!-- ADIM 4: Görsel Web Arayüzü / Swagger UI -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--text-dim)] text-white">ADIM 4</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Görsel Web Arayüzü (Swagger UI & OpenAPI 3.0)</span>
+          </div>
+          <span class="text-[10px] font-mono text-[var(--status-green)] font-semibold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]"></span>
+            Canlı Arayüz
+          </span>
+        </div>
+
+        <div class="p-3 bg-[var(--bg)] space-y-3">
+          <div class="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span id="swagger-method-badge" class="px-2 py-0.5 text-[11px] font-mono font-bold rounded-[2px] bg-[var(--accent)] text-white">GET</span>
               <span id="swagger-endpoint-path" class="font-mono text-xs font-semibold text-[var(--text)]">/telemetri</span>
               <span id="swagger-summary-text" class="text-[11px] text-[var(--text-muted)] hidden sm:inline">— Cihaz telemetri verilerini filtreler</span>
             </div>
-            <span class="text-[10px] font-mono text-[var(--status-green)] font-semibold flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]"></span>
-              OpenAPI 3.0 (Canlı UI)
-            </span>
+            <button
+              type="button"
+              id="swagger-execute-btn"
+              class="px-2.5 py-1 bg-[var(--status-green)] text-white hover:opacity-90 font-mono text-[11px] font-medium rounded-[2px] cursor-pointer flex items-center gap-1"
+            >
+              <span>▶ Test Et</span>
+            </button>
           </div>
 
-          <!-- Parameters & Execution Area -->
-          <div class="p-3 space-y-3 bg-[var(--bg)]">
-            <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] font-semibold">
-              Sorgu Parametreleri (Query Parameters)
-            </div>
-            <div id="swagger-params-list" class="space-y-1.5 font-mono text-xs">
-              <div class="p-2 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-center justify-between">
-                <div>
-                  <span class="font-semibold text-[var(--text)]">sicaklik</span>
-                  <span class="text-[10px] text-[var(--text-dim)] ml-1">(query, string)</span>
-                  <div class="text-[11px] text-[var(--text-muted)] font-sans">Filtre: Sıcaklığı 20 dereceden büyük olanlar</div>
-                </div>
-                <input type="text" readonly value="gt.20" class="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-[2px] text-xs font-mono w-24 text-right" />
-              </div>
-              <div class="p-2 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-center justify-between">
-                <div>
-                  <span class="font-semibold text-[var(--text)]">order</span>
-                  <span class="text-[10px] text-[var(--text-dim)] ml-1">(query, string)</span>
-                  <div class="text-[11px] text-[var(--text-muted)] font-sans">Zaman sırasına göre azalan sıralama</div>
-                </div>
-                <input type="text" readonly value="kayit_zamani.desc" class="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-[2px] text-xs font-mono w-36 text-right" />
-              </div>
-              <div class="p-2 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-center justify-between">
-                <div>
-                  <span class="font-semibold text-[var(--text)]">limit</span>
-                  <span class="text-[10px] text-[var(--text-dim)] ml-1">(query, integer)</span>
-                  <div class="text-[11px] text-[var(--text-muted)] font-sans">Dönecek maksimum satır adedi</div>
-                </div>
-                <input type="text" readonly value="3" class="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-[2px] text-xs font-mono w-16 text-right" />
-              </div>
-            </div>
-
-            <!-- Execute Button & Response Meta -->
-            <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between flex-wrap gap-2">
-              <button
-                type="button"
-                id="swagger-execute-btn"
-                class="px-3 py-1.5 bg-[var(--status-green)] text-white hover:opacity-90 transition-opacity font-mono text-xs font-medium rounded-[2px] cursor-pointer flex items-center gap-1.5 tactile-btn"
-              >
-                <span>▶ Execute (Çalıştır)</span>
-              </button>
-              <div class="text-[11px] font-mono text-[var(--text-dim)] flex items-center gap-3">
-                <span>Yanıt Kodu: <strong class="text-[var(--status-green)]" id="swagger-status-code">200 OK</strong></span>
-                <span>Gecikme: <strong class="text-[var(--text)]" id="swagger-latency">0.8 ms</strong></span>
-              </div>
-            </div>
+          <div id="swagger-params-list" class="space-y-1.5 font-mono text-xs">
+            <!-- Dynamically populated parameters -->
           </div>
-        </div>
-
-        <div class="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[11px] text-[var(--text-muted)] font-mono flex items-center gap-2">
-          <span>💡</span>
-          <span>PostgREST kök dizinde (<code class="text-[var(--accent)]">GET /</code>) doğrudan OpenAPI JSON spesifikasyonu sunduğu için Swagger UI veya Supabase Studio sıfır yapılandırmayla anında bağlanır.</span>
         </div>
       </div>
     </div>
@@ -285,10 +240,8 @@ COMMIT;</code></pre>
     const scenarios = {
       filter: {
         desc: "Telemetri tablosunda sıcaklığı 20 dereceden büyük olan son 3 kaydı zaman sırasına göre getiren sorgu.",
-        step1: "GET /telemetri?sicaklik=gt.20&order=kayit_zamani.desc&limit=3",
-        step2: "AST → Tekil CTE Çözümleme",
-        step3: "Index Scan + json_agg()",
-        step4: "3 Kayıt (0.8 ms)",
+        stepNote1: "PostgREST URL parametrelerini ayrıştırır ve tekil SQL CTE sorgusu derler.",
+        stepNote2: "PostgreSQL C motoru sonucu tek seferde JSON olarak üretir; ORM veya bellek kopyası yoktur.",
         swaggerMethod: "GET",
         swaggerPath: "/telemetri",
         swaggerSummary: "Cihaz telemetri verilerini filtreler ve sıralar",
@@ -342,10 +295,8 @@ COMMIT;`,
       },
       join: {
         desc: "İstasyon tablosu ile Cihazlar tablosunu yabancı anahtar (FK) üzerinden tek istekte bağlayan Resource Embedding sorgusu.",
-        step1: "GET /istasyonlar?select=ad,sehir,cihazlar(seri_no,model)&durum=eq.aktif",
-        step2: "FK Graph → LEFT JOIN LATERAL",
-        step3: "İç İçe json_agg(cihazlar)",
-        step4: "İlişkili JSON Ağacı",
+        stepNote1: "FK grafiğini okur ve ilişkili tabloyu LEFT JOIN LATERAL ile tek sorguya derler.",
+        stepNote2: "İç içe json_agg() fonksiyonuyla tek disk I/O döngüsünde ilişkisel JSON üretilir.",
         swaggerMethod: "GET",
         swaggerPath: "/istasyonlar",
         swaggerSummary: "İstasyonları ve bağlı cihazları ilişkisel olarak döner",
@@ -407,10 +358,8 @@ COMMIT;`,
       },
       rpc: {
         desc: "Karmaşık iş mantığı ve istatistiki hesaplamayı PL/pgSQL fonksiyonu üzerinden tetikleyen Stored Procedure (RPC) çağrısı.",
-        step1: "POST /rpc/istasyon_ozet",
-        step2: "JSON Payload → Fonksiyon Argümanı",
-        step3: "SELECT * FROM api.istasyon_ozet($1)",
-        step4: "Özet İstatistik JSON",
+        stepNote1: "Gelen JSON payload fonksiyon parametresi olarak atanır ve EXECUTE edilir.",
+        stepNote2: "Fonksiyon çıktısı tek bir satırda JSON formatına serileştirilip sokete yazılır.",
         swaggerMethod: "POST",
         swaggerPath: "/rpc/istasyon_ozet",
         swaggerSummary: "PL/pgSQL fonksiyonunu tetikleyen Stored Procedure (RPC) çağrısı",
@@ -440,10 +389,8 @@ COMMIT;`,
       },
       rls: {
         desc: "JWT içindeki kiracı (tenant_id) veya rol bilgisinin PostgreSQL Row-Level Security (RLS) kuralına otomatik aktarılması.",
-        step1: "GET /telemetri (Bearer JWT)",
-        step2: "SET LOCAL request.jwt.claims",
-        step3: "PostgreSQL Kernel RLS Filtresi",
-        step4: "Yalnızca Yetkili Satırlar",
+        stepNote1: "JWT claim'leri okunur ve SET LOCAL ile veritabanı oturumuna güvenli aktarılır.",
+        stepNote2: "PostgreSQL çekirdeği RLS filtresini otomatik zorlar; kiracılar arası veri sızıntısı imkansızdır.",
         swaggerMethod: "GET",
         swaggerPath: "/telemetri",
         swaggerSummary: "JWT token ile Row-Level Security (RLS) korumalı telemetri sorgusu",
@@ -489,10 +436,8 @@ COMMIT;`,
       },
       upsert: {
         desc: "Çoklu telemetri kaydını tek bir HTTP isteğinde veritabanına aktaran ve çakışmada güncelleyen (Upsert) sorgu.",
-        step1: "POST /telemetri (Prefer: merge-duplicates)",
-        step2: "JSON Array → json_populate_recordset",
-        step3: "INSERT ... ON CONFLICT DO UPDATE",
-        step4: "HTTP 201 Created (1.2 ms)",
+        stepNote1: "Prefer: merge-duplicates başlığı ON CONFLICT DO UPDATE mantığını tetikler.",
+        stepNote2: "json_populate_recordset fonksiyonuyla tüm JSON dizisi tek disk flush döngüsünde yazılır.",
         swaggerMethod: "POST",
         swaggerPath: "/telemetri",
         swaggerSummary: "Toplu veri ekleme ve çakışmada güncelleme (Upsert)",
@@ -528,35 +473,22 @@ COMMIT;`,
     };
 
     let activeScenarioKey = 'filter';
-    let activeInspectorTab = 'http';
 
     const scenarioBtns = document.querySelectorAll('.pgrst-scenario-btn');
-    const inspectorBtns = document.querySelectorAll('.inspector-tab-btn');
     const descEl = document.getElementById('scenario-description');
-    const step1El = document.getElementById('flow-step-1');
-    const step2El = document.getElementById('flow-step-2');
-    const step3El = document.getElementById('flow-step-3');
-    const step4El = document.getElementById('flow-step-4');
+    const stepNote1El = document.getElementById('pgrst-step-note-1');
+    const stepNote2El = document.getElementById('pgrst-step-note-2');
     const noteEl = document.getElementById('architecture-note');
 
     const codeHttp = document.getElementById('code-http');
     const codeSql = document.getElementById('code-sql');
     const codeJson = document.getElementById('code-json');
 
-    const panelHttp = document.getElementById('panel-http');
-    const panelSql = document.getElementById('panel-sql');
-    const panelJson = document.getElementById('panel-json');
-    const panelSwagger = document.getElementById('panel-swagger');
-
     const swaggerMethodBadge = document.getElementById('swagger-method-badge');
     const swaggerEndpointPath = document.getElementById('swagger-endpoint-path');
     const swaggerSummaryText = document.getElementById('swagger-summary-text');
     const swaggerParamsList = document.getElementById('swagger-params-list');
     const swaggerExecuteBtn = document.getElementById('swagger-execute-btn');
-    const swaggerLatency = document.getElementById('swagger-latency');
-
-    const copyBtn = document.getElementById('pgrst-copy-btn');
-    const copyText = document.getElementById('pgrst-copy-text');
 
     function updateScenario(key) {
       activeScenarioKey = key;
@@ -576,10 +508,8 @@ COMMIT;`,
       });
 
       if (descEl) descEl.textContent = data.desc;
-      if (step1El) step1El.textContent = data.step1;
-      if (step2El) step2El.textContent = data.step2;
-      if (step3El) step3El.textContent = data.step3;
-      if (step4El) step4El.textContent = data.step4;
+      if (stepNote1El) stepNote1El.textContent = data.stepNote1;
+      if (stepNote2El) stepNote2El.textContent = data.stepNote2;
       if (noteEl) noteEl.textContent = data.note;
 
       if (codeHttp) codeHttp.textContent = data.http;
@@ -614,28 +544,6 @@ COMMIT;`,
       }
     }
 
-    function switchInspectorTab(target) {
-      activeInspectorTab = target;
-      inspectorBtns.forEach(btn => {
-        if (btn.getAttribute('data-target') === target) {
-          btn.classList.remove('text-[var(--text-muted)]', 'bg-[var(--accent-subtle)]');
-          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]');
-        } else {
-          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]');
-          if (btn.getAttribute('data-target') === 'swagger') {
-            btn.classList.add('text-[var(--accent)]', 'bg-[var(--accent-subtle)]');
-          } else {
-            btn.classList.add('text-[var(--text-muted)]');
-          }
-        }
-      });
-
-      if (panelHttp) panelHttp.classList.toggle('hidden', target !== 'http');
-      if (panelSql) panelSql.classList.toggle('hidden', target !== 'sql');
-      if (panelJson) panelJson.classList.toggle('hidden', target !== 'json');
-      if (panelSwagger) panelSwagger.classList.toggle('hidden', target !== 'swagger');
-    }
-
     scenarioBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const scenario = btn.getAttribute('data-scenario');
@@ -643,42 +551,33 @@ COMMIT;`,
       });
     });
 
-    inspectorBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-target');
-        if (target) switchInspectorTab(target);
-      });
-    });
-
     if (swaggerExecuteBtn) {
       swaggerExecuteBtn.addEventListener('click', () => {
-        swaggerExecuteBtn.innerHTML = '<span>⏳ Çalıştırılıyor...</span>';
-        if (swaggerLatency) swaggerLatency.textContent = '...';
+        swaggerExecuteBtn.textContent = '⏳ Çalıştırılıyor...';
         setTimeout(() => {
-          swaggerExecuteBtn.innerHTML = '<span>✓ Tamamlandı</span>';
-          if (swaggerLatency) swaggerLatency.textContent = '0.7 ms';
+          swaggerExecuteBtn.textContent = '✓ 200 OK (0.8ms)';
           setTimeout(() => {
-            swaggerExecuteBtn.innerHTML = '<span>▶ Execute (Çalıştır)</span>';
+            swaggerExecuteBtn.textContent = '▶ Test Et';
           }, 1500);
         }, 300);
       });
     }
 
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        const currentData = scenarios[activeScenarioKey];
-        let textToCopy = '';
-        if (activeInspectorTab === 'http' || activeInspectorTab === 'swagger') textToCopy = currentData.http;
-        else if (activeInspectorTab === 'sql') textToCopy = currentData.sql;
-        else if (activeInspectorTab === 'json') textToCopy = currentData.json;
-
-        navigator.clipboard.writeText(textToCopy).then(() => {
-          if (copyText) copyText.textContent = 'Kopyalandı!';
-          setTimeout(() => {
-            if (copyText) copyText.textContent = 'Kopyala';
-          }, 2000);
-        });
+    // Step Copy Buttons
+    document.querySelectorAll('.pgrst-copy-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const codeEl = document.getElementById(targetId);
+        if (codeEl) {
+          navigator.clipboard.writeText(codeEl.textContent || '').then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = 'Kopyalandı!';
+            setTimeout(() => {
+              btn.textContent = originalText;
+            }, 2000);
+          });
+        }
       });
-    }
+    });
   })();
 </script>

@@ -1,5 +1,5 @@
 ---
-// Interactive Patroni HA & Failover Explorer Component
+// Interactive Patroni HA & Failover Explorer Component - Step-by-Step Incident Pipeline
 ---
 
 <div class="patroni-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm">
@@ -8,204 +8,126 @@
     <div class="flex items-center gap-2">
       <span class="w-2 h-2 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
       <span class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
-        Patroni PostgreSQL HA & Otomatik Failover Simülatörü
+        Patroni Adım Adım Küme Yönetimi & Failover Boru Hattı
       </span>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)]">
-      PostgreSQL 16 · Patroni 3.3.0 · etcd v3.5 · Patroni-UI
+      PostgreSQL 16 · Patroni 3.3.0 · etcd v3.5 · Adım Adım Akış
     </span>
   </div>
 
-  <!-- Interactive Scenario Selector Tabs -->
-  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)] flex flex-wrap gap-1.5" role="tablist" aria-label="Patroni Senaryoları">
-    <button
-      type="button"
-      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
-      data-scenario="sync"
-      role="tab"
-      aria-selected="true"
-    >
-      01 · Sağlıklı Küme & Senkron Akış
-    </button>
-    <button
-      type="button"
-      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="switchover"
-      role="tab"
-      aria-selected="false"
-    >
-      02 · Planlı Bakım & Switchover
-    </button>
-    <button
-      type="button"
-      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="failover"
-      role="tab"
-      aria-selected="false"
-    >
-      03 · Primary Çökmesi & Failover
-    </button>
-    <button
-      type="button"
-      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="splitbrain"
-      role="tab"
-      aria-selected="false"
-    >
-      04 · Ağ İzolasyonu & Fencing
-    </button>
-    <button
-      type="button"
-      class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
-      data-scenario="rewind"
-      role="tab"
-      aria-selected="false"
-    >
-      05 · pg_rewind ile Yeniden Katılma
-    </button>
-  </div>
-
-  <!-- Interactive Consensus & Cluster Flow Diagram -->
-  <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)]">
+  <!-- Interactive Scenario Selector -->
+  <div class="p-3 bg-[var(--bg-subtle)]/70 border-b border-[var(--border)]">
     <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
-      Konsensüs ve Yönlendirme Durumu (Consensus & Routing Lifecycle)
+      Senaryo Seçimi:
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">1. İstemci & Yük Dengeleyici</span>
-        <span class="font-semibold text-[var(--text)]" id="patroni-flow-step-1">HAProxy: Port 5000 -> pg-node-1</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">2. DCS (etcd Quorum 2/3)</span>
-        <span class="font-semibold text-[var(--accent)]" id="patroni-flow-step-2">/leader -> pg-node-1 (TTL 28s)</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">3. Patroni Daemon</span>
-        <span class="font-semibold text-[var(--text)]" id="patroni-flow-step-3">loop_wait 10s · Health: 200 OK</span>
-      </div>
-      <div class="p-2 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] flex flex-col justify-center">
-        <span class="text-[10px] text-[var(--text-dim)] block">4. PostgreSQL Replikasyon</span>
-        <span class="font-semibold text-[var(--status-green)]" id="patroni-flow-step-4">Sync Standby: 0 lag (RPO=0)</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3-Node Topology Live Visualizer -->
-  <div class="p-4 bg-[var(--bg)] border-b border-[var(--border)]">
-    <div class="text-[11px] font-mono uppercase tracking-wider text-[var(--text-dim)] mb-2 font-semibold">
-      Canlı Düğüm Topolojisi (Node Topology Matrix)
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <!-- Node 1 -->
-      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node1">
-        <div class="flex items-center justify-between">
-          <span class="font-semibold text-[var(--text)]">pg-node-1</span>
-          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--status-green)]/15 text-[var(--status-green)] border border-[var(--status-green)]/30" id="topo-role-node1">Primary</span>
-        </div>
-        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
-          <div>IP: 192.168.10.11:5432</div>
-          <div>Timeline: <span id="topo-tl-node1" class="font-semibold text-[var(--text)]">TL 1</span></div>
-          <div>Durum: <span id="topo-state-node1" class="text-[var(--status-green)]">running</span></div>
-        </div>
-      </div>
-
-      <!-- Node 2 -->
-      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node2">
-        <div class="flex items-center justify-between">
-          <span class="font-semibold text-[var(--text)]">pg-node-2</span>
-          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/30" id="topo-role-node2">Sync Standby</span>
-        </div>
-        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
-          <div>IP: 192.168.10.12:5432</div>
-          <div>Timeline: <span id="topo-tl-node2" class="font-semibold text-[var(--text)]">TL 1</span></div>
-          <div>Durum: <span id="topo-state-node2" class="text-[var(--status-green)]">running (0 lag)</span></div>
-        </div>
-      </div>
-
-      <!-- Node 3 -->
-      <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 space-y-1.5 font-mono text-xs" id="topo-card-node3">
-        <div class="flex items-center justify-between">
-          <span class="font-semibold text-[var(--text)]">pg-node-3</span>
-          <span class="px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]" id="topo-role-node3">Async Standby</span>
-        </div>
-        <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
-          <div>IP: 192.168.10.13:5432</div>
-          <div>Timeline: <span id="topo-tl-node3" class="font-semibold text-[var(--text)]">TL 1</span></div>
-          <div>Durum: <span id="topo-state-node3" class="text-[var(--status-green)]">running (0 lag)</span></div>
-        </div>
-      </div>
+    <div class="flex flex-wrap gap-1.5" role="tablist" aria-label="Patroni Senaryoları">
+      <button
+        type="button"
+        class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
+        data-scenario="sync"
+        role="tab"
+        aria-selected="true"
+      >
+        01 · Sağlıklı Küme & Senkron Akış
+      </button>
+      <button
+        type="button"
+        class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="switchover"
+        role="tab"
+        aria-selected="false"
+      >
+        02 · Planlı Bakım & Switchover
+      </button>
+      <button
+        type="button"
+        class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="failover"
+        role="tab"
+        aria-selected="false"
+      >
+        03 · Primary Çökmesi & Failover
+      </button>
+      <button
+        type="button"
+        class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="splitbrain"
+        role="tab"
+        aria-selected="false"
+      >
+        04 · Ağ İzolasyonu & Fencing
+      </button>
+      <button
+        type="button"
+        class="patroni-scenario-btn px-2.5 py-1.5 rounded-[2px] text-xs font-mono transition-all cursor-pointer bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
+        data-scenario="rewind"
+        role="tab"
+        aria-selected="false"
+      >
+        05 · pg_rewind ile Yeniden Katılma
+      </button>
     </div>
   </div>
 
-  <!-- View Mode Switcher: patronictl list | etcd DCS State | HAProxy & pg_controldata | Patroni Web UI -->
+  <!-- Step-by-Step Incident & Consensus Pipeline -->
   <div class="p-4 space-y-4">
     <!-- Summary Description of Scenario -->
     <div class="text-xs sm:text-sm font-sans text-[var(--text-muted)] bg-[var(--bg)] p-3 border border-[var(--border)] rounded-[2px]" id="patroni-scenario-description">
       pg-node-1 lider konumunda, pg-node-2 senkron replika olarak işlem taahhütlerini (commit) doğrular, pg-node-3 asenkron olarak takip eder.
     </div>
 
-    <!-- Inspector Tabs -->
-    <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden">
-      <!-- Tab Header Buttons -->
-      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2 flex-wrap gap-2">
-        <div class="flex items-center gap-1.5 flex-wrap">
+    <!-- Stepper Pipeline: Adım Adım Parçalar -->
+    <div class="space-y-4">
+      <!-- ADIM 1: Küme Yönetim Komutu (patronictl) -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--text)] text-[var(--bg)]">ADIM 1</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Küme Durumu & Yönetim Komutu (patronictl CLI)</span>
+          </div>
           <button
             type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active cursor-pointer"
-            data-target="cli"
+            class="patroni-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="patroni-code-cli"
           >
-            patronictl list (Küme Tablosu)
-          </button>
-          <button
-            type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
-            data-target="dcs"
-          >
-            etcd / DCS Anahtarları (JSON)
-          </button>
-          <button
-            type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
-            data-target="haproxy"
-          >
-            HAProxy & Timeline ID
-          </button>
-          <button
-            type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--accent)] hover:text-[var(--text)] bg-[var(--accent-subtle)] cursor-pointer flex items-center gap-1"
-            data-target="ui"
-          >
-            <span>Web UI (Patroni Dashboard)</span>
+            Kopyala
           </button>
         </div>
-
-        <button
-          type="button"
-          id="patroni-copy-btn"
-          class="px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
-        >
-          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          <span id="patroni-copy-text">Kopyala</span>
-        </button>
-      </div>
-
-      <!-- Tab Content 1: CLI -->
-      <div id="patroni-panel-cli" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
-        <pre><code id="patroni-code-cli">{`+ Cluster: postgres-ha (7349182391029381023) +---------+
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="patroni-code-cli">{`+ Cluster: postgres-ha (7349182391029381023) +---------+
 | Member    | Host          | Role    | State   | TL | Lag in MB |
 +-----------+---------------+---------+---------+----+-----------+
 | pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
 | pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
 | pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
 +-----------+---------------+---------+---------+----+-----------+`}</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 2: DCS JSON -->
-      <div id="patroni-panel-dcs" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
-        <pre><code id="patroni-code-dcs">{`// etcdctl get --prefix /service/postgres-ha/
+      <!-- Connector Note 1 -->
+      <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--accent)] px-2">
+        <span class="text-base leading-none">↓</span>
+        <span id="patroni-step-note-1">Patroni, küme genelindeki konsensüs durumunu etcd üzerindeki anahtarlarla senkronize tutar.</span>
+      </div>
+
+      <!-- ADIM 2: Dağıtık Konsensüs Durumu (etcd / DCS) -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--accent)] text-white">ADIM 2</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Dağıtık Konsensüs & Lider Anahtarı Durumu (etcd / DCS)</span>
+          </div>
+          <button
+            type="button"
+            class="patroni-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="patroni-code-dcs"
+          >
+            Kopyala
+          </button>
+        </div>
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="patroni-code-dcs">{`// etcdctl get --prefix /service/postgres-ha/
 /service/postgres-ha/leader:
 {"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-1"}
 
@@ -214,11 +136,32 @@
 
 /service/postgres-ha/members/pg-node-1:
 {"conn_url": "postgres://192.168.10.11:5432/postgres", "api_url": "http://192.168.10.11:8008/patroni", "state": "running", "role": "primary", "xlog_location": 184549384}`}</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 3: HAProxy & Timeline -->
-      <div id="patroni-panel-haproxy" class="patroni-panel p-4 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3] hidden">
-        <pre><code id="patroni-code-haproxy">{`# HAProxy Sağlık Kontrolleri (Port 5000 Write Havuzu):
+      <!-- Connector Note 2 -->
+      <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--status-green)] px-2">
+        <span class="text-base leading-none">↓</span>
+        <span id="patroni-step-note-2">HAProxy yük dengeleyicisi port 8008 REST API sağlık kontrolüyle trafiği anında aktif lidere yönlendirir.</span>
+      </div>
+
+      <!-- ADIM 3: Yönlendirme ve Sağlık Testi (HAProxy & Timeline ID) -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--status-green)] text-white">ADIM 3</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Yönlendirme & Sağlık Testi (HAProxy Port 5000 & Timeline ID)</span>
+          </div>
+          <button
+            type="button"
+            class="patroni-copy-step-btn px-2 py-0.5 text-[11px] font-mono rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            data-target="patroni-code-haproxy"
+          >
+            Kopyala
+          </button>
+        </div>
+        <div class="p-3.5 font-mono text-xs overflow-x-auto bg-[#0D1117] text-[#E6EDF3]">
+          <pre><code id="patroni-code-haproxy">{`# HAProxy Sağlık Kontrolleri (Port 5000 Write Havuzu):
 $ curl -s -i http://192.168.10.11:8008/primary
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -231,90 +174,85 @@ HTTP/1.1 503 Service Unavailable
 Database cluster state:               in production
 Latest checkpoint's TimeLineID:        1
 Latest checkpoint's REDO WAL file:     00000001000000000000000B`}</code></pre>
+        </div>
       </div>
 
-      <!-- Tab Content 4: Patroni Web Dashboard Preview -->
-      <div id="patroni-panel-ui" class="patroni-panel p-4 font-sans text-xs bg-[var(--bg)] hidden space-y-3">
-        <!-- Dashboard Cluster Header -->
-        <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div class="space-y-0.5">
+      <!-- ADIM 4: Web Dashboard & Canlı Durum -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden shadow-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--text-dim)] text-white">ADIM 4</span>
+            <span class="font-mono text-xs font-semibold text-[var(--text)]">Web Yönetim Paneli (Patroni-UI & Düğüm Matrisi)</span>
+          </div>
+          <span class="text-[10px] font-mono text-[var(--status-green)] font-semibold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]"></span>
+            Canlı Arayüz
+          </span>
+        </div>
+
+        <div class="p-3 bg-[var(--bg)] space-y-3">
+          <!-- Top cluster bar -->
+          <div class="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[var(--status-green)]"></span>
-              <span class="font-mono font-semibold text-[var(--text)] text-xs">postgres-ha.cluster.local</span>
+              <span class="font-mono text-xs font-semibold text-[var(--text)]">postgres-ha.cluster</span>
               <span class="text-[10px] font-mono px-1.5 py-0.5 bg-[var(--status-green)]/15 text-[var(--status-green)] rounded-[2px] font-medium" id="patroni-ui-quorum-badge">Quorum: 2/3 (Sağlıklı)</span>
             </div>
-            <div class="text-[11px] text-[var(--text-muted)] font-mono">
-              Konsensüs Motoru: <span class="text-[var(--text)] font-semibold">etcd v3.5</span> · Replikasyon: <span class="text-[var(--status-green)] font-semibold">Synchronous (RPO=0)</span>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                id="patroni-action-switchover"
+                class="px-2 py-1 text-[11px] font-mono font-medium rounded-[2px] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors cursor-pointer"
+              >
+                ⚡ Switchover Yap
+              </button>
+              <button
+                type="button"
+                id="patroni-action-pause"
+                class="px-2 py-1 text-[11px] font-mono font-medium rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              >
+                ⏸ Bakım Modu
+              </button>
             </div>
           </div>
 
-          <!-- Quick Action Buttons -->
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              id="patroni-action-switchover"
-              class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-[2px] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors cursor-pointer tactile-btn"
-            >
-              ⚡ Switchover Yap
-            </button>
-            <button
-              type="button"
-              id="patroni-action-pause"
-              class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer tactile-btn"
-            >
-              ⏸ Bakım Modu
-            </button>
-          </div>
-        </div>
+          <!-- 3-Node Matrix -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
+            <div class="p-2.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-1">
+              <div class="flex items-center justify-between border-b border-[var(--border)] pb-1">
+                <span class="font-semibold text-[var(--text)]">pg-node-1</span>
+                <span id="ui-card-role-node1" class="px-1.5 py-0.2 text-[10px] rounded-[2px] bg-[var(--status-green)]/15 text-[var(--status-green)] font-medium">PRIMARY</span>
+              </div>
+              <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+                <div class="flex justify-between"><span>Sağlık:</span> <span id="ui-card-health-node1" class="text-[var(--status-green)] font-semibold">200 OK</span></div>
+                <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node1" class="text-[var(--text)] font-semibold">TL 1</span></div>
+                <div class="flex justify-between"><span>Lag:</span> <span id="ui-card-lag-node1" class="text-[var(--text)]">0 MB</span></div>
+              </div>
+            </div>
 
-        <!-- Visual Node Monitor Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
-          <!-- Node 1 Card in Dashboard -->
-          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node1">
-            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
-              <span class="font-semibold text-[var(--text)]">pg-node-1</span>
-              <span id="ui-card-role-node1" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--status-green)]/15 text-[var(--status-green)] font-medium">PRIMARY</span>
+            <div class="p-2.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-1">
+              <div class="flex items-center justify-between border-b border-[var(--border)] pb-1">
+                <span class="font-semibold text-[var(--text)]">pg-node-2</span>
+                <span id="ui-card-role-node2" class="px-1.5 py-0.2 text-[10px] rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] font-medium">SYNC STANDBY</span>
+              </div>
+              <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+                <div class="flex justify-between"><span>Sağlık:</span> <span id="ui-card-health-node2" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
+                <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node2" class="text-[var(--text)] font-semibold">TL 1</span></div>
+                <div class="flex justify-between"><span>Lag:</span> <span id="ui-card-lag-node2" class="text-[var(--status-green)] font-semibold">0 ms</span></div>
+              </div>
             </div>
-            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
-              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node1" class="text-[var(--status-green)] font-semibold">200 OK</span></div>
-              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node1" class="text-[var(--text)] font-semibold">TL 1</span></div>
-              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
-              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node1" class="text-[var(--text)]">0 MB</span></div>
-            </div>
-          </div>
 
-          <!-- Node 2 Card in Dashboard -->
-          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node2">
-            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
-              <span class="font-semibold text-[var(--text)]">pg-node-2</span>
-              <span id="ui-card-role-node2" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] font-medium">SYNC STANDBY</span>
-            </div>
-            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
-              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node2" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
-              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node2" class="text-[var(--text)] font-semibold">TL 1</span></div>
-              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
-              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node2" class="text-[var(--status-green)] font-semibold">0 ms (0 byte)</span></div>
+            <div class="p-2.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-1">
+              <div class="flex items-center justify-between border-b border-[var(--border)] pb-1">
+                <span class="font-semibold text-[var(--text)]">pg-node-3</span>
+                <span id="ui-card-role-node3" class="px-1.5 py-0.2 text-[10px] rounded-[2px] bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)] font-medium">ASYNC STANDBY</span>
+              </div>
+              <div class="text-[11px] text-[var(--text-muted)] space-y-0.5">
+                <div class="flex justify-between"><span>Sağlık:</span> <span id="ui-card-health-node3" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
+                <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node3" class="text-[var(--text)] font-semibold">TL 1</span></div>
+                <div class="flex justify-between"><span>Lag:</span> <span id="ui-card-lag-node3" class="text-[var(--text)]">0 byte</span></div>
+              </div>
             </div>
           </div>
-
-          <!-- Node 3 Card in Dashboard -->
-          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node3">
-            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
-              <span class="font-semibold text-[var(--text)]">pg-node-3</span>
-              <span id="ui-card-role-node3" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)] font-medium">ASYNC STANDBY</span>
-            </div>
-            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
-              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node3" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
-              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node3" class="text-[var(--text)] font-semibold">TL 1</span></div>
-              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
-              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node3" class="text-[var(--text)]">0 byte</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[11px] text-[var(--text-muted)] font-mono flex items-center gap-2">
-          <span>💡</span>
-          <span>Açık kaynak <strong class="text-[var(--text)]">Patroni-UI</strong>, <strong class="text-[var(--text)]">Zalando Grafana Dashboard</strong> ve HAProxy Stats (<code class="text-[var(--accent)]">:8404</code>) arayüzleri, Patroni REST API'sini tarayıcı üzerinden izlemek ve tek tıkla failover yönetmek için kullanılır.</span>
         </div>
       </div>
     </div>
@@ -334,16 +272,11 @@ Latest checkpoint's REDO WAL file:     00000001000000000000000B`}</code></pre>
     const patroniScenarios = {
       sync: {
         desc: "pg-node-1 lider konumunda, pg-node-2 senkron replika olarak işlem taahhütlerini (commit) doğrular, pg-node-3 asenkron olarak takip eder.",
-        step1: "HAProxy: Port 5000 -> pg-node-1",
-        step2: "/leader -> pg-node-1 (TTL 28s)",
-        step3: "loop_wait 10s · Health: 200 OK",
-        step4: "Sync Standby: 0 lag (RPO=0)",
-        node1: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 1", state: "running", stateClass: "text-[var(--status-green)]" },
-        node2: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
-        node3: { role: "Async Standby", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
-        uiNode1: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
-        uiNode2: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms (0 byte)" },
-        uiNode3: { role: "ASYNC STANDBY", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", lag: "0 byte" },
+        stepNote1: "Patroni her 10 saniyede bir etcd üzerindeki /leader anahtarını yeniler.",
+        stepNote2: "HAProxy 8008 /primary kontrolüyle tüm yazma trafiğini pg-node-1'e yönlendirir.",
+        uiNode1: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", tl: "TL 1", lag: "0 MB" },
+        uiNode2: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", tl: "TL 1", lag: "0 ms" },
+        uiNode3: { role: "ASYNC STANDBY", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", tl: "TL 1", lag: "0 byte" },
         quorum: "Quorum: 2/3 (Sağlıklı)",
         cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
 | Member    | Host          | Role    | State   | TL | Lag in MB |
@@ -378,16 +311,11 @@ Latest checkpoint's REDO WAL file:     00000001000000000000000B`,
       },
       switchover: {
         desc: "Yama veya donanım yükseltmesi amacıyla liderlik kontrollü olarak pg-node-1'den pg-node-2'ye devredilir. Sıfır veri kaybı, <2 sn kesinti.",
-        step1: "patronictl switchover komutu verildi",
-        step2: "pg-node-1 Demote & Checkpoint",
-        step3: "pg-node-2 Promote (Timeline 1 -> 2)",
-        step4: "HAProxy yazma rotasını pg-node-2'ye çevirdi",
-        node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (demoted)", stateClass: "text-[var(--text-muted)]" },
-        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
-        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
-        uiNode1: { role: "DEMOTED REPLICA", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", lag: "0 MB" },
-        uiNode2: { role: "PRIMARY (PROMOTED)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
-        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        stepNote1: "Liderlik anahtarı etcd üzerinde pg-node-1'den pg-node-2'ye devredildi.",
+        stepNote2: "pg-node-2 promote edildi; Timeline 1 -> 2 yükseldi ve HAProxy yazma rotasını buraya bağladı.",
+        uiNode1: { role: "DEMOTED REPLICA", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 MB" },
+        uiNode2: { role: "PRIMARY (PROMOTED)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", tl: "TL 2", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 ms" },
         quorum: "Quorum: 3/3 (Geçiş Tamamlandı)",
         cli: `$ patronictl -c /etc/patroni/patroni.yml switchover --master pg-node-1 --candidate pg-node-2 --scheduled now
 Current cluster topology
@@ -426,16 +354,11 @@ Latest checkpoint's TimeLineID:        2  # <-- Timeline 1'den 2'ye geçti!`,
       },
       failover: {
         desc: "pg-node-1 fiziksel donanımı aniden kilitlendi (Kernel panic / elektrik kesintisi). DCS lease süresi doldu ve en güncel standby otomatik olarak primary ilan edildi.",
-        step1: "pg-node-1 Heartbeat Kesildi (TIMEOUT)",
-        step2: "etcd Leader Lease (TTL 30s) Düştü",
-        step3: "pg-node-2 Liderlik Kilidini Aldı",
-        step4: "pg_ctl promote (Timeline 1 -> 2, Kesinti ~8s)",
-        node1: { role: "Unreachable", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "stopped / failed", stateClass: "text-[var(--status-red)]" },
-        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
-        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
-        uiNode1: { role: "STOPPED / DOWN", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "TIMEOUT / REFUSED", lag: "UNKNOWN" },
-        uiNode2: { role: "NEW PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
-        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        stepNote1: "etcd leader lease TTL (30s) süresi doldu; kilit düşüp pg-node-2 tarafından devralındı.",
+        stepNote2: "HAProxy sağlık testi pg-node-1'i havuzdan attı; pg-node-2 yazma isteklerini karşılamaya başladı.",
+        uiNode1: { role: "STOPPED / DOWN", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "TIMEOUT", tl: "TL 1", lag: "UNKNOWN" },
+        uiNode2: { role: "NEW PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", tl: "TL 2", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 ms" },
         quorum: "Quorum: 2/3 (Failover Devrede)",
         cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
 | Member    | Host          | Role    | State       | TL | Lag in MB |
@@ -462,16 +385,11 @@ HTTP/1.1 200 OK`,
       },
       splitbrain: {
         desc: "Ağ anahtarı (switch) arızalandı; pg-node-1 diğer sunuculardan ve etcd çoğunluğundan (quorum) izole oldu. Fencing mekanizması devreye girip pg-node-1'i zorla kapatır.",
-        step1: "pg-node-1 etcd Quorum'una Ulaşamadı (1/3)",
-        step2: "Leader Lease Yenilenemedi (loop_wait < ttl)",
-        step3: "Patroni Fencing: pg_ctl stop -m immediate",
-        step4: "Watchdog /dev/watchdog Sunucuyu Resetler",
-        node1: { role: "Fenced", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "demoted / stopped", stateClass: "text-[var(--status-red)]" },
-        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (quorum 2/3)", stateClass: "text-[var(--status-green)]" },
-        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
-        uiNode1: { role: "FENCED / TERMINATED", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "503 SERVICE UNAVAILABLE", lag: "FENCED" },
-        uiNode2: { role: "PRIMARY (QUORUM 2/3)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
-        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        stepNote1: "pg-node-1 etcd çoğunluğuna (quorum 1/3) ulaşamadığı için Patroni lider anahtarını yenileyemedi.",
+        stepNote2: "Fencing: pg_ctl stop -m immediate ile PostgreSQL öldürüldü; split-brain kesin olarak önlendi.",
+        uiNode1: { role: "FENCED / TERMINATED", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "503 SERVICE UNAVAILABLE", tl: "TL 1", lag: "FENCED" },
+        uiNode2: { role: "PRIMARY (QUORUM 2/3)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", tl: "TL 2", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 ms" },
         quorum: "Quorum: 2/3 (Split-Brain Engellendi)",
         cli: `2026-11-10 15:02:11 [ERROR] Failed to reach etcd quorum (1/3 available)
 2026-11-10 15:02:15 [CRITICAL] Lost leader lease lock! Initiating emergency fencing.
@@ -491,16 +409,11 @@ HTTP/1.1 503 Service Unavailable
       },
       rewind: {
         desc: "Çöken veya izole olan eski primary (pg-node-1) sisteme geri döndü. Timeline farkı pg_rewind ile fork noktasından itibaren otomatik eşitlenir.",
-        step1: "pg-node-1 Başlatıldı (TL 1 vs Küme TL 2)",
-        step2: "Patroni Timeline Çatallanmasını Algıladı",
-        step3: "pg_rewind --source-server=pg-node-2",
-        step4: "standby.signal ile Replica Olarak Başladı",
-        node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (rewound)", stateClass: "text-[var(--status-green)]" },
-        node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
-        node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
-        uiNode1: { role: "REPLICA (REWOUND)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK (replica)", lag: "0 MB" },
-        uiNode2: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
-        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        stepNote1: "pg_rewind yerel timeline 1 ile küme timeline 2 arasındaki ayrışan blokları yeni liderden çekti.",
+        stepNote2: "standby.signal dosyasıyla pg-node-1 sıfırdan veri çekmeye gerek kalmadan replika olarak başladı.",
+        uiNode1: { role: "REPLICA (REWOUND)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 MB" },
+        uiNode2: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", tl: "TL 2", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", tl: "TL 2", lag: "0 ms" },
         quorum: "Quorum: 3/3 (Tüm Düğümler Senkron)",
         cli: `2026-11-10 15:10:02 [INFO] Local timeline 1 diverged from cluster timeline 2 at LSN 0/184549384
 2026-11-10 15:10:02 [INFO] Running pg_rewind from target pg-node-2...
@@ -528,37 +441,16 @@ HTTP/1.1 200 OK
     };
 
     let activeScenarioKey = 'sync';
-    let activeInspectorTab = 'cli';
 
     const scenarioBtns = document.querySelectorAll('.patroni-scenario-btn');
-    const tabBtns = document.querySelectorAll('.patroni-tab-btn');
     const descEl = document.getElementById('patroni-scenario-description');
-    const step1El = document.getElementById('patroni-flow-step-1');
-    const step2El = document.getElementById('patroni-flow-step-2');
-    const step3El = document.getElementById('patroni-flow-step-3');
-    const step4El = document.getElementById('patroni-flow-step-4');
+    const stepNote1El = document.getElementById('patroni-step-note-1');
+    const stepNote2El = document.getElementById('patroni-step-note-2');
     const noteEl = document.getElementById('patroni-architecture-note');
 
     const codeCli = document.getElementById('patroni-code-cli');
     const codeDcs = document.getElementById('patroni-code-dcs');
     const codeHaproxy = document.getElementById('patroni-code-haproxy');
-
-    const panelCli = document.getElementById('patroni-panel-cli');
-    const panelDcs = document.getElementById('patroni-panel-dcs');
-    const panelHaproxy = document.getElementById('patroni-panel-haproxy');
-    const panelUi = document.getElementById('patroni-panel-ui');
-
-    const roleNode1 = document.getElementById('topo-role-node1');
-    const tlNode1 = document.getElementById('topo-tl-node1');
-    const stateNode1 = document.getElementById('topo-state-node1');
-
-    const roleNode2 = document.getElementById('topo-role-node2');
-    const tlNode2 = document.getElementById('topo-tl-node2');
-    const stateNode2 = document.getElementById('topo-state-node2');
-
-    const roleNode3 = document.getElementById('topo-role-node3');
-    const tlNode3 = document.getElementById('topo-tl-node3');
-    const stateNode3 = document.getElementById('topo-state-node3');
 
     // UI dashboard elements
     const uiQuorumBadge = document.getElementById('patroni-ui-quorum-badge');
@@ -580,9 +472,6 @@ HTTP/1.1 200 OK
     const actionSwitchoverBtn = document.getElementById('patroni-action-switchover');
     const actionPauseBtn = document.getElementById('patroni-action-pause');
 
-    const copyBtn = document.getElementById('patroni-copy-btn');
-    const copyText = document.getElementById('patroni-copy-text');
-
     function updateScenario(key) {
       activeScenarioKey = key;
       const data = patroniScenarios[key];
@@ -601,69 +490,34 @@ HTTP/1.1 200 OK
       });
 
       if (descEl) descEl.textContent = data.desc;
-      if (step1El) step1El.textContent = data.step1;
-      if (step2El) step2El.textContent = data.step2;
-      if (step3El) step3El.textContent = data.step3;
-      if (step4El) step4El.textContent = data.step4;
+      if (stepNote1El) stepNote1El.textContent = data.stepNote1;
+      if (stepNote2El) stepNote2El.textContent = data.stepNote2;
       if (noteEl) noteEl.textContent = data.note;
-
-      // Update Topo Node 1
-      if (roleNode1) {
-        roleNode1.textContent = data.node1.role;
-        roleNode1.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node1.roleClass;
-      }
-      if (tlNode1) tlNode1.textContent = data.node1.tl;
-      if (stateNode1) {
-        stateNode1.textContent = data.node1.state;
-        stateNode1.className = data.node1.stateClass;
-      }
-
-      // Update Topo Node 2
-      if (roleNode2) {
-        roleNode2.textContent = data.node2.role;
-        roleNode2.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node2.roleClass;
-      }
-      if (tlNode2) tlNode2.textContent = data.node2.tl;
-      if (stateNode2) {
-        stateNode2.textContent = data.node2.state;
-        stateNode2.className = data.node2.stateClass;
-      }
-
-      // Update Topo Node 3
-      if (roleNode3) {
-        roleNode3.textContent = data.node3.role;
-        roleNode3.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node3.roleClass;
-      }
-      if (tlNode3) tlNode3.textContent = data.node3.tl;
-      if (stateNode3) {
-        stateNode3.textContent = data.node3.state;
-        stateNode3.className = data.node3.stateClass;
-      }
 
       // Update Dashboard elements
       if (uiQuorumBadge) uiQuorumBadge.textContent = data.quorum;
       if (uiCardRoleNode1) {
         uiCardRoleNode1.textContent = data.uiNode1.role;
-        uiCardRoleNode1.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode1.roleClass;
+        uiCardRoleNode1.className = 'px-1.5 py-0.2 text-[10px] rounded-[2px] font-medium ' + data.uiNode1.roleClass;
       }
       if (uiCardHealthNode1) uiCardHealthNode1.textContent = data.uiNode1.health;
-      if (uiCardTlNode1) uiCardTlNode1.textContent = data.node1.tl;
+      if (uiCardTlNode1) uiCardTlNode1.textContent = data.uiNode1.tl;
       if (uiCardLagNode1) uiCardLagNode1.textContent = data.uiNode1.lag;
 
       if (uiCardRoleNode2) {
         uiCardRoleNode2.textContent = data.uiNode2.role;
-        uiCardRoleNode2.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode2.roleClass;
+        uiCardRoleNode2.className = 'px-1.5 py-0.2 text-[10px] rounded-[2px] font-medium ' + data.uiNode2.roleClass;
       }
       if (uiCardHealthNode2) uiCardHealthNode2.textContent = data.uiNode2.health;
-      if (uiCardTlNode2) uiCardTlNode2.textContent = data.node2.tl;
+      if (uiCardTlNode2) uiCardTlNode2.textContent = data.uiNode2.tl;
       if (uiCardLagNode2) uiCardLagNode2.textContent = data.uiNode2.lag;
 
       if (uiCardRoleNode3) {
         uiCardRoleNode3.textContent = data.uiNode3.role;
-        uiCardRoleNode3.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode3.roleClass;
+        uiCardRoleNode3.className = 'px-1.5 py-0.2 text-[10px] rounded-[2px] font-medium ' + data.uiNode3.roleClass;
       }
       if (uiCardHealthNode3) uiCardHealthNode3.textContent = data.uiNode3.health;
-      if (uiCardTlNode3) uiCardTlNode3.textContent = data.node3.tl;
+      if (uiCardTlNode3) uiCardTlNode3.textContent = data.uiNode3.tl;
       if (uiCardLagNode3) uiCardLagNode3.textContent = data.uiNode3.lag;
 
       // Update Code Panes
@@ -672,39 +526,10 @@ HTTP/1.1 200 OK
       if (codeHaproxy) codeHaproxy.textContent = data.haproxy;
     }
 
-    function switchInspectorTab(target) {
-      activeInspectorTab = target;
-      tabBtns.forEach(btn => {
-        if (btn.getAttribute('data-target') === target) {
-          btn.classList.remove('text-[var(--text-muted)]', 'bg-[var(--accent-subtle)]');
-          btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]');
-        } else {
-          btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]');
-          if (btn.getAttribute('data-target') === 'ui') {
-            btn.classList.add('text-[var(--accent)]', 'bg-[var(--accent-subtle)]');
-          } else {
-            btn.classList.add('text-[var(--text-muted)]');
-          }
-        }
-      });
-
-      if (panelCli) panelCli.classList.toggle('hidden', target !== 'cli');
-      if (panelDcs) panelDcs.classList.toggle('hidden', target !== 'dcs');
-      if (panelHaproxy) panelHaproxy.classList.toggle('hidden', target !== 'haproxy');
-      if (panelUi) panelUi.classList.toggle('hidden', target !== 'ui');
-    }
-
     scenarioBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const scenario = btn.getAttribute('data-scenario');
         if (scenario) updateScenario(scenario);
-      });
-    });
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-target');
-        if (target) switchInspectorTab(target);
       });
     });
 
@@ -728,21 +553,21 @@ HTTP/1.1 200 OK
       });
     }
 
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        const currentData = patroniScenarios[activeScenarioKey];
-        let textToCopy = '';
-        if (activeInspectorTab === 'cli' || activeInspectorTab === 'ui') textToCopy = currentData.cli;
-        else if (activeInspectorTab === 'dcs') textToCopy = currentData.dcs;
-        else if (activeInspectorTab === 'haproxy') textToCopy = currentData.haproxy;
-
-        navigator.clipboard.writeText(textToCopy).then(() => {
-          if (copyText) copyText.textContent = 'Kopyalandı!';
-          setTimeout(() => {
-            if (copyText) copyText.textContent = 'Kopyala';
-          }, 2000);
-        });
+    // Step Copy Buttons
+    document.querySelectorAll('.patroni-copy-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const codeEl = document.getElementById(targetId);
+        if (codeEl) {
+          navigator.clipboard.writeText(codeEl.textContent || '').then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = 'Kopyalandı!';
+            setTimeout(() => {
+              btn.textContent = originalText;
+            }, 2000);
+          });
+        }
       });
-    }
+    });
   })();
 </script>

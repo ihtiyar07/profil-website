@@ -2,7 +2,7 @@
 // Interactive PostgREST Explorer Component - Step-by-Step Architecture Pipeline
 ---
 
-<div class="postgrest-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm">
+<div class="postgrest-explorer not-prose my-8 border border-[var(--border)] bg-[var(--bg-subtle)]/50 rounded-[2px] overflow-hidden shadow-sm" data-no-auto-copy>
   <!-- Component Header -->
   <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
     <div class="flex items-center gap-2">
@@ -214,7 +214,7 @@ COMMIT;</code></pre>
               id="swagger-execute-btn"
               class="px-2.5 py-1 bg-[var(--status-green)] text-white hover:opacity-90 font-mono text-[11px] font-medium rounded-[2px] cursor-pointer flex items-center gap-1"
             >
-              <span>▶ Test Et</span>
+              <span>Test Et</span>
             </button>
           </div>
 
@@ -227,7 +227,7 @@ COMMIT;</code></pre>
 
     <!-- Architectural Insights Callout -->
     <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex items-start gap-2.5 text-xs font-mono">
-      <span class="text-[var(--accent)] font-bold">⚡ Mimari Çıkarım:</span>
+      <span class="text-[var(--accent)] font-bold">Mimari Çıkarım:</span>
       <span class="text-[var(--text-muted)] font-sans" id="architecture-note">
         PostgREST, gelen HTTP sorgu parametrelerini doğrudan tek bir AST derleyicisi üzerinden tekil SQL CTE sorgusuna çevirir. PostgreSQL sonucu veritabanı motoru seviyesinde doğrudan JSON olarak üretir; ortada ORM nesnesi veya backend serileştirme yükü bulunmaz.
       </span>
@@ -553,11 +553,11 @@ COMMIT;`,
 
     if (swaggerExecuteBtn) {
       swaggerExecuteBtn.addEventListener('click', () => {
-        swaggerExecuteBtn.textContent = '⏳ Çalıştırılıyor...';
+        swaggerExecuteBtn.textContent = 'Çalıştırılıyor...';
         setTimeout(() => {
-          swaggerExecuteBtn.textContent = '✓ 200 OK (0.8ms)';
+          swaggerExecuteBtn.textContent = '200 OK (0.8ms)';
           setTimeout(() => {
-            swaggerExecuteBtn.textContent = '▶ Test Et';
+            swaggerExecuteBtn.textContent = 'Test Et';
           }, 1500);
         }, 300);
       });

@@ -3,76 +3,49 @@ import { SITE_META } from '../data/siteMeta';
 ---
 
 <section class="py-12 sm:py-20 border-b border-[var(--border)]">
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
-    <!-- Left 8 Columns: Narrative & Headline -->
-    <div class="lg:col-span-8 space-y-6">
-      <!-- Location & Specialization Byline -->
-      <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
-        <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)] font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0" aria-hidden="true"></span>
-          <span>İstanbul, TR</span>
-        </span>
-        <span class="text-[var(--border-strong)]">·</span>
-        <span>Veritabanı & Depolama</span>
-      </div>
-
-      <!-- Main Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
-        Veritabanı sistemleri, depolama ve veri altyapıları üzerine çalışıyorum.
-      </h1>
-
-      <!-- Bio / Context Narrative -->
-      <div class="space-y-3 max-w-[62ch] text-[var(--text-muted)] font-sans text-base sm:text-[16.5px] leading-relaxed">
-        <p>
-          İlişkisel ve zaman serisi veritabanları, depolama motorları ve sorgu optimizasyonu üzerine çalışıyorum.
-        </p>
-        <p class="text-sm sm:text-[15px] text-[var(--text)] border-l-2 border-[var(--border-strong)] pl-3.5 py-0.5">
-          Bu site; öğrendiklerimi, sahada karşılaştığım problemleri ve edindiğim deneyimleri adım adım paylaştığım kişisel bir teknik rehber (tutorial) niteliğindedir. Kendi bilgi birikimimi ve mimari notlarımı düzenli olarak buraya aktarıyorum.
-        </p>
-      </div>
-
-      <!-- Calm Editorial Action Links -->
-      <div class="flex flex-wrap items-center gap-4 pt-2">
-        <a
-          href="#articles"
-          class="px-4 py-2 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
-        >
-          <span>Yazıları Oku</span>
-          <span aria-hidden="true">→</span>
-        </a>
-
-        <a
-          href={`mailto:${SITE_META.email}`}
-          class="px-4 py-2 border border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px]"
-        >
-          <span>İletişime Geç</span>
-          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
-        </a>
-      </div>
+  <div class="max-w-3xl space-y-6 sm:space-y-7">
+    <!-- Location & Specialization Byline -->
+    <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
+      <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)] font-medium">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0" aria-hidden="true"></span>
+        <span>İstanbul, TR</span>
+      </span>
+      <span class="text-[var(--border-strong)]">·</span>
+      <span>Veritabanı & Depolama</span>
     </div>
 
-    <!-- Right 4 Columns: Architectural Portrait -->
-    <div class="lg:col-span-4 flex flex-col items-start lg:items-end">
-      <div class="w-44 sm:w-52 space-y-2.5">
-        <div class="aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
-          <picture>
-            <source srcset="/profile.webp" type="image/webp" />
-            <img
-              src="/profile.png"
-              alt="Ahmet İhtiyar"
-              width="224"
-              height="280"
-              loading="eager"
-              class="w-full h-full object-cover object-center filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:contrast-100 transition-all duration-500"
-            />
-          </picture>
-        </div>
+    <!-- Main Headline -->
+    <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
+      Veritabanı sistemleri, depolama ve veri altyapıları üzerine çalışıyorum.
+    </h1>
 
-        <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] px-0.5">
-          <span>İstanbul</span>
-          <span class="text-[var(--text-muted)] font-medium">Veritabanı & Sistem</span>
-        </div>
-      </div>
+    <!-- 2-Paragraph Narrative / Mission Statement -->
+    <div class="space-y-3.5 max-w-[65ch] text-[var(--text-muted)] font-sans text-base sm:text-[17px] leading-relaxed">
+      <p>
+        İlişkisel ve zaman serisi veritabanları, depolama motorları ve sorgu optimizasyonu üzerine çalışıyorum.
+      </p>
+      <p class="text-sm sm:text-base text-[var(--text)] border-l-2 border-[var(--border-strong)] pl-4 py-1 leading-relaxed">
+        Bu site; öğrendiklerimi, sahada karşılaştığım problemleri ve edindiğim deneyimleri adım adım paylaştığım kişisel bir teknik rehber (tutorial) niteliğindedir. Kendi bilgi birikimimi ve mimari notlarımı düzenli olarak buraya aktarıyorum.
+      </p>
+    </div>
+
+    <!-- Calm Editorial Action Links -->
+    <div class="flex flex-wrap items-center gap-4 pt-2">
+      <a
+        href="#articles"
+        class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
+      >
+        <span>Yazıları Oku</span>
+        <span aria-hidden="true">→</span>
+      </a>
+
+      <a
+        href={`mailto:${SITE_META.email}`}
+        class="px-4 py-2.5 border border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px] tactile-btn"
+      >
+        <span>İletişime Geç</span>
+        <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+      </a>
     </div>
   </div>
 </section>

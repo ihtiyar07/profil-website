@@ -220,3 +220,21 @@ section[id], article[id], div[id] {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
 }
+
+/* Sidebar Scrollspy Active State */
+.sidebar-nav-link.is-active,
+.mobile-nav-link.is-active {
+  background-color: var(--bg-subtle);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.sidebar-nav-link.is-active .nav-icon,
+.mobile-nav-link.is-active .nav-icon {
+  color: var(--accent);
+}
+
+/* Article Card Smooth Filter Transitions */
+.article-item {
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
+}

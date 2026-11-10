@@ -27,6 +27,12 @@ import { INVARIANTS } from '../data/invariants';
           {item.rule}
         </h3>
 
+        {item.failureMode && (
+          <div class="text-xs font-mono text-[var(--text-dim)] bg-[var(--bg-subtle)] px-3 py-2 rounded-[2px] border border-[var(--border)] max-w-[75ch]">
+            <span class="text-[var(--accent)] font-semibold">Kritik Risk:</span> {item.failureMode}
+          </div>
+        )}
+
         <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed max-w-[75ch]">
           {item.solution}
         </p>

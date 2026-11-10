@@ -24,51 +24,50 @@ const systems = [
 ];
 ---
 
-<section id="systems" class="py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-16">
+<section id="systems" class="py-10 sm:py-14 border-b border-[var(--border)] scroll-mt-16">
   <!-- Anchor alias for legacy links -->
   <span id="cases" class="sr-only" aria-hidden="true"></span>
 
-  <div class="space-y-2 mb-10 max-w-3xl">
+  <div class="space-y-1.5 mb-6 max-w-3xl">
     <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
       Sistemler & Çalışmalar
     </h2>
-    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+    <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
       Üretim ortamlarında tasarlanan ve çalıştırılan veritabanı altyapıları ve mimari çalışmalar.
     </p>
   </div>
 
-  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
     {systems.map((item) => (
-      <article class="py-6 sm:py-8 group transition-colors hover:bg-[var(--bg-subtle)]/40 px-2 -mx-2 rounded-[2px]">
-        <div class="flex flex-col lg:flex-row lg:items-baseline justify-between gap-4">
-          <div class="flex-1 space-y-2.5">
-            <div class="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
-              <span class="text-[var(--text-accent)] font-semibold">{item.id}</span>
-              <span>·</span>
-              <span>Vaka Dosyası</span>
-            </div>
-
-            <h3 class="font-serif text-xl sm:text-2xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
-              <a href={`/cases/${item.slug}`} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
-                {item.title}
-              </a>
-            </h3>
-
-            <p class="text-sm sm:text-[15px] text-[var(--text-muted)] font-sans leading-relaxed max-w-[85ch]">
-              {item.description}
-            </p>
-
-            <div class="flex flex-wrap items-center gap-2 pt-1">
-              {item.stack.map((tech) => (
-                <span class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)]">
-                  {tech}
-                </span>
-              ))}
-            </div>
+      <article class="group border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] transition-all p-5 sm:p-6 rounded-[2px] flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between font-mono text-xs text-[var(--text-dim)]">
+            <span class="text-[var(--text-accent)] font-semibold">{item.id} · Vaka Dosyası</span>
+            <span class="text-[10px] text-[var(--text-dim)]">Mimari</span>
           </div>
 
-          <div class="font-mono text-xs text-[var(--text-accent)] shrink-0 self-start lg:self-center pt-2 lg:pt-0">
-            <a href={`/cases/${item.slug}`} class="inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform" aria-label={`${item.title}`}>
+          <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
+            <a href={`/cases/${item.slug}`} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
+              {item.title}
+            </a>
+          </h3>
+
+          <p class="text-xs sm:text-sm text-[var(--text-muted)] font-sans leading-relaxed">
+            {item.description}
+          </p>
+        </div>
+
+        <div class="pt-4 mt-4 border-t border-[var(--border)]/70 space-y-3">
+          <div class="flex flex-wrap items-center gap-1.5">
+            {item.stack.map((tech) => (
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] text-[var(--text-dim)]">
+                {tech}
+              </span>
+            ))}
+          </div>
+
+          <div class="pt-1 flex justify-end">
+            <a href={`/cases/${item.slug}`} class="font-mono text-xs text-[var(--text-accent)] inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform" aria-label={`${item.title}`}>
               <span>İncele</span>
               <span aria-hidden="true">→</span>
             </a>

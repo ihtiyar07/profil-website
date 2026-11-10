@@ -2,44 +2,38 @@
 import { SECONDARY_PROJECTS } from '../data/secondaryProjects';
 ---
 
-<section id="secondary-projects" class="py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-16">
+<section id="secondary-projects" class="py-10 sm:py-14 border-b border-[var(--border)] scroll-mt-16">
   <!-- Section Title & Narrative -->
-  <div class="space-y-2 mb-10 max-w-3xl">
+  <div class="space-y-1.5 mb-6 max-w-3xl">
     <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
       Diğer Çalışmalar & Sistemler
     </h2>
-    <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+    <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
       Daha önce geliştirdiğim veya yönetimini üstlendiğim sistemler, ERP entegrasyonları ve altyapılar.
     </p>
   </div>
 
-  <!-- Full-Width Registry Ledger -->
-  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+  <!-- Responsive 2-Column Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {SECONDARY_PROJECTS.map((project, idx) => (
-      <div class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-4 hover:bg-[var(--bg-subtle)]/40 transition-colors px-2 -mx-2 rounded-[2px]">
-        <!-- Left: Name & Scope -->
-        <div class="flex-1 space-y-1.5">
-          <div class="flex items-center gap-2">
-            <span class="font-mono text-xs text-[var(--text-accent)] font-semibold">
-              {String(idx + 1).padStart(2, '0')}
-            </span>
-            <h3 class="font-sans text-base font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors">
-              {project.name}
-            </h3>
+      <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/30 hover:bg-[var(--bg-subtle)]/70 hover:border-[var(--border-strong)] transition-all p-5 rounded-[2px] flex flex-col justify-between space-y-3">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between font-mono text-xs">
+            <span class="text-[var(--text-accent)] font-semibold">{String(idx + 1).padStart(2, '0')}</span>
+            <span class="text-[var(--text-dim)]">{project.year}</span>
           </div>
 
-          <p class="text-sm sm:text-[15px] text-[var(--text-muted)] font-sans leading-relaxed max-w-[85ch]">
+          <h3 class="font-sans text-base font-semibold text-[var(--text)] transition-colors">
+            {project.name}
+          </h3>
+
+          <p class="text-xs sm:text-sm text-[var(--text-muted)] font-sans leading-relaxed">
             {project.whatItDid}
           </p>
-
-          <div class="font-mono text-[11px] text-[var(--text-dim)] pt-0.5 flex flex-wrap gap-x-2 gap-y-1">
-            <span>{project.stack.split(',').map((item) => item.trim()).join(' · ')}</span>
-          </div>
         </div>
 
-        <!-- Right: Year -->
-        <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto">
-          <span>{project.year}</span>
+        <div class="pt-3 border-t border-[var(--border)]/60 font-mono text-[11px] text-[var(--text-dim)]">
+          {project.stack.split(',').map((item) => item.trim()).join(' · ')}
         </div>
       </div>
     ))}

@@ -161,7 +161,39 @@ Patroni, **`use_pg_rewind: true`** parametresi ile bu sorunu kökten çözer:
 
 ---
 
-## 6. Operasyonel Yönetim: `patronictl` Komut Defteri
+## 6. Görsel Yönetim ve İzleme Arayüzleri: Patroni-UI, HAProxy Stats ve Grafana
+
+"Patroni'nin görsel bir kullanıcı arayüzü (UI) var mı?" sorusu sahada sıkça sorulur. Patroni bir arka plan daemon'u olarak çalışır; ancak zengin REST API'si sayesinde ekosistemde çok güçlü görsel arayüzlerle entegre edilir:
+
+### 1. Patroni-UI (Web Yönetim Paneli)
+Açık kaynak **Patroni-UI**, Patroni'nin port 8008 REST API'sine (`/cluster`, `/patroni`) bağlanan hafif bir web arayüzüdür:
+* **Canlı Topoloji Şeması:** Primary, senkron standby ve asenkron replikaları anlık replication lag (gecikme) çubuklarıyla listeler.
+* **Tek Tıkla Operasyon:** Terminale bağlanmadan web üzerinden tek tıkla **Switchover**, **Failover**, **Pause (Bakım modu)** ve **Reinit** işlemlerini tetiklemenizi sağlar.
+
+### 2. HAProxy İstatistiki Web Konsolu (Port 8404)
+HAProxy'nin yerleşik yönetim konsolu, veritabanı kümesindeki hangi sunucunun yazma (Primary) hangi sunucuların okuma (Standby) havuzunda olduğunu anlık renk kodlarıyla gösterir:
+
+```ini
+# haproxy.cfg içine eklenen yerleşik stats arayüzü
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /
+    stats refresh 3s
+```
+
+Failover gerçekleştiğinde `pg-node-1` kırmızıya düşerken `pg-node-2`'nin 3 saniye içinde yeşile dönerek yazma trafiğini devraldığı bu arayüzden canlı izlenir.
+
+### 3. Prometheus & Grafana Patroni Dashboard (Zalando)
+Zalando tarafından sağlanan kurumsal Grafana dashboard'u (Dashboard ID: 14247):
+* Lider değişimleri ve Timeline (TL) yükselme geçmişi,
+* Replikasyon lag süreleri (milisaniye ve bayt cinsinden),
+* etcd Raft konsensüs yanıt süreleri ve heartbeat gecikmelerini tek ekranda grafiklerle sunar.
+
+---
+
+## 7. Operasyonel Yönetim: `patronictl` Komut Defteri
 
 Üretim ortamında bir veritabanı mimarının en çok kullandığı `patronictl` komutları:
 
@@ -187,7 +219,7 @@ patronictl -c /etc/patroni/patroni.yml reload
 
 ---
 
-## 7. Mimari Karar Matrisi: Ne Zaman Patroni Tercih Edilmeli?
+## 8. Mimari Karar Matrisi: Ne Zaman Patroni Tercih Edilmeli?
 
 | İhtiyaç / Kriter | Standart Streaming Replication | Patroni + etcd HA Kümesi |
 | :--- | :--- | :--- |

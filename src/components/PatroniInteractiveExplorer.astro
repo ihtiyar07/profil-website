@@ -12,7 +12,7 @@
       </span>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)]">
-      PostgreSQL 16 · Patroni 3.3.0 · etcd v3.5
+      PostgreSQL 16 · Patroni 3.3.0 · etcd v3.5 · Patroni-UI
     </span>
   </div>
 
@@ -137,7 +137,7 @@
     </div>
   </div>
 
-  <!-- View Mode Switcher: patronictl list | etcd DCS State | HAProxy & pg_controldata -->
+  <!-- View Mode Switcher: patronictl list | etcd DCS State | HAProxy & pg_controldata | Patroni Web UI -->
   <div class="p-4 space-y-4">
     <!-- Summary Description of Scenario -->
     <div class="text-xs sm:text-sm font-sans text-[var(--text-muted)] bg-[var(--bg)] p-3 border border-[var(--border)] rounded-[2px]" id="patroni-scenario-description">
@@ -147,28 +147,35 @@
     <!-- Inspector Tabs -->
     <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] overflow-hidden">
       <!-- Tab Header Buttons -->
-      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2">
-        <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-subtle)]/70 px-3 py-2 flex-wrap gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] bg-[var(--text)] text-[var(--bg)] is-active cursor-pointer"
             data-target="cli"
           >
             patronictl list (Küme Tablosu)
           </button>
           <button
             type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
             data-target="dcs"
           >
             etcd / DCS Anahtarları (JSON)
           </button>
           <button
             type="button"
-            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)]"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
             data-target="haproxy"
           >
             HAProxy & Timeline ID
+          </button>
+          <button
+            type="button"
+            class="patroni-tab-btn px-2 py-1 text-xs font-mono font-medium rounded-[2px] text-[var(--accent)] hover:text-[var(--text)] bg-[var(--accent-subtle)] cursor-pointer flex items-center gap-1"
+            data-target="ui"
+          >
+            <span>Web UI (Patroni Dashboard)</span>
           </button>
         </div>
 
@@ -225,6 +232,91 @@ Database cluster state:               in production
 Latest checkpoint's TimeLineID:        1
 Latest checkpoint's REDO WAL file:     00000001000000000000000B`}</code></pre>
       </div>
+
+      <!-- Tab Content 4: Patroni Web Dashboard Preview -->
+      <div id="patroni-panel-ui" class="patroni-panel p-4 font-sans text-xs bg-[var(--bg)] hidden space-y-3">
+        <!-- Dashboard Cluster Header -->
+        <div class="p-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[var(--status-green)]"></span>
+              <span class="font-mono font-semibold text-[var(--text)] text-xs">postgres-ha.cluster.local</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 bg-[var(--status-green)]/15 text-[var(--status-green)] rounded-[2px] font-medium" id="patroni-ui-quorum-badge">Quorum: 2/3 (Sağlıklı)</span>
+            </div>
+            <div class="text-[11px] text-[var(--text-muted)] font-mono">
+              Konsensüs Motoru: <span class="text-[var(--text)] font-semibold">etcd v3.5</span> · Replikasyon: <span class="text-[var(--status-green)] font-semibold">Synchronous (RPO=0)</span>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              id="patroni-action-switchover"
+              class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-[2px] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors cursor-pointer tactile-btn"
+            >
+              ⚡ Switchover Yap
+            </button>
+            <button
+              type="button"
+              id="patroni-action-pause"
+              class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-[2px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer tactile-btn"
+            >
+              ⏸ Bakım Modu
+            </button>
+          </div>
+        </div>
+
+        <!-- Visual Node Monitor Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
+          <!-- Node 1 Card in Dashboard -->
+          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node1">
+            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
+              <span class="font-semibold text-[var(--text)]">pg-node-1</span>
+              <span id="ui-card-role-node1" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--status-green)]/15 text-[var(--status-green)] font-medium">PRIMARY</span>
+            </div>
+            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
+              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node1" class="text-[var(--status-green)] font-semibold">200 OK</span></div>
+              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node1" class="text-[var(--text)] font-semibold">TL 1</span></div>
+              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
+              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node1" class="text-[var(--text)]">0 MB</span></div>
+            </div>
+          </div>
+
+          <!-- Node 2 Card in Dashboard -->
+          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node2">
+            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
+              <span class="font-semibold text-[var(--text)]">pg-node-2</span>
+              <span id="ui-card-role-node2" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] font-medium">SYNC STANDBY</span>
+            </div>
+            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
+              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node2" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
+              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node2" class="text-[var(--text)] font-semibold">TL 1</span></div>
+              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
+              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node2" class="text-[var(--status-green)] font-semibold">0 ms (0 byte)</span></div>
+            </div>
+          </div>
+
+          <!-- Node 3 Card in Dashboard -->
+          <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/70 space-y-2" id="ui-box-node3">
+            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
+              <span class="font-semibold text-[var(--text)]">pg-node-3</span>
+              <span id="ui-card-role-node3" class="px-1.5 py-0.5 text-[10px] rounded-[2px] bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)] font-medium">ASYNC STANDBY</span>
+            </div>
+            <div class="space-y-1 text-[11px] text-[var(--text-muted)]">
+              <div class="flex justify-between"><span>REST Sağlık:</span> <span id="ui-card-health-node3" class="text-[var(--status-green)] font-semibold">200 OK (replica)</span></div>
+              <div class="flex justify-between"><span>Timeline:</span> <span id="ui-card-tl-node3" class="text-[var(--text)] font-semibold">TL 1</span></div>
+              <div class="flex justify-between"><span>WAL LSN:</span> <span class="text-[var(--text)]">0/184549384</span></div>
+              <div class="flex justify-between"><span>Replication Lag:</span> <span id="ui-card-lag-node3" class="text-[var(--text)]">0 byte</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[11px] text-[var(--text-muted)] font-mono flex items-center gap-2">
+          <span>💡</span>
+          <span>Açık kaynak <strong class="text-[var(--text)]">Patroni-UI</strong>, <strong class="text-[var(--text)]">Zalando Grafana Dashboard</strong> ve HAProxy Stats (<code class="text-[var(--accent)]">:8404</code>) arayüzleri, Patroni REST API'sini tarayıcı üzerinden izlemek ve tek tıkla failover yönetmek için kullanılır.</span>
+        </div>
+      </div>
     </div>
 
     <!-- Architectural Insights Callout -->
@@ -249,6 +341,10 @@ Latest checkpoint's REDO WAL file:     00000001000000000000000B`}</code></pre>
         node1: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 1", state: "running", stateClass: "text-[var(--status-green)]" },
         node2: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
         node3: { role: "Async Standby", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 1", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        uiNode1: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
+        uiNode2: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms (0 byte)" },
+        uiNode3: { role: "ASYNC STANDBY", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", lag: "0 byte" },
+        quorum: "Quorum: 2/3 (Sağlıklı)",
         cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
 | Member    | Host          | Role    | State   | TL | Lag in MB |
 +-----------+---------------+---------+---------+----+-----------+
@@ -289,6 +385,10 @@ Latest checkpoint's REDO WAL file:     00000001000000000000000B`,
         node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (demoted)", stateClass: "text-[var(--text-muted)]" },
         node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
         node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        uiNode1: { role: "DEMOTED REPLICA", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)]", health: "200 OK (replica)", lag: "0 MB" },
+        uiNode2: { role: "PRIMARY (PROMOTED)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        quorum: "Quorum: 3/3 (Geçiş Tamamlandı)",
         cli: `$ patronictl -c /etc/patroni/patroni.yml switchover --master pg-node-1 --candidate pg-node-2 --scheduled now
 Current cluster topology
 +-----------+---------------+---------+---------+----+-----------+
@@ -333,6 +433,10 @@ Latest checkpoint's TimeLineID:        2  # <-- Timeline 1'den 2'ye geçti!`,
         node1: { role: "Unreachable", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "stopped / failed", stateClass: "text-[var(--status-red)]" },
         node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (promoted)", stateClass: "text-[var(--status-green)]" },
         node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        uiNode1: { role: "STOPPED / DOWN", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "TIMEOUT / REFUSED", lag: "UNKNOWN" },
+        uiNode2: { role: "NEW PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        quorum: "Quorum: 2/3 (Failover Devrede)",
         cli: `+ Cluster: postgres-ha (7349182391029381023) +---------+
 | Member    | Host          | Role    | State       | TL | Lag in MB |
 +-----------+---------------+---------+-------------+----+-----------+
@@ -365,6 +469,10 @@ HTTP/1.1 200 OK`,
         node1: { role: "Fenced", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)] border-[var(--status-red)]/30", tl: "TL 1", state: "demoted / stopped", stateClass: "text-[var(--status-red)]" },
         node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running (quorum 2/3)", stateClass: "text-[var(--status-green)]" },
         node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
+        uiNode1: { role: "FENCED / TERMINATED", roleClass: "bg-[var(--status-red)]/15 text-[var(--status-red)]", health: "503 SERVICE UNAVAILABLE", lag: "FENCED" },
+        uiNode2: { role: "PRIMARY (QUORUM 2/3)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        quorum: "Quorum: 2/3 (Split-Brain Engellendi)",
         cli: `2026-11-10 15:02:11 [ERROR] Failed to reach etcd quorum (1/3 available)
 2026-11-10 15:02:15 [CRITICAL] Lost leader lease lock! Initiating emergency fencing.
 2026-11-10 15:02:15 [INFO] pg_ctl stop -D /var/lib/postgresql/data -m immediate
@@ -390,6 +498,10 @@ HTTP/1.1 503 Service Unavailable
         node1: { role: "Replica", roleClass: "bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)]", tl: "TL 2", state: "running (rewound)", stateClass: "text-[var(--status-green)]" },
         node2: { role: "Primary", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)] border-[var(--status-green)]/30", tl: "TL 2", state: "running", stateClass: "text-[var(--status-green)]" },
         node3: { role: "Sync Standby", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/30", tl: "TL 2", state: "running (0 lag)", stateClass: "text-[var(--status-green)]" },
+        uiNode1: { role: "REPLICA (REWOUND)", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK (replica)", lag: "0 MB" },
+        uiNode2: { role: "PRIMARY", roleClass: "bg-[var(--status-green)]/15 text-[var(--status-green)]", health: "200 OK", lag: "0 MB" },
+        uiNode3: { role: "SYNC STANDBY", roleClass: "bg-[var(--accent-subtle)] text-[var(--accent)]", health: "200 OK (replica)", lag: "0 ms" },
+        quorum: "Quorum: 3/3 (Tüm Düğümler Senkron)",
         cli: `2026-11-10 15:10:02 [INFO] Local timeline 1 diverged from cluster timeline 2 at LSN 0/184549384
 2026-11-10 15:10:02 [INFO] Running pg_rewind from target pg-node-2...
 servers diverged at WAL position 0/184549384 on timeline 1
@@ -434,6 +546,7 @@ HTTP/1.1 200 OK
     const panelCli = document.getElementById('patroni-panel-cli');
     const panelDcs = document.getElementById('patroni-panel-dcs');
     const panelHaproxy = document.getElementById('patroni-panel-haproxy');
+    const panelUi = document.getElementById('patroni-panel-ui');
 
     const roleNode1 = document.getElementById('topo-role-node1');
     const tlNode1 = document.getElementById('topo-tl-node1');
@@ -446,6 +559,26 @@ HTTP/1.1 200 OK
     const roleNode3 = document.getElementById('topo-role-node3');
     const tlNode3 = document.getElementById('topo-tl-node3');
     const stateNode3 = document.getElementById('topo-state-node3');
+
+    // UI dashboard elements
+    const uiQuorumBadge = document.getElementById('patroni-ui-quorum-badge');
+    const uiCardRoleNode1 = document.getElementById('ui-card-role-node1');
+    const uiCardHealthNode1 = document.getElementById('ui-card-health-node1');
+    const uiCardTlNode1 = document.getElementById('ui-card-tl-node1');
+    const uiCardLagNode1 = document.getElementById('ui-card-lag-node1');
+
+    const uiCardRoleNode2 = document.getElementById('ui-card-role-node2');
+    const uiCardHealthNode2 = document.getElementById('ui-card-health-node2');
+    const uiCardTlNode2 = document.getElementById('ui-card-tl-node2');
+    const uiCardLagNode2 = document.getElementById('ui-card-lag-node2');
+
+    const uiCardRoleNode3 = document.getElementById('ui-card-role-node3');
+    const uiCardHealthNode3 = document.getElementById('ui-card-health-node3');
+    const uiCardTlNode3 = document.getElementById('ui-card-tl-node3');
+    const uiCardLagNode3 = document.getElementById('ui-card-lag-node3');
+
+    const actionSwitchoverBtn = document.getElementById('patroni-action-switchover');
+    const actionPauseBtn = document.getElementById('patroni-action-pause');
 
     const copyBtn = document.getElementById('patroni-copy-btn');
     const copyText = document.getElementById('patroni-copy-text');
@@ -474,7 +607,7 @@ HTTP/1.1 200 OK
       if (step4El) step4El.textContent = data.step4;
       if (noteEl) noteEl.textContent = data.note;
 
-      // Update Node 1
+      // Update Topo Node 1
       if (roleNode1) {
         roleNode1.textContent = data.node1.role;
         roleNode1.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node1.roleClass;
@@ -485,7 +618,7 @@ HTTP/1.1 200 OK
         stateNode1.className = data.node1.stateClass;
       }
 
-      // Update Node 2
+      // Update Topo Node 2
       if (roleNode2) {
         roleNode2.textContent = data.node2.role;
         roleNode2.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node2.roleClass;
@@ -496,7 +629,7 @@ HTTP/1.1 200 OK
         stateNode2.className = data.node2.stateClass;
       }
 
-      // Update Node 3
+      // Update Topo Node 3
       if (roleNode3) {
         roleNode3.textContent = data.node3.role;
         roleNode3.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium border ' + data.node3.roleClass;
@@ -506,6 +639,32 @@ HTTP/1.1 200 OK
         stateNode3.textContent = data.node3.state;
         stateNode3.className = data.node3.stateClass;
       }
+
+      // Update Dashboard elements
+      if (uiQuorumBadge) uiQuorumBadge.textContent = data.quorum;
+      if (uiCardRoleNode1) {
+        uiCardRoleNode1.textContent = data.uiNode1.role;
+        uiCardRoleNode1.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode1.roleClass;
+      }
+      if (uiCardHealthNode1) uiCardHealthNode1.textContent = data.uiNode1.health;
+      if (uiCardTlNode1) uiCardTlNode1.textContent = data.node1.tl;
+      if (uiCardLagNode1) uiCardLagNode1.textContent = data.uiNode1.lag;
+
+      if (uiCardRoleNode2) {
+        uiCardRoleNode2.textContent = data.uiNode2.role;
+        uiCardRoleNode2.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode2.roleClass;
+      }
+      if (uiCardHealthNode2) uiCardHealthNode2.textContent = data.uiNode2.health;
+      if (uiCardTlNode2) uiCardTlNode2.textContent = data.node2.tl;
+      if (uiCardLagNode2) uiCardLagNode2.textContent = data.uiNode2.lag;
+
+      if (uiCardRoleNode3) {
+        uiCardRoleNode3.textContent = data.uiNode3.role;
+        uiCardRoleNode3.className = 'px-1.5 py-0.5 text-[10px] rounded-[2px] font-medium ' + data.uiNode3.roleClass;
+      }
+      if (uiCardHealthNode3) uiCardHealthNode3.textContent = data.uiNode3.health;
+      if (uiCardTlNode3) uiCardTlNode3.textContent = data.node3.tl;
+      if (uiCardLagNode3) uiCardLagNode3.textContent = data.uiNode3.lag;
 
       // Update Code Panes
       if (codeCli) codeCli.textContent = data.cli;
@@ -517,17 +676,22 @@ HTTP/1.1 200 OK
       activeInspectorTab = target;
       tabBtns.forEach(btn => {
         if (btn.getAttribute('data-target') === target) {
-          btn.classList.remove('text-[var(--text-muted)]');
+          btn.classList.remove('text-[var(--text-muted)]', 'bg-[var(--accent-subtle)]');
           btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]');
         } else {
           btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]');
-          btn.classList.add('text-[var(--text-muted)]');
+          if (btn.getAttribute('data-target') === 'ui') {
+            btn.classList.add('text-[var(--accent)]', 'bg-[var(--accent-subtle)]');
+          } else {
+            btn.classList.add('text-[var(--text-muted)]');
+          }
         }
       });
 
       if (panelCli) panelCli.classList.toggle('hidden', target !== 'cli');
       if (panelDcs) panelDcs.classList.toggle('hidden', target !== 'dcs');
       if (panelHaproxy) panelHaproxy.classList.toggle('hidden', target !== 'haproxy');
+      if (panelUi) panelUi.classList.toggle('hidden', target !== 'ui');
     }
 
     scenarioBtns.forEach(btn => {
@@ -544,11 +708,31 @@ HTTP/1.1 200 OK
       });
     });
 
+    if (actionSwitchoverBtn) {
+      actionSwitchoverBtn.addEventListener('click', () => {
+        updateScenario('switchover');
+      });
+    }
+
+    if (actionPauseBtn) {
+      let isPaused = false;
+      actionPauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        actionPauseBtn.textContent = isPaused ? '▶ Bakımdan Çık (Resume)' : '⏸ Bakım Modu';
+        if (uiQuorumBadge) {
+          uiQuorumBadge.textContent = isPaused ? 'PAUSED (Bakım Modu)' : patroniScenarios[activeScenarioKey].quorum;
+          uiQuorumBadge.className = isPaused
+            ? 'text-[10px] font-mono px-1.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-[2px] font-medium'
+            : 'text-[10px] font-mono px-1.5 py-0.5 bg-[var(--status-green)]/15 text-[var(--status-green)] rounded-[2px] font-medium';
+        }
+      });
+    }
+
     if (copyBtn) {
       copyBtn.addEventListener('click', () => {
         const currentData = patroniScenarios[activeScenarioKey];
         let textToCopy = '';
-        if (activeInspectorTab === 'cli') textToCopy = currentData.cli;
+        if (activeInspectorTab === 'cli' || activeInspectorTab === 'ui') textToCopy = currentData.cli;
         else if (activeInspectorTab === 'dcs') textToCopy = currentData.dcs;
         else if (activeInspectorTab === 'haproxy') textToCopy = currentData.haproxy;
 

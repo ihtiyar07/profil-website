@@ -92,6 +92,17 @@ services:
     depends_on:
       - db
 
+  # Görsel Web Arayüzü: Swagger UI
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger_ui
+    ports:
+      - "8080:8080"
+    environment:
+      API_URL: "http://localhost:3000/"
+    depends_on:
+      - postgrest
+
 volumes:
   db_data:
 ```
@@ -118,7 +129,20 @@ GRANT SELECT ON ALL TABLES IN SCHEMA api TO web_anon;
 
 ---
 
-## 3. Resource Embedding: SQL JOIN Mantığının REST Karşılığı
+## 3. Görsel Web Arayüzü: Swagger UI ve Supabase Studio
+
+"PostgREST'in grafik bir kullanıcı arayüzü (UI) var mı?" sorusunun yanıtı **evet, hem de sıfır kodla**dır:
+
+PostgREST, kök dizine (`GET http://localhost:3000/`) istek atıldığında veritabanı şemasını (`pg_catalog`) okuyarak tüm tablolar, view'lar, parametreler ve RPC fonksiyonları için tam bir **OpenAPI 3.0 / Swagger JSON** spesifikasyonu yayınlar.
+
+Yukarıdaki `docker-compose.yml` içinde yer alan `swagger` servisini ayağa kaldırdığınızda (`http://localhost:8080`):
+1. **Canlı API Dokümantasyonu:** Veritabanındaki her tablo (`/istasyonlar`, `/cihazlar`, `/telemetri`) birer REST uç noktası olarak görselleşir.
+2. **İnteraktif Test ("Try it out"):** Tarayıcı üzerinden parametreleri (`?select=`, `?durum=eq.aktif`, `?order=`) doldurup doğrudan PostgreSQL üzerinde çalıştırabilir, dönen JSON yanıtını ve gecikme süresini görebilirsiniz.
+3. **Supabase Studio:** Dünyanın en popüler açık kaynak PostgreSQL yönetim paneli olan Supabase Studio da veri tablosu gezgini, filtreleme motoru ve REST sorgu katmanı için arka planda PostgREST'i kullanmaktadır.
+
+---
+
+## 4. Resource Embedding: SQL JOIN Mantığının REST Karşılığı
 
 Geleneksel REST mimarilerinde ilişkili verileri çekmek için istemci ya ayrı ayrı uç noktalara istek atar (örneğin önce istasyonu, sonra o istasyonun cihazlarını çeker) ya da backend geliştiricisinin özel bir DTO yazması gerekir.
 
@@ -178,7 +202,7 @@ Sonuç olarak veritabanı, iç içe geçmiş ilişkisel JSON verisini tek bir di
 
 ---
 
-## 4. Güvenliğin Kalbi: Row-Level Security (RLS) ve JWT
+## 5. Güvenliğin Kalbi: Row-Level Security (RLS) ve JWT
 
 PostgREST'te "Controller seviyesinde yetkilendirme" diye bir kavram yoktur. Güvenlik doğrudan **PostgreSQL Çekirdeği (Kernel)** tarafından Row-Level Security politikalarıyla zorunlu kılınır.
 
@@ -208,7 +232,7 @@ Bu mimari sayesinde bir geliştirici sorguda `WHERE kiraci_id = ...` yazmayı un
 
 ---
 
-## 5. Stored Procedure'ler ile RPC (Remote Procedure Call)
+## 6. Stored Procedure'ler ile RPC (Remote Procedure Call)
 
 PostgREST yalnızca tabloları değil, `api` şemasındaki saklı yordamları (stored procedure / function) da otomatik olarak birer REST uç noktasına çevirir:
 
@@ -256,7 +280,7 @@ Dönen yanıt doğrudan hesaplanmış JSON sonucudur:
 
 ---
 
-## 6. Üretim Notları ve Performans Kıyaslaması
+## 7. Üretim Notları ve Performans Kıyaslaması
 
 | Kriter | Node.js / Python ORM API | PostgREST + PostgreSQL |
 |---|---|---|

@@ -7,18 +7,15 @@ const posts = allPosts
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 ---
 
-<section id="articles" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+<section id="articles" class="py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-16">
   <!-- Section Title & Narrative -->
-  <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-    <div class="space-y-3 max-w-2xl">
-      <div class="font-mono text-xs text-[var(--text-accent)] font-semibold tracking-wider uppercase">
-        Yayınlar & Notlar
-      </div>
-      <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-        Yazılar & Teknik Notlar
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+    <div class="space-y-2 max-w-2xl">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        Yazılar & Notlar
       </h2>
       <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
-        Büyük ölçekli veritabanları, depolama motorları, sorgu optimizasyonu ve sistem mimarisi üzerine teknik incelemeler.
+        Veritabanı sistemleri, depolama mimarisi ve sorgu optimizasyonu üzerine notlar.
       </p>
     </div>
 

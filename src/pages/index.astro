@@ -1,29 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
-import CaseFiles from '../components/CaseFiles.astro';
 import ArticlesSection from '../components/ArticlesSection.astro';
+import CaseFiles from '../components/CaseFiles.astro';
 import Invariants from '../components/Invariants.astro';
 import SecondaryProjects from '../components/SecondaryProjects.astro';
 import ContactSection from '../components/ContactSection.astro';
 ---
 
 <BaseLayout>
-  <!-- 00. Hero: H1, Başlık, Sakin Aksiyonlar, Portre Fotoğrafı -->
+  <!-- Hero -->
   <Hero />
 
-  <!-- 01. Sistem Mimarileri: 3 Birincil Vaka Dosyası (MetaDB, TimescaleDB, Arrow) -->
-  <CaseFiles />
-
-  <!-- 02. Yazılar & Teknik Notlar: Editoryal Yayınlar Listesi -->
+  <!-- Yazılar & Notlar -->
   <ArticlesSection />
 
-  <!-- 03. Değişmezler: Mimari İlkeler ve Savunma Modelleri -->
+  <!-- Sistemler & Çalışmalar -->
+  <CaseFiles />
+
+  <!-- Mimari İlkeler -->
   <Invariants />
 
-  <!-- 04. Sistem Kayıt Defteri: İkincil Altyapılar -->
+  <!-- Diğer Sistemler -->
   <SecondaryProjects />
 
-  <!-- 05. İletişim: E-posta, GitHub, LinkedIn -->
+  <!-- İletişim -->
   <ContactSection />
 </BaseLayout>
+

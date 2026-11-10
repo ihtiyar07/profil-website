@@ -5,7 +5,7 @@ import { SITE_META } from '../data/siteMeta';
 <section class="py-12 sm:py-20 border-b border-[var(--border)]">
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
     <!-- Left 8 Columns: Narrative & Headline -->
-    <div class="lg:col-span-8 space-y-7">
+    <div class="lg:col-span-8 space-y-6">
       <!-- Location & Specialization Byline -->
       <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
         <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)] font-medium">
@@ -13,42 +13,34 @@ import { SITE_META } from '../data/siteMeta';
           <span>İstanbul, TR</span>
         </span>
         <span class="text-[var(--border-strong)]">·</span>
-        <span>Diverjans IT · Veritabanı Mimarisi & Depolama</span>
+        <span>Diverjans Bilgi Teknolojileri</span>
       </div>
 
       <!-- Main Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[3.25rem] font-serif leading-[1.14] tracking-tight text-[var(--text)]">
-        Büyük ölçekli veritabanları, depolama motorları ve <span class="italic font-normal">sıfır etkili veri altyapıları</span> üzerine çalışan veritabanı mimarı.
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
+        Veritabanı sistemleri, depolama ve veri altyapıları üzerine çalışıyorum.
       </h1>
 
       <!-- Bio / Context Narrative -->
-      <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
-        Çok terabaytlık veritabanı mimarisi, dağıtık metadata kataloglama (MetaDB), sorgu yürütme optimizasyonu (PostgreSQL, Oracle, TimescaleDB) ve depolama motoru kararlılığı üzerine çalışıyorum. Canlı üretim sistemlerine sıfır kilitlenme etkisi ve yüksek ölçekli analitik veri hatları odaklandığım temel alanlar.
+      <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[62ch] font-sans">
+        İlişkisel ve zaman serisi veritabanları, depolama motorları ve sorgu optimizasyonu üzerine çalışıyorum. Canlı sistemlerde kararlılık, öngörülebilir performans ve güvenli veri akışı temel odak noktam.
       </p>
 
       <!-- Calm Editorial Action Links -->
       <div class="flex flex-wrap items-center gap-4 pt-2">
         <a
           href="#articles"
-          class="px-5 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
+          class="px-4 py-2 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
           <span>Yazıları Oku</span>
           <span aria-hidden="true">→</span>
         </a>
 
         <a
-          href="#systems"
-          class="px-5 py-2.5 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
-        >
-          <span>Sistem Mimarileri</span>
-          <span aria-hidden="true">↓</span>
-        </a>
-
-        <a
           href={`mailto:${SITE_META.email}`}
-          class="px-3 py-2.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors text-xs font-mono inline-flex items-center gap-1.5"
+          class="px-4 py-2 border border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px]"
         >
-          <span>Doğrudan İletişim</span>
+          <span>İletişime Geç</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
         </a>
       </div>
@@ -56,7 +48,7 @@ import { SITE_META } from '../data/siteMeta';
 
     <!-- Right 4 Columns: Architectural Portrait -->
     <div class="lg:col-span-4 flex flex-col items-start lg:items-end">
-      <div class="w-48 sm:w-56 space-y-3">
+      <div class="w-44 sm:w-52 space-y-2.5">
         <div class="aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
           <picture>
             <source srcset="/profile.webp" type="image/webp" />
@@ -72,10 +64,11 @@ import { SITE_META } from '../data/siteMeta';
         </div>
 
         <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] px-0.5">
-          <span>İstanbul · Diverjans IT</span>
-          <span class="text-[var(--text-muted)] font-medium">Veritabanı Mimarı</span>
+          <span>İstanbul</span>
+          <span class="text-[var(--text-muted)] font-medium">Veritabanı & Sistem</span>
         </div>
       </div>
     </div>
   </div>
 </section>
+

@@ -11,47 +11,48 @@ export interface Invariant {
 export const INVARIANTS: Invariant[] = [
   {
     id: "zero-lock-stats",
-    badge: "01 · Veritabanı Mimarisi",
-    title: "Zero-Lock Katalog İstatistikleri",
-    rule: "Canlı multi-terabayt üretim veritabanlarında metadata ve şema çıkarma sırasında SELECT COUNT(*) ve tam tablo taraması (Seq Scan) kesinlikle çalıştırılamaz.",
-    failureMode: "Tablo boyutu yüz milyonlarca satıra ulaştığında tam tarama tüm disk bloklarını OS buffer cache'ine çeker, disk I/O kapasitesini tüketir ve canlı operasyonel işlemleri bekletir (lock starvation).",
-    solution: "Doğrudan yerel veritabanı katalog istatistikleri (PostgreSQL'de pg_class.reltuples, Oracle'da ALL_TABLES.NUM_ROWS, MSSQL'de sys.dm_db_partition_stats) asenkron okunur. Yaklaşık satır sayısı sıfır kilit ve <5ms içinde elde edilir.",
-    verification: "MetaDB projesinde multi-terabaytlık kurumsal Oracle, PostgreSQL ve MSSQL üretim sistemlerinde doğrulandı."
+    badge: "01",
+    title: "Katalog İstatistikleri ve Okuma Güvenliği",
+    rule: "Canlı veritabanlarında metadata ve şema çıkarma sırasında tam tablo taraması (SELECT COUNT) çalıştırılmaz.",
+    failureMode: "Yüksek hacimli tablolarda tam tarama disk I/O kapasitesini tüketir ve canlı operasyonel işlemleri bekletir.",
+    solution: "Yerel veritabanı katalog istatistikleri (pg_class, ALL_TABLES) asenkron okunarak yaklaşık satır sayısı ve şema bilgisi kilitlenme olmadan elde edilir.",
+    verification: "MetaDB ile Oracle, PostgreSQL ve MSSQL üretim ortamlarında doğrulandı."
   },
   {
     id: "chunk-partitioning",
-    badge: "02 · Depolama & Zaman Serisi",
-    title: "Chunk Boyutlandırma ve Partition Pruning",
-    rule: "Zaman serisi ve analitik tablolarda chunk/bölüm boyutları RAM buffer cache'in %25'ini aşamaz; sorgular disk I/O yapmadan partition pruning ile hedeflenir.",
-    failureMode: "Chunk boyutu sunucu RAM'inden büyük tutulduğunda, B-Tree indeksleri shared_buffers'tan diske taşar (thrashing); her ekleme ve sorgu rastgele disk I/O'suna çarparak yazma hızını ve sorgu performansını kilitler.",
-    solution: "Chunk aralıkları verinin yazılma hacmi ve sunucunun shared_buffers kapasitesine göre matematiksel olarak boyutlandırılır (örn. 7 günlük aralıklar). Zaman filtresi içeren sorgularda Postgres sorgu planlayıcısı doğrudan ilgili chunk'a gider (partition pruning); eski veriler ise drop_chunks() ile sıfır I/O maliyetiyle metadata düzeyinde silinir.",
-    verification: "TimescaleDB ve analitik veritabanlarında milyarlarca satırlık üretim yükü altında doğrulandı."
+    badge: "02",
+    title: "Zaman Serisi Chunk Boyutlandırma",
+    rule: "Zaman serisi tablolarında chunk aralıkları bellek kapasitesine göre ayarlanır; indekslerin RAM'de kalması sağlanır.",
+    failureMode: "Chunk boyutu bellekten büyük olduğunda indeksler diske taşar; ekleme ve sorgu performansı ciddi şekilde düşer.",
+    solution: "Chunk boyutları yazma hacmi ve shared_buffers oranına göre belirlenir. Sorgularda doğrudan ilgili bölüme gidilir (partition pruning); eski veriler dosya sistemi düzeyinde düşürülür.",
+    verification: "TimescaleDB ve analitik veritabanı altyapılarında doğrulandı."
   },
   {
     id: "idempotent-execution",
-    badge: "03 · Dağıtık İşlemler & Kilit",
-    title: "Idempotent İşlemler & Dağıtık Kilitler",
-    rule: "Ağ zaman aşımlarında istemcilerin veya veri hatlarının gönderdiği tekrar istekleri (retries) mükerrer işlem, çift kayıt veya tutarsız bakiye oluşturamaz.",
-    failureMode: "İstemci ağ gecikmesi nedeniyle yanıtı alamaz ve aynı işlemi yineler. Eğer arka uç atomik durum kontrolü yapmıyorsa ikinci kez bakiye düşülür veya aynı veri parçası mükerrer yazılır.",
-    solution: "İstek başlığındaki benzersiz Idempotency-Key değeri Redis'te atomik kilit (SET NX EX) ile tutulur; işlem tamamlandığında sonuç anahtara bağlanır. Tekrar eden istekler doğrudan ilk işlemin sonucunu döndürür.",
-    verification: "Ulusal medya kuruluşu merkezi ödeme motoru ve dağıtık veri akış hatlarında doğrulandı."
+    badge: "03",
+    title: "Idempotent İşlemler ve Dağıtık Kilitler",
+    rule: "Ağ gecikmelerinde yinelenen isteklerin veritabanında mükerrer kayıt veya tutarsız durum oluşturması engellenir.",
+    failureMode: "Yanıtı alamayan istemci isteği tekrarladığında, arka uç atomik kontrol yapmıyorsa işlem iki kez işlenir.",
+    solution: "Her işlem tekil bir anahtarla (Idempotency-Key) dağıtık kilit üzerinden yürütülür; tekrarlanan istekler doğrudan ilk işlemin sonucunu alır.",
+    verification: "Ödeme motoru ve dağıtık veri akış hatlarında doğrulandı."
   },
   {
     id: "zfs-block-checksum",
-    badge: "04 · Depolama & Dosya Sistemi",
-    title: "ZFS Blok Checksum & Bit Rot Savunması",
-    rule: "Veritabanı sunucularında donanımsal sessiz disk bozulmalarına (bit rot) ve doğrulanmamış yedekleme anlık görüntülerine tolerans gösterilmez.",
-    failureMode: "Standart dosya sistemleri (ext4) disk sektöründeki sessiz manyetik bozulmaları fark etmez; bozuk blok veritabanı yedeğine de kopyalanır ve felaket anında veri kurtarılamaz.",
-    solution: "ZFS depolama havuzlarında haftalık zpool scrub ile blok düzeyinde checksum doğrulanır ve bozukluk eşlik diskinden kendiliğinden onarılır (self-healing). Proxmox Backup Server (PBS) ile blok seviyesinde tekilleştirilmiş artımlı anlık görüntüler alınır.",
-    verification: "Kişisel Proxmox VE sunucuları ve homelab veritabanı altyapısında 3+ yıldır kesintisiz doğrulanmaktadır."
+    badge: "04",
+    title: "Blok Düzeyinde Veri Bütünlüğü",
+    rule: "Sessiz disk bozulmalarına (bit rot) ve doğrulanmamış yedeklere karşı önlem alınır.",
+    failureMode: "Standart dosya sistemleri sektör düzeyindeki sessiz bozulmaları fark etmez; bozuk blok yedeğe de yansır.",
+    solution: "ZFS depolama havuzlarında düzenli scrub ile blok düzeyinde checksum doğrulanır; anlık görüntüler blok seviyesinde yedeklenir.",
+    verification: "Proxmox VE ve ZFS depolama havuzlarında kesintisiz doğrulandı."
   },
   {
     id: "instant-revocation",
-    badge: "05 · Güvenlik & Oturum Mimarisi",
-    title: "Anında Yetki İptali & O(1) Oturum Feshi",
-    rule: "Kullanıcı yetkileri ve veritabanı erişim rolleri durumsuz JWT payload'una statik gömülerek uzun süreli yetkilendirme yapılamaz.",
-    failureMode: "Bir operatörün veya servisin rolü geri alındığında ya da kimlik bilgisi ele geçirildiğinde, elindeki JWT süresi (örn. 60 dakika) bitene kadar yetkili API uç noktalarına erişmeye devam eder.",
-    solution: "JWT yalnızca sabit kimliği ve bir sürüm damgasını taşır; dinamik yetkiler Redis'te tutulur. Yetki değiştiği mikrosaniyede Redis sürüm anahtarı artırılır; sonraki <0.3ms içindeki istek 401 ile anında reddedilir. Kara liste tutulmadığı için O(1) karmaşıklık korunur.",
-    verification: "Dağıtık mikroservisler ve veritabanı yönetim katmanlarında kurulan ortak Auth altyapısında doğrulandı."
+    badge: "05",
+    title: "Merkezi Yetki Doğrulama",
+    rule: "Dinamik yetkiler statik belirteçlere (JWT) gömülmek yerine merkezi bellek katmanında doğrulanır.",
+    failureMode: "Yetkisi iptal edilen bir hesap, belirteç süresi dolana kadar yetkili uç noktalara erişmeye devam eder.",
+    solution: "Belirteçler yalnızca kimlik bilgisini taşır; yetki ve oturum durumları merkezi bellek katmanında doğrulanarak anında feshedilebilir.",
+    verification: "Mikroservis mimarilerinde ortak kimlik doğrulama katmanında doğrulandı."
   }
 ];
+

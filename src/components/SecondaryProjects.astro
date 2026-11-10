@@ -2,28 +2,28 @@
 import { SECONDARY_PROJECTS } from '../data/secondaryProjects';
 ---
 
-<section id="secondary-projects" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+<section id="secondary-projects" class="py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-16">
   <!-- Section Title & Narrative -->
-  <div class="space-y-4 mb-10 max-w-3xl">
-    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-      Sistem Kayıt Defteri
+  <div class="space-y-2 mb-10 max-w-2xl">
+    <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+      Diğer Çalışmalar & Sistemler
     </h2>
     <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
-      Üretim ortamlarında tasarlanan, kurulan ve yönetilen operasyonel sistemler, veritabanı entegrasyonları, hipervizör kümeleri ve kurumsal altyapılar.
+      Daha önce geliştirdiğim veya yönetimini üstlendiğim sistemler, ERP entegrasyonları ve altyapılar.
     </p>
   </div>
 
   <!-- Full-Width Registry Ledger -->
   <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
     {SECONDARY_PROJECTS.map((project, idx) => (
-      <div class="py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-4 hover:bg-[var(--bg-subtle)]/50 transition-colors px-2 -mx-2 rounded-[2px]">
-        <!-- Left: ID & Name & Scope -->
-        <div class="flex-1 space-y-2">
-          <div class="flex items-center gap-3">
+      <div class="py-5 sm:py-6 group flex flex-col md:flex-row md:items-baseline justify-between gap-4 hover:bg-[var(--bg-subtle)]/40 transition-colors px-2 -mx-2 rounded-[2px]">
+        <!-- Left: Name & Scope -->
+        <div class="flex-1 space-y-1.5">
+          <div class="flex items-center gap-2">
             <span class="font-mono text-xs text-[var(--text-accent)] font-semibold">
-              SYS-{String(idx + 1).padStart(2, '0')}
+              {String(idx + 1).padStart(2, '0')}
             </span>
-            <h3 class="font-sans text-base sm:text-lg font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors">
+            <h3 class="font-sans text-base font-semibold text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors">
               {project.name}
             </h3>
           </div>
@@ -32,13 +32,12 @@ import { SECONDARY_PROJECTS } from '../data/secondaryProjects';
             {project.whatItDid}
           </p>
 
-          <div class="font-mono text-xs text-[var(--text-dim)] pt-1 flex flex-wrap gap-x-2 gap-y-1">
-            <span class="text-[var(--text-muted)] font-medium">Stack:</span>
+          <div class="font-mono text-[11px] text-[var(--text-dim)] pt-0.5 flex flex-wrap gap-x-2 gap-y-1">
             <span>{project.stack.split(',').map((item) => item.trim()).join(' · ')}</span>
           </div>
         </div>
 
-        <!-- Right: Year & Scope Badge -->
+        <!-- Right: Year -->
         <div class="font-mono text-xs text-[var(--text-dim)] shrink-0 self-start md:self-auto">
           <span>{project.year}</span>
         </div>

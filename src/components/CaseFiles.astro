@@ -1,414 +1,77 @@
 ---
-const caseDossiers = [
+const systems = [
   {
-    anchorId: "case-metadb",
-    fileNo: "Dosya 01",
-    slug: "metadb",
-    primaryMetric: "Zero-Lock Katalog",
-    subMetrics: "<5ms Yanıt · 0 Kilitlenme Etkisi",
-    title: "MetaDB: Çok Terabaytlık Üretim Sistemlerinde Zero-Lock Veri Kataloğu & Lineage",
-    tagline: "PostgreSQL/Oracle/MSSQL canlı tablolara dokunmadan yerel katalog istatistikleri ve Memgraph şema soykütüğü",
-    testedScale: "10TB+ Canlı Üretim Veritabanları · 100M+ Satırlı Tablolarda <5ms Metadata Çıkarma",
-    problem: "Çok terabaytlık kurumsal veritabanlarında (PostgreSQL, Oracle, MSSQL) 500M+ satırlı tablolara atılan SELECT COUNT(*) ve tam tablo taramaları disk I/O'sunu tüketiyor, buffer cache'deki aktif sayfaları atıyor ve canlı işlemlerde lock starvation yaratıyordu. Dağıtık veri hatlarında kolon bazlı veri soykütüğünün (lineage) güvenli ve canlı sistemleri etkilemeden çıkarılması gerekiyordu.",
-    decisions: "Canlı veri bloklarına tam tarama tamamen yasaklandı (Zero-Impact Guardrail). Bunun yerine pg_class.reltuples, ALL_TABLES.NUM_ROWS ve sys.dm_db_partition_stats gibi yerel katalog istatistikleri asenkron çekildi. Şema ve kolon soykütüğü Memgraph graf veritabanında {uuid}_{ecid} kimlikleriyle modellendi. İzole DMZ ortamları için Temporal tabanlı sıfır-inbound Edge Worker mimarisi kurgulandı.",
-    result: "100M+ satırlık tablolarda metadata ve yaklaşık kardinalite okuma süresi <5ms'ye indi. Canlı üretim veritabanlarında sıfır kilitlenme (0 lock contention) sağlandı. Memgraph üzerinden uçtan uca ETL şema soykütüğü milisaniyelik Cypher sorgularıyla sorgulanabilir kılındı.",
-    whatDifferently: "İlk prototipte JDBC üzerinden metadata sorguları tek bir transaction içinde senkron yapılıyordu; heterojen veritabanlarındaki ağ gecikmelerini ve bağlantı kopmalarını daha iyi izole etmek için Temporal iş akışları ve asenkron tamponlama en baştan kurgulanmalıydı.",
-    stack: ["PostgreSQL", "Oracle DB", "MSSQL", "Spring Boot 3", "Memgraph (Bolt/Cypher)", "FastAPI", "Temporal"],
-    telemetryDeltas: [
-      {
-        metric: "Katalog Okuma Yöntemi",
-        before: "SELECT COUNT(*) & Seq Scan",
-        after: "pg_class & ALL_TABLES Stats",
-        gain: "<5ms okuma, sıfır kilit"
-      },
-      {
-        metric: "Canlı DB I/O Etkisi",
-        before: "Tam Disk Blok Taraması",
-        after: "0 Canlı Tablo Taraması",
-        gain: "Sıfır buffer cache tahliyesi & kilit"
-      },
-      {
-        metric: "Soykütük Sorgu Karmaşıklığı",
-        before: "Çok Katmanlı Recursive SQL",
-        after: "Memgraph Bolt/Cypher Graph",
-        gain: "<10ms çok katmanlı soykütük geçişi"
-      }
-    ]
+    slug: 'metadb',
+    id: '01',
+    title: 'MetaDB: Dağıtık Veri Kataloğu ve Şema Soykütüğü',
+    description: 'Canlı veritabanı tablolarına tam tarama yapmadan yerel katalog istatistiklerini (pg_class, ALL_TABLES) okuyan ve şema soykütüğünü Memgraph üzerinde modelleyen kurumsal metadata servisi.',
+    stack: ['PostgreSQL', 'Oracle DB', 'MSSQL', 'Memgraph', 'Spring Boot', 'Temporal']
   },
   {
-    anchorId: "case-timescaledb",
-    fileNo: "Dosya 02",
-    slug: "timescaledb",
-    primaryMetric: "Milyarlarca Satır",
-    subMetrics: "%92 Sıkıştırma · <18ms Agregasyon",
-    title: "TimescaleDB: Milyarlarca Satırlık Zaman Serisi Depolama ve Hypertables",
-    tagline: "Chunk boyutlandırmanın RAM buffer cache'e göre ayarlanması, continuous aggregates ve şeffaf sıkıştırma",
-    testedScale: "Milyarlarca Satırlık Telemetri · %92 Sıkıştırma Oranı · Otomatik Retention",
-    problem: "Yüksek frekanslı zaman serisi verisi biriktikçe standart PostgreSQL tabloları şişiyor, B-Tree indeksleri shared_buffers'tan diske taşarak yazma verimini çökertiyordu. Analitik sorgular dakikalar sürüyor, eski verilerin DELETE ile silinmesi ağır vacuum bloat ve kilitlenmelere yol açıyordu.",
-    decisions: "Tablo mimarisi TimescaleDB hypertables yapısına geçirildi. Chunk boyutları sunucunun shared_buffers kapasitesinin %25'ini aşmayacak biçimde (7 günlük aralıklar) yapılandırıldı. Sık sorgulanan metrikler continuous aggregates ile arka planda malzeme edildi. 14 günden eski chunk'lar Zstd sütunsal sıkıştırmaya alındı; 180 günden eski veriler drop_chunks() ile dosya sistemi düzeyinde sıfır I/O maliyetiyle düşürüldü.",
-    result: "Disk alanı %92 oranında küçültüldü (280GB ham veri 22.4GB'a indi). Milyarlarca satır üzerindeki saatlik ve günlük agregasyonlar 42 saniyeden <18 milisaniyeye geriledi. İndeksler RAM'de kaldığı için yazma hızı 35.000 satır/sn seviyesinde sabitlendi.",
-    whatDifferently: "İlk kurulumda chunk boyutu 1 aylık geniş aralıklara ayarlanmıştı; bu durum bellek yetersizliğinde disk swapping'e neden oldu. Chunk aralığını veritabanı yazma hacmi ve sunucu RAM boyutu oranına göre ilk günden dinamik hesaplamalıydım.",
-    stack: ["PostgreSQL", "TimescaleDB", "Continuous Aggregates", "Zstd Compression", "Docker", "Linux"],
-    telemetryDeltas: [
-      {
-        metric: "Disk Alanı (1 Milyar Satır)",
-        before: "280 GB (Standart Satır)",
-        after: "22.4 GB (Zstd Sütunsal)",
-        gain: "%92 disk tasarrufu"
-      },
-      {
-        metric: "Saatlik Agregasyon Süresi",
-        before: "42.500 ms (Seq Scan)",
-        after: "<18 ms (Continuous Aggs)",
-        gain: "2300x sorgu hızlanması"
-      },
-      {
-        metric: "Eski Veri Temizliği",
-        before: "Saatler süren VACUUM kilitleri",
-        after: "drop_chunks() (<100ms)",
-        gain: "Sıfır I/O ve kilitlenme"
-      }
-    ]
+    slug: 'timescaledb',
+    id: '02',
+    title: 'TimescaleDB: Zaman Serisi Depolama ve Hypertables',
+    description: 'Yüksek hacimli telemetri ve metrik verisi için chunk boyutlandırmanın RAM buffer cache kapasitesine göre ayarlanması, continuous aggregates ve sütunsal sıkıştırma.',
+    stack: ['PostgreSQL', 'TimescaleDB', 'Zstd Sıkıştırma', 'Linux']
   },
   {
-    anchorId: "case-arrow",
-    fileNo: "Dosya 03",
-    slug: "apache-arrow",
-    primaryMetric: "Sıfır Kopyalama IPC",
-    subMetrics: "<15ms UI Gecikmesi · %87 Ağ Tasarrufu",
-    title: "Apache Arrow: DB'den İstemciye Sıfır Kopyalama (Zero-Copy) Veri Akışı",
-    tagline: "Yüz binlerce satırlık DB sonucunu JSON darboğazından kurtarıp doğrudan Arrow RecordBatch IPC tamponlarıyla istemci belleğine eşleme",
-    testedScale: "250.000+ Satırlık Veri Seti · Sıfır Serileştirme Kopyası · <15ms Render",
-    problem: "Analitik veritabanından çekilen 250.000+ satırlık veri JSON olarak iletildiğinde ~25MB yük oluşturuyor; sunucuda yüksek CPU ile serileştirilip istemci tarafında JSON.parse çalıştırıldığında tarayıcının tek iş parçacıklı JavaScript motorunu 850ms kilitliyor ve UI donmalarına yol açıyordu.",
-    decisions: "Veritabanı sorgu sonucu ikili (binary) Apache Arrow sütunsal formatında RecordBatch tamponlarına dönüştürüldü. HTTP üzerinden application/vnd.apache.arrow.stream protokolüyle akıtılan tamponlar, istemci tarafında JavaScript bellek alanında doğrudan Float64Array tip dizilerine kopyalamasız (zero-copy buffer view) eşlendi.",
-    result: "Ağ yükü 24.8MB'tan 3.1MB'a geriledi (%87 bant genişliği tasarrufu). İstemci tarafında serileştirme ve parse süresi tamamen ortadan kalktı; grafik çizim gecikmesi 850ms'den <15ms'ye düşerek 60 FPS akıcı render sağlandı.",
-    whatDifferently: "İlk denemelerde sıkıştırmasız düz Arrow IPC kullanıldı; sonradan Zstandard (Zstd) gömülü blok sıkıştırması eklendiğinde ağ boyutu ilave %30 daha azaldı. Zstd sıkıştırmalı Arrow akışını en baştan varsayılan yapmalıydım.",
-    stack: ["Apache Arrow (IPC Stream)", "TimescaleDB", "C# .NET 10", "TypeScript", "WebGL", "HTTP/2"],
-    telemetryDeltas: [
-      {
-        metric: "Veri Yükü (250K Satır)",
-        before: "24.8 MB JSON",
-        after: "3.1 MB Arrow IPC",
-        gain: "%87 ağ tasarrufu"
-      },
-      {
-        metric: "İstemci UI Donması",
-        before: "850 ms (JSON.parse)",
-        after: "<15 ms (Float64Array)",
-        gain: "56x hızlanma, akıcı grafik"
-      },
-      {
-        metric: "Sunucu Bellek / GC Baskısı",
-        before: "250K Nesne Tahsisi (GC Bloat)",
-        after: "1 Bitişik Tampon Akışı",
-        gain: "GC baskısı %95 azaldı"
-      }
-    ]
+    slug: 'apache-arrow',
+    id: '03',
+    title: 'Apache Arrow: Sıfır Kopyalama (Zero-Copy) Veri Akışı',
+    description: 'Büyük analitik sorgu sonuçlarının JSON serileştirme darboğazına girmeden doğrudan Arrow RecordBatch IPC akışıyla istemci belleğine eşlenmesi.',
+    stack: ['Apache Arrow', '.NET 10', 'TypeScript', 'HTTP/2']
   }
 ];
 ---
 
-<section id="systems" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16 relative">
+<section id="systems" class="py-14 sm:py-20 border-b border-[var(--border)] scroll-mt-16">
   <!-- Anchor alias for legacy links -->
-  <span id="cases" class="absolute -top-16 left-0 sr-only" aria-hidden="true"></span>
+  <span id="cases" class="sr-only" aria-hidden="true"></span>
 
-  <!-- Section Title & Narrative -->
-  <div class="space-y-4 mb-14 max-w-3xl">
-    <div class="font-mono text-xs text-[var(--text-accent)] font-semibold tracking-wider uppercase">
-      Mühendislik Dosyaları
-    </div>
-    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-      Veritabanı Mimarisi Vaka Dosyaları
+  <div class="space-y-2 mb-10 max-w-2xl">
+    <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+      Sistemler & Çalışmalar
     </h2>
     <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
-      Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapılarında çözülen problemler, teknik tercihler, telemetri deltaları ve veri akış topolojileri.
+      Üretim ortamlarında tasarlanan ve çalıştırılan veritabanı altyapıları ve mimari çalışmalar.
     </p>
   </div>
 
-  <!-- 3 Full Case Studies -->
-  <div class="space-y-20">
-    {caseDossiers.map((item) => (
-      <article id={item.anchorId} class="pt-10 border-t border-[var(--border)] space-y-8 scroll-mt-20">
-        <!-- Dossier Header -->
-        <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-4 pb-4 border-b border-[var(--border)]">
-          <div class="space-y-1">
+  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+    {systems.map((item) => (
+      <article class="py-6 sm:py-8 group transition-colors hover:bg-[var(--bg-subtle)]/40 px-2 -mx-2 rounded-[2px]">
+        <div class="flex flex-col lg:flex-row lg:items-baseline justify-between gap-4">
+          <div class="flex-1 space-y-2.5">
             <div class="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
-              <span class="text-[var(--text-accent)] font-semibold">{item.fileNo}</span>
+              <span class="text-[var(--text-accent)] font-semibold">{item.id}</span>
               <span>·</span>
-              <span>{item.testedScale}</span>
-            </div>
-            <h3 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-              {item.title}
-            </h3>
-            <p class="font-serif italic text-sm text-[var(--text-muted)]">
-              {item.tagline}
-            </p>
-          </div>
-
-          <!-- Stack Tags -->
-          <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs text-[var(--text-muted)] md:text-right shrink-0">
-            {item.stack.map((t) => (
-              <span class="px-2 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] text-[11px]">
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <!-- 2-Column Content: Narrative (Left 6) & Architecture Topology / Delta (Right 6) -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          <!-- Left 6 Columns: Narrative, Problem, Solution, Result, Retrospective -->
-          <div class="lg:col-span-6 space-y-6">
-            <!-- Typographic Metric Strip -->
-            <div class="flex items-baseline gap-4 py-2 border-b border-[var(--border)]">
-              <span class="font-mono text-xl sm:text-2xl font-semibold text-[var(--text-accent)]">
-                {item.primaryMetric}
-              </span>
-              <span class="font-mono text-xs text-[var(--text-dim)]">
-                {item.subMetrics}
-              </span>
+              <span>Vaka Dosyası</span>
             </div>
 
-            <!-- Problem -->
-            <div class="space-y-2">
-              <h4 class="font-mono text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
-                Problem
-              </h4>
-              <p class="text-[var(--text)] leading-relaxed text-[14.5px] font-sans">
-                {item.problem}
-              </p>
-            </div>
-
-            <!-- Architectural Solution -->
-            <div class="space-y-2 pt-3 border-t border-[var(--border)]">
-              <h4 class="font-mono text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wider">
-                Mimari Karar ve Savunma
-              </h4>
-              <p class="text-[var(--text-muted)] leading-relaxed text-[14px] font-sans">
-                {item.decisions}
-              </p>
-            </div>
-
-            <!-- Result -->
-            <div class="space-y-2 pt-3 border-t border-[var(--border)]">
-              <h4 class="font-mono text-xs font-semibold text-[var(--text)] uppercase tracking-wider">
-                Üretim Sonucu
-              </h4>
-              <p class="text-[var(--text-muted)] leading-relaxed text-[14px] font-sans">
-                {item.result}
-              </p>
-            </div>
-
-            <!-- Retrospective (Geriye Bakış) -->
-            <div class="p-3.5 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)] text-xs font-mono space-y-1">
-              <span class="text-[var(--text-accent)] font-semibold">
-                Geriye Bakış (Neyi Farklı Yapardım?):
-              </span>
-              <p class="text-[var(--text-muted)] font-sans text-xs leading-relaxed">
-                {item.whatDifferently}
-              </p>
-            </div>
-
-            <!-- Full Dossier Page Link -->
-            <div class="pt-2">
-              <a
-                href={`/cases/${item.slug}`}
-                class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] font-medium inline-flex items-center gap-1.5 hover:underline"
-              >
-                <span>Tam Mühendislik Dosyasını Oku</span>
-                <span aria-hidden="true">→</span>
+            <h3 class="font-serif text-xl sm:text-2xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
+              <a href={`/cases/${item.slug}`} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
+                {item.title}
               </a>
+            </h3>
+
+            <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed max-w-[75ch]">
+              {item.description}
+            </p>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              {item.stack.map((tech) => (
+                <span class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)]">
+                  {tech}
+                </span>
+              ))}
             </div>
           </div>
 
-          <!-- Right 6 Columns: Bespoke Architectural Topology & Telemetry Delta -->
-          <div class="lg:col-span-6 space-y-8">
-            <!-- Telemetry Delta Table (Engineering Gain) -->
-            <div class="space-y-3">
-              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)] font-mono text-xs text-[var(--text-dim)]">
-                <span class="font-semibold text-[var(--text)] uppercase tracking-wider">
-                  Telemetri Deltası & Mühendislik Kazancı
-                </span>
-                <span class="text-[var(--status-green)] font-medium">✓ Ölçüldü</span>
-              </div>
-
-              <div class="divide-y divide-[var(--border)] text-xs font-mono">
-                {item.telemetryDeltas.map((delta) => (
-                  <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span class="text-[var(--text-muted)] font-medium sm:w-1/3">
-                      {delta.metric}
-                    </span>
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 sm:w-2/3 justify-between sm:justify-end">
-                      <span class="text-[var(--text-dim)] line-through">
-                        {delta.before}
-                      </span>
-                      <span class="text-[var(--text-dim)]">→</span>
-                      <span class="text-[var(--text)] font-semibold">
-                        {delta.after}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <!-- Architectural Data Flow Diagram -->
-            <div class="space-y-3 pt-4 border-t border-[var(--border)]">
-              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)] font-mono text-xs text-[var(--text-dim)]">
-                <span class="font-semibold text-[var(--text)] uppercase tracking-wider">
-                  Veri Akış Topolojisi
-                </span>
-                <span class="text-[var(--text-accent)]">
-                  {item.slug === 'metadb' && 'Zero-Lock Lineage'}
-                  {item.slug === 'timescaledb' && 'Hypertable Pruning'}
-                  {item.slug === 'apache-arrow' && 'Zero-Copy Stream'}
-                </span>
-              </div>
-
-              {item.slug === 'metadb' && (
-                <div class="space-y-3 font-mono text-xs">
-                  <!-- Node 1 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Canlı Üretim Veritabanları (Prod)</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">PostgreSQL · Oracle · SQL Server</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Katalog Taraması: pg_class.reltuples, ALL_TABLES.NUM_ROWS · Sıfır Kilit</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">Asenkron Sıfır-Etki Okuma (&lt;5ms, Zero-Lock)</span>
-                  </div>
-
-                  <!-- Node 2 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · MetaDB Dağıtık Ajan & GLB Normalizasyonu</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Zarf Modeli Şifreleme & glb.entity_master</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Temporal workflow orkestrasyonu · Zero-inbound RFC 4180 stream</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">Bolt / Cypher İkili Graf Yansıtması</span>
-                  </div>
-
-                  <!-- Node 3: Split Targets -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
-                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">Memgraph Soykütüğü</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">&#123;uuid&#125;_&#123;ecid&#125; Graf Ağı</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">Milisaniyelik Cypher sorguları · Kolon bazlı etki analizi</div>
-                    </div>
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">Tüketim API & UI</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">metadb-ui (Port 5173)</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">Zero-impact veri kataloğu ve interaktif lineage tuvali</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {item.slug === 'timescaledb' && (
-                <div class="space-y-3 font-mono text-xs">
-                  <!-- Node 1 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Yüksek Hızlı Yazma Hattı (Ingest)</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">35.000+ Satır / Saniye Yazma</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Aktif Chunk İndeksleri ≤ RAM Buffer Cache (%25 shared_buffers hedefi)</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">Partition Pruning ile Doğrudan Hedefleme</span>
-                  </div>
-
-                  <!-- Node 2 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · 7 Günlük Hypertables & Continuous Aggs</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Arka Plan Malzeme Görünümleri</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Saatlik ve günlük özetler asenkron işlenir · &lt;18ms analitik yanıt</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">Zstd Sütunsal Sıkıştırma ve Yaşam Döngüsü</span>
-                  </div>
-
-                  <!-- Node 3: Split Targets -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
-                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">14+ Gün: Sütunsal Depolama</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">%92 Disk Tasarrufu (Zstd)</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">280GB veri 22.4GB'a iner · Sıkıştırılmış veri üzerinden doğrudan tarama</div>
-                    </div>
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">180+ Gün: drop_chunks()</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">Sıfır I/O Metadata Silme</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">DELETE ve VACUUM kilitlenmesi olmadan anında dosya unlink</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {item.slug === 'apache-arrow' && (
-                <div class="space-y-3 font-mono text-xs">
-                  <!-- Node 1 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">01 · Analitik Veritabanı (TimescaleDB / Postgres)</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">ADO.NET / Npgsql DataReader Akışı</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">250.000+ satırlık ham sorgu · Satır nesnesi tahsis etmeden akış</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">Bitişik Sütunsal Tampon Tahsisi (Sıfır GC Baskısı)</span>
-                  </div>
-
-                  <!-- Node 2 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">02 · .NET 10 Arrow RecordBatch İkili Akış</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">application/vnd.apache.arrow.stream</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">24.8MB JSON yerine 3.1MB ikili RecordBatch · İlk chunk anında iletilir</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">İstemci ArrayBuffer Belleğine Sıfır Kopyalama Eşleme</span>
-                  </div>
-
-                  <!-- Node 3: Split Targets -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
-                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">Ön Yüz İkili Çizim</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">Float64Array / Canvas / WebGL</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">&lt;15ms gecikme · JSON.parse yok · 60 FPS akıcı render</div>
-                    </div>
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">Sunucu GC Optimizasyonu</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">0 Nesne Kopyalama</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">Bitişik bellek havuzu · Ağır sorgularda sıfır GC duraklaması</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div class="font-mono text-xs text-[var(--text-accent)] shrink-0 self-start lg:self-center pt-2 lg:pt-0">
+            <a href={`/cases/${item.slug}`} class="inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform" aria-label={`${item.title}`}>
+              <span>İncele</span>
+              <span aria-hidden="true">→</span>
+            </a>
           </div>
         </div>
       </article>

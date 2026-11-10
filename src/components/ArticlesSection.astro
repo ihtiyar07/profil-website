@@ -43,24 +43,11 @@ const filterTags = [
       </p>
     </div>
 
-    <!-- RSS & Feed Link -->
-    <div class="shrink-0 flex items-center gap-3">
-      <span id="filter-count-indicator" class="font-mono text-xs text-[var(--text-dim)] hidden sm:inline-block">
+    <!-- Post Count Indicator -->
+    <div class="shrink-0 flex items-center">
+      <span id="filter-count-indicator" class="font-mono text-xs text-[var(--text-dim)] px-2.5 py-1 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]">
         {posts.length} yazı
       </span>
-      <a
-        href="/rss.xml"
-        class="font-mono text-xs text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text)] bg-[var(--bg-subtle)] px-3 py-1.5 rounded-[2px] transition-colors inline-flex items-center gap-1.5 tactile-btn"
-        title="RSS Akışı"
-      >
-        <svg class="w-3.5 h-3.5 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M4 11a9 9 0 0 1 9 9"></path>
-          <path d="M4 4a16 16 0 0 1 16 16"></path>
-          <circle cx="5" cy="19" r="1"></circle>
-        </svg>
-        <span>RSS Akışı</span>
-        <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
-      </a>
     </div>
   </div>
 

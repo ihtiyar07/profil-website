@@ -1,0 +1,510 @@
+---
+import { SITE_META } from '../data/siteMeta';
+
+interface SubItem {
+  title: string;
+  desc: string;
+  href: string;
+  tag?: string;
+}
+
+interface NavTopic {
+  id: string;
+  name: string;
+  summary: string;
+  items: SubItem[];
+}
+
+const topicNav: NavTopic[] = [
+  {
+    id: 'postgresql',
+    name: 'PostgreSQL',
+    summary: 'İlişkisel Veritabanı & Eklentiler',
+    items: [
+      {
+        title: 'Eklentiler & TimescaleDB',
+        desc: 'Hypertables, continuous aggregates ve chunk retention',
+        href: '/?tag=TimescaleDB#articles',
+        tag: 'TimescaleDB'
+      },
+      {
+        title: 'Performans & İndeksleme',
+        desc: 'EXPLAIN analizi, B-Tree, shared_buffers ve partition pruning',
+        href: '/?tag=Performans#articles',
+        tag: 'Performans'
+      },
+      {
+        title: 'Katalog & Şema Soykütüğü',
+        desc: 'pg_class, reltuples ve sıfır kilitli metadata çıkarma (MetaDB)',
+        href: '/cases/metadb'
+      },
+      {
+        title: 'Tüm PostgreSQL Notları →',
+        desc: 'PostgreSQL üzerine hazırlanan tüm teknik rehber ve notlar',
+        href: '/?tag=PostgreSQL#articles',
+        tag: 'PostgreSQL'
+      }
+    ]
+  },
+  {
+    id: 'oracle',
+    name: 'Oracle DB',
+    summary: 'Kurumsal Veritabanı Optimizasyonu',
+    items: [
+      {
+        title: 'AWR & ASH Analizi',
+        desc: 'Top Timed Events, db file sequential read ve bekleme teşhisi',
+        href: '/posts/awr-ve-ash-ile-bir-oracle-darbogazini-bulmak'
+      },
+      {
+        title: 'SQL Tuning & Plan Sabitleme',
+        desc: 'cursor_sharing, execution plan flip teşhisi ve kilitlenme izolasyonu',
+        href: '/?tag=SQL Tuning#articles',
+        tag: 'SQL Tuning'
+      },
+      {
+        title: 'Tüm Oracle Notları →',
+        desc: 'Oracle veritabanlarında teşhis ve tuning notları',
+        href: '/?tag=Oracle#articles',
+        tag: 'Oracle'
+      }
+    ]
+  },
+  {
+    id: 'storage',
+    name: 'Depolama & Altyapı',
+    summary: 'Depolama Motorları & Sistem Mimarileri',
+    items: [
+      {
+        title: 'ZFS Depolama Havuzları',
+        desc: 'Blok düzeyinde checksum, scrub ve bit rot bozulmalarına karşı koruma',
+        href: '/?tag=ZFS#articles',
+        tag: 'ZFS'
+      },
+      {
+        title: 'Apache Arrow Sıfır Kopyalama',
+        desc: 'Veritabanından tarayıcıya JSON darboğazsız zero-copy IPC akışı',
+        href: '/cases/apache-arrow'
+      },
+      {
+        title: 'Proxmox VE & Ağ Mimarisi',
+        desc: 'Bare-metal sunucuda routed bridge mimarisi ve nftables NAT notları',
+        href: '/posts/dedicated-sunucuya-sifirdan-proxmox-ag-ve-firewall-notlari'
+      },
+      {
+        title: 'Redis & Merkezi Yetki',
+        desc: 'O(1) oturum denetimi, dağıtık kilitler ve anında yetki feshi',
+        href: '/posts/jwtde-yetki-tasimak-neden-her-zaman-iyi-fikir-degil'
+      }
+    ]
+  }
+];
+
+const directNav = [
+  { href: '/#systems', label: 'Sistemler' },
+  { href: '/#invariants', label: 'İlkeler' },
+  { href: '/#contact', label: 'İletişim' }
+];
+---
+
+<header class="w-full border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md sticky top-0 z-40 transition-colors">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 h-16 flex items-center justify-between">
+    <!-- Brand / Identity -->
+    <a href="/" class="flex items-center gap-2.5 group focus:outline-none" aria-label="Ahmet İhtiyar — Ana Sayfa">
+      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] inline-block transition-transform group-hover:scale-125 shrink-0" aria-hidden="true"></span>
+      <span class="font-sans text-sm font-semibold tracking-tight text-[var(--text)]">
+        Ahmet İhtiyar
+      </span>
+      <span class="hidden sm:inline font-mono text-[11px] text-[var(--text-dim)] border-l border-[var(--border)] pl-2.5">
+        Veritabanı & Depolama
+      </span>
+    </a>
+
+    <!-- Desktop Navigation with Topic Dropdowns / Sub-tabs -->
+    <div class="hidden lg:flex items-center gap-6">
+      <nav class="flex items-center gap-1 xl:gap-2 text-[13px] font-sans" aria-label="Konu ve Sayfa Gezintisi">
+        <!-- Topic Categories with Sub-tab Dropdowns -->
+        {topicNav.map((topic) => (
+          <div class="relative nav-dropdown-wrapper" data-topic-id={topic.id}>
+            <button
+              type="button"
+              class="nav-dropdown-btn px-2.5 py-1.5 rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors inline-flex items-center gap-1 text-[13px] font-medium focus:outline-none tactile-btn"
+              aria-expanded="false"
+              aria-haspopup="true"
+            >
+              <span>{topic.name}</span>
+              <svg class="chevron-icon w-3 h-3 text-[var(--text-dim)] transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <!-- Dropdown Menu Panel -->
+            <div class="nav-dropdown-menu hidden absolute top-full left-0 pt-1.5 w-80 z-50">
+              <div class="bg-[var(--bg)] border border-[var(--border)] rounded-[2px] shadow-lg p-2 space-y-1">
+                <div class="px-2.5 py-1 border-b border-[var(--border)]/70 text-[10px] font-mono text-[var(--text-dim)] uppercase tracking-wider">
+                  {topic.summary}
+                </div>
+
+                {topic.items.map((item) => (
+                  <a
+                    href={item.href}
+                    data-tag={item.tag}
+                    class="nav-sub-link block px-2.5 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors group/item"
+                  >
+                    <div class="flex items-center justify-between text-xs font-medium text-[var(--text)] group-hover/item:text-[var(--accent)]">
+                      <span>{item.title}</span>
+                      <span class="text-[10px] font-mono text-[var(--text-dim)] opacity-0 group-hover/item:opacity-100 transition-opacity" aria-hidden="true">→</span>
+                    </div>
+                    <p class="text-[11px] text-[var(--text-muted)] font-sans line-clamp-1 mt-0.5">
+                      {item.desc}
+                    </p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <!-- Direct Nav Links -->
+        <span class="w-[1px] h-4 bg-[var(--border)] mx-1" aria-hidden="true"></span>
+
+        {directNav.map((item) => (
+          <a
+            href={item.href}
+            class="px-2.5 py-1.5 rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors text-[13px] font-medium"
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <!-- Theme Switcher -->
+      <div class="pl-2 border-l border-[var(--border)]">
+        <button
+          type="button"
+          class="theme-toggle-btn p-1.5 rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-[var(--border)] transition-colors cursor-pointer tactile-btn w-8 h-8 flex items-center justify-center"
+          aria-label="Temayı Değiştir"
+          title="Temayı Değiştir"
+        >
+          <!-- Sun Icon (in dark mode) -->
+          <svg class="theme-icon-sun w-3.5 h-3.5 hidden text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <!-- Moon Icon (in light mode) -->
+          <svg class="theme-icon-moon w-3.5 h-3.5 hidden text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Controls (Theme + Hamburger) -->
+    <div class="flex items-center gap-2 lg:hidden">
+      <button
+        type="button"
+        class="theme-toggle-btn p-1.5 rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-[var(--border)] transition-colors cursor-pointer tactile-btn w-8 h-8 flex items-center justify-center"
+        aria-label="Temayı Değiştir"
+      >
+        <svg class="theme-icon-sun w-3.5 h-3.5 hidden text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+        </svg>
+        <svg class="theme-icon-moon w-3.5 h-3.5 hidden text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <button
+        id="mobile-nav-toggle-btn"
+        type="button"
+        class="p-1.5 rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] bg-[var(--bg-subtle)] cursor-pointer tactile-btn w-8 h-8 flex items-center justify-center"
+        aria-label="Menüyü Aç/Kapat"
+        aria-expanded="false"
+        aria-controls="mobile-nav-drawer"
+      >
+        <svg id="hamburger-icon" class="w-4 h-4 text-[var(--text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg id="close-icon" class="w-4 h-4 text-[var(--text)] hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Drawer Menu with Accordion Sub-tabs -->
+  <div id="mobile-nav-drawer" class="hidden lg:hidden border-t border-[var(--border)] bg-[var(--bg)] px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto shadow-lg">
+    <!-- Topic Accordions -->
+    <div class="space-y-2">
+      <div class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider px-1">
+        Konular & Alt Başlıklar
+      </div>
+
+      {topicNav.map((topic) => (
+        <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg-subtle)]/40 overflow-hidden">
+          <button
+            type="button"
+            class="mobile-accordion-btn w-full px-3 py-2 flex items-center justify-between text-left text-xs font-sans font-medium text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors"
+            aria-expanded="false"
+          >
+            <span>{topic.name}</span>
+            <svg class="accordion-chevron w-3.5 h-3.5 text-[var(--text-dim)] transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <div class="mobile-accordion-content hidden px-3 pb-2 pt-1 border-t border-[var(--border)] space-y-1 bg-[var(--bg)]">
+            {topic.items.map((item) => (
+              <a
+                href={item.href}
+                data-tag={item.tag}
+                class="mobile-sub-link block py-1.5 px-2 rounded-[2px] text-xs text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors"
+              >
+                <div class="font-medium text-[var(--text)]">{item.title}</div>
+                <div class="text-[11px] text-[var(--text-dim)] line-clamp-1">{item.desc}</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Direct Links on Mobile -->
+    <div class="pt-2 border-t border-[var(--border)] space-y-1">
+      <div class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider px-1 mb-1">
+        Bölümler
+      </div>
+      {directNav.map((item) => (
+        <a
+          href={item.href}
+          class="mobile-direct-link block px-2 py-1.5 text-xs font-sans font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+
+    <!-- Social / External Links -->
+    <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between text-xs font-mono text-[var(--text-dim)] px-1">
+      <a href={SITE_META.github} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text)]">GitHub</a>
+      <a href={SITE_META.linkedin} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text)]">LinkedIn</a>
+      <a href={`mailto:${SITE_META.email}`} class="hover:text-[var(--text)]">E-posta</a>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  (function() {
+    // 1. Theme Controller across all toggle buttons
+    const themeButtons = document.querySelectorAll('.theme-toggle-btn');
+    const sunIcons = document.querySelectorAll('.theme-icon-sun');
+    const moonIcons = document.querySelectorAll('.theme-icon-moon');
+
+    function syncThemeUI(theme) {
+      if (theme === 'dark') {
+        sunIcons.forEach(icon => icon.classList.remove('hidden'));
+        moonIcons.forEach(icon => icon.classList.add('hidden'));
+      } else {
+        moonIcons.forEach(icon => icon.classList.remove('hidden'));
+        sunIcons.forEach(icon => icon.classList.add('hidden'));
+      }
+    }
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    syncThemeUI(currentTheme);
+
+    themeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const active = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = active === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try {
+          localStorage.setItem('theme', next);
+        } catch (_) {}
+        syncThemeUI(next);
+      });
+    });
+
+    // 2. Desktop Dropdown Handlers (Hover with delay + Click + Outside click + Esc)
+    const dropdownWrappers = document.querySelectorAll('.nav-dropdown-wrapper');
+    let closeTimeouts = new Map();
+
+    function closeAllDropdowns() {
+      dropdownWrappers.forEach(w => {
+        const btn = w.querySelector('.nav-dropdown-btn');
+        const menu = w.querySelector('.nav-dropdown-menu');
+        const chevron = w.querySelector('.chevron-icon');
+        btn?.setAttribute('aria-expanded', 'false');
+        menu?.classList.add('hidden');
+        chevron?.classList.remove('rotate-180');
+      });
+    }
+
+    dropdownWrappers.forEach(wrapper => {
+      const btn = wrapper.querySelector('.nav-dropdown-btn');
+      const menu = wrapper.querySelector('.nav-dropdown-menu');
+      const chevron = wrapper.querySelector('.chevron-icon');
+
+      function openMenu() {
+        // Clear any closing timer for this wrapper
+        const tid = closeTimeouts.get(wrapper);
+        if (tid) {
+          clearTimeout(tid);
+          closeTimeouts.delete(wrapper);
+        }
+        // Close others
+        dropdownWrappers.forEach(other => {
+          if (other !== wrapper) {
+            const ob = other.querySelector('.nav-dropdown-btn');
+            const om = other.querySelector('.nav-dropdown-menu');
+            const oc = other.querySelector('.chevron-icon');
+            ob?.setAttribute('aria-expanded', 'false');
+            om?.classList.add('hidden');
+            oc?.classList.remove('rotate-180');
+          }
+        });
+        btn?.setAttribute('aria-expanded', 'true');
+        menu?.classList.remove('hidden');
+        chevron?.classList.add('rotate-180');
+      }
+
+      function closeMenuWithDelay() {
+        const tid = setTimeout(() => {
+          btn?.setAttribute('aria-expanded', 'false');
+          menu?.classList.add('hidden');
+          chevron?.classList.remove('rotate-180');
+          closeTimeouts.delete(wrapper);
+        }, 150);
+        closeTimeouts.set(wrapper, tid);
+      }
+
+      btn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = btn.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          btn.setAttribute('aria-expanded', 'false');
+          menu?.classList.add('hidden');
+          chevron?.classList.remove('rotate-180');
+        } else {
+          openMenu();
+        }
+      });
+
+      wrapper.addEventListener('mouseenter', openMenu);
+      wrapper.addEventListener('mouseleave', closeMenuWithDelay);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.nav-dropdown-wrapper')) {
+        closeAllDropdowns();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAllDropdowns();
+      }
+    });
+
+    // 3. Mobile Drawer and Accordion Controller
+    const mobileToggleBtn = document.getElementById('mobile-nav-toggle-btn');
+    const mobileDrawer = document.getElementById('mobile-nav-drawer');
+    const hamburgerIcon = document.getElementById('hamburger-icon');
+    const closeIcon = document.getElementById('close-icon');
+
+    if (mobileToggleBtn && mobileDrawer) {
+      mobileToggleBtn.addEventListener('click', () => {
+        const isExpanded = mobileToggleBtn.getAttribute('aria-expanded') === 'true';
+        mobileToggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+        if (isExpanded) {
+          mobileDrawer.classList.add('hidden');
+          hamburgerIcon?.classList.remove('hidden');
+          closeIcon?.classList.add('hidden');
+        } else {
+          mobileDrawer.classList.remove('hidden');
+          hamburgerIcon?.classList.add('hidden');
+          closeIcon?.classList.remove('hidden');
+        }
+      });
+
+      // Mobile Accordion Items
+      const accordionBtns = mobileDrawer.querySelectorAll('.mobile-accordion-btn');
+      accordionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const content = btn.nextElementSibling;
+          const chevron = btn.querySelector('.accordion-chevron');
+          const isOpened = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!isOpened));
+          if (isOpened) {
+            content?.classList.add('hidden');
+            chevron?.classList.remove('rotate-180');
+          } else {
+            content?.classList.remove('hidden');
+            chevron?.classList.add('rotate-180');
+          }
+        });
+      });
+    }
+
+    // 4. Tag Filter Handler when clicking from Header (Desktop & Mobile)
+    function handleTagLinkClick(e, link) {
+      const tag = link.getAttribute('data-tag');
+      const href = link.getAttribute('href');
+      const isHomepage = window.location.pathname === '/' || window.location.pathname === '';
+
+      if (tag && isHomepage && typeof window.filterArticlesByTag === 'function') {
+        e.preventDefault();
+        closeAllDropdowns();
+        if (mobileDrawer && !mobileDrawer.classList.contains('hidden')) {
+          mobileDrawer.classList.add('hidden');
+          mobileToggleBtn?.setAttribute('aria-expanded', 'false');
+          hamburgerIcon?.classList.remove('hidden');
+          closeIcon?.classList.add('hidden');
+        }
+
+        window.filterArticlesByTag(tag);
+        window.history.pushState(null, '', href);
+
+        const articlesSection = document.getElementById('articles');
+        if (articlesSection) {
+          const navOffset = 72;
+          const targetY = articlesSection.getBoundingClientRect().top + window.pageYOffset - navOffset;
+          window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
+      } else {
+        // Normal link navigation - just close mobile drawer
+        if (mobileDrawer && !mobileDrawer.classList.contains('hidden')) {
+          mobileDrawer.classList.add('hidden');
+          mobileToggleBtn?.setAttribute('aria-expanded', 'false');
+          hamburgerIcon?.classList.remove('hidden');
+          closeIcon?.classList.add('hidden');
+        }
+      }
+    }
+
+    document.querySelectorAll('.nav-sub-link, .mobile-sub-link').forEach(link => {
+      link.addEventListener('click', (e) => handleTagLinkClick(e, link));
+    });
+
+    // Close mobile drawer on direct links
+    document.querySelectorAll('.mobile-direct-link').forEach(link => {
+      link.addEventListener('click', () => {
+        if (mobileDrawer) {
+          mobileDrawer.classList.add('hidden');
+          mobileToggleBtn?.setAttribute('aria-expanded', 'false');
+          hamburgerIcon?.classList.remove('hidden');
+          closeIcon?.classList.add('hidden');
+        }
+      });
+    });
+  })();
+</script>

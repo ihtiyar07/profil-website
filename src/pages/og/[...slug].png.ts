@@ -7,6 +7,7 @@ export interface Props {
   subtitle: string;
   badge: string;
   meta?: string;
+  lang?: 'tr' | 'en';
 }
 
 function escapeXml(unsafe: string): string {
@@ -32,14 +33,23 @@ function wrapText(text: string, maxCharsPerLine: number = 38): string[] {
     }
   }
   if (currentLine) lines.push(currentLine);
-  return lines.slice(0, 3);
+  return lines;
 }
 
-function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
-  const lines = wrapText(title, 34);
+function generateSvgCard({ title, subtitle, badge, meta, lang = 'tr' }: Props): string {
+  const isEn = lang === 'en';
+  const lines = wrapText(title, 34).slice(0, 3);
   const tspans = lines
-    .map((line, idx) => `<tspan x="96" dy="${idx === 0 ? 0 : 58}">${escapeXml(line)}</tspan>`)
+    .map((line, idx) => `<tspan x="96" dy="${idx === 0 ? 0 : 56}">${escapeXml(line)}</tspan>`)
     .join('');
+
+  const subLines = wrapText(subtitle, 65).slice(0, 2);
+  const subTspans = subLines
+    .map((line, idx) => `<tspan x="96" dy="${idx === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
+    .join('');
+
+  const brandTag = isEn ? 'DATABASE ARCHITECT' : 'VERİTABANI MİMARI';
+  const defaultMeta = isEn ? '· Database Architecture' : '· Veritabanı Mimarisi';
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <rect width="1200" height="630" fill="#0A0F1D" />
@@ -52,7 +62,7 @@ function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
   <rect x="76" y="68" width="10" height="24" fill="#38BDF8" />
   <text x="96" y="86" fill="#F1F5F9" font-family="monospace, ui-monospace, sans-serif" font-size="18" font-weight="700" letter-spacing="2">AHMET İHTİYAR</text>
   <text x="270" y="86" fill="#64748B" font-family="monospace, ui-monospace, sans-serif" font-size="16">·</text>
-  <text x="290" y="86" fill="#94A3B8" font-family="monospace, ui-monospace, sans-serif" font-size="16">MÜHENDİSLİK DOSYASI</text>
+  <text x="290" y="86" fill="#94A3B8" font-family="monospace, ui-monospace, sans-serif" font-size="16">${brandTag}</text>
   
   <!-- Badge -->
   <rect x="96" y="168" width="${Math.max(120, badge.length * 11 + 24)}" height="32" rx="2" fill="#38BDF8" fill-opacity="0.16" stroke="#38BDF8" stroke-width="1.5" />
@@ -64,14 +74,14 @@ function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
   </text>
   
   <!-- Subtitle -->
-  <text x="96" y="460" fill="#94A3B8" font-family="sans-serif, -apple-system, BlinkMacSystemFont" font-size="22" font-weight="400">
-    ${escapeXml(subtitle)}
+  <text x="96" y="460" fill="#94A3B8" font-family="sans-serif, -apple-system, BlinkMacSystemFont" font-size="20" font-weight="400">
+    ${subTspans}
   </text>
   
   <!-- Bottom footer -->
   <line x1="36" y1="510" x2="1164" y2="510" stroke="#1E293B" stroke-width="1.5" />
   <text x="96" y="555" fill="#64748B" font-family="monospace, ui-monospace, sans-serif" font-size="15">
-    ahmetihtiyar.com ${meta ? `· ${escapeXml(meta)}` : '· Telemetri ve Veri Altyapısı'}
+    ahmetihtiyar.com ${meta ? `· ${escapeXml(meta)}` : defaultMeta}
   </text>
   <circle cx="1100" cy="550" r="5" fill="#38BDF8" />
 </svg>`;
@@ -82,19 +92,21 @@ export async function getStaticPaths() {
     {
       params: { slug: 'index' },
       props: {
-        title: 'Gömülü uç sistemlerden dağıtık mimarilere telemetri ve veri altyapıları geliştiriyorum.',
-        subtitle: 'Ahmet İhtiyar — Sistem ve Arka Uç Mühendisi | Diverjans IT',
-        badge: 'Mühendislik Dosyası',
-        meta: 'ESP32 · RabbitMQ · TimescaleDB · Arrow · Keycloak',
+        lang: 'tr',
+        title: 'Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapıları üzerine çalışan veritabanı mimarı.',
+        subtitle: 'Ahmet İhtiyar — Veritabanı Mimarı | İstanbul',
+        badge: 'Veritabanı Mimarisi',
+        meta: 'PostgreSQL · Oracle · TimescaleDB · Memgraph · Arrow',
       },
     },
     {
       params: { slug: 'en/index' },
       props: {
-        title: 'Engineering telemetry and data infrastructure from embedded edge to distributed backends.',
-        subtitle: 'Ahmet İhtiyar — Systems & Backend Engineer | Istanbul',
-        badge: 'Engineering Dossier',
-        meta: 'ESP32 · RabbitMQ · TimescaleDB · Arrow · Keycloak',
+        lang: 'en',
+        title: 'Database architect engineering large-scale database systems, storage engines, and zero-impact data infrastructure.',
+        subtitle: 'Ahmet İhtiyar — Database Architect | Istanbul',
+        badge: 'Database Architecture',
+        meta: 'PostgreSQL · Oracle · TimescaleDB · Memgraph · Arrow',
       },
     },
   ];
@@ -107,6 +119,7 @@ export async function getStaticPaths() {
     paths.push({
       params: { slug: isEn ? `en/cases/${slug}` : `cases/${slug}` },
       props: {
+        lang: isEn ? 'en' : 'tr',
         title: entry.data.title,
         subtitle: entry.data.tagline,
         badge: entry.data.fileNumber,
@@ -123,6 +136,7 @@ export async function getStaticPaths() {
     paths.push({
       params: { slug: isEn ? `en/posts/${slug}` : `posts/${slug}` },
       props: {
+        lang: isEn ? 'en' : 'tr',
         title: post.data.title,
         subtitle: post.data.summary,
         badge: isEn ? 'Technical Note' : 'Mühendislik Yazısı',

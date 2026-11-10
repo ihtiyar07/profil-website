@@ -1,28 +1,28 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Hero from '../../components/Hero.astro';
-import DataPipeline from '../../components/DataPipeline.astro';
 import CaseFiles from '../../components/CaseFiles.astro';
-import SecondaryProjects from '../../components/SecondaryProjects.astro';
+import ArticlesSection from '../../components/ArticlesSection.astro';
 import Invariants from '../../components/Invariants.astro';
+import SecondaryProjects from '../../components/SecondaryProjects.astro';
 import ContactSection from '../../components/ContactSection.astro';
 ---
 
 <BaseLayout lang="en">
-  <!-- 00. Hero: Headline, Now line, 2 Actions, Portrait Photo -->
+  <!-- 00. Hero: Headline, Now line, Actions, Portrait Photo -->
   <Hero lang="en" />
 
-  <!-- 01. Backbone: "The Path of Data" Interactive Pipeline & Infrastructure Ground -->
-  <DataPipeline lang="en" />
-
-  <!-- 02. Primary Work: 3 Editorial Dossiers (Case 01 / 02 / 03) -->
+  <!-- 01. System Architectures: 3 Primary Case Dossiers (MetaDB, TimescaleDB, Arrow) -->
   <CaseFiles lang="en" />
 
-  <!-- 03. Secondary Works: Compact Registry -->
-  <SecondaryProjects lang="en" />
+  <!-- 02. Articles & Technical Notes: Editorial Publications List -->
+  <ArticlesSection lang="en" />
 
-  <!-- 04. Invariants: Rule -> Failure Mode -> Solution -> Verification -->
+  <!-- 03. Invariants: Architectural Principles & Failure Modes -->
   <Invariants lang="en" />
+
+  <!-- 04. System Registry: Operational Systems -->
+  <SecondaryProjects lang="en" />
 
   <!-- 05. Contact: Email, GitHub, LinkedIn -->
   <ContactSection lang="en" />

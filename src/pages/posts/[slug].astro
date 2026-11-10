@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getPostSlug } from '../../data/slugUtils';
+import { getPostSlug, getPostTranslationSlug } from '../../data/slugUtils';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -18,23 +18,31 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
+const currentSlug = getPostSlug(entry);
+const enSlug = getPostTranslationSlug(currentSlug);
+const alternateUrls = enSlug ? {
+  tr: `/posts/${currentSlug}`,
+  en: `/en/posts/${enSlug}`,
+} : undefined;
 ---
 
 <BaseLayout 
   lang="tr" 
   title={`${entry.data.title} — Ahmet İhtiyar`} 
   description={entry.data.summary}
+  alternateUrls={alternateUrls}
+  targetLangUrl={enSlug ? `/en/posts/${enSlug}` : '/en'}
   articleMeta={{ publishDate: entry.data.date, tags: entry.data.tags }}
 >
   <article class="py-8 sm:py-12 space-y-8 max-w-3xl mx-auto">
     <!-- Header -->
     <div class="space-y-4 pb-6 border-b border-[var(--border)]">
       <div class="flex items-center justify-between">
-        <a href="/" class="font-mono text-xs text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
-          ← Ana Sayfaya Dön
+        <a href="/#articles" class="font-mono text-xs text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
+          ← Yazılara Dön
         </a>
         <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
-          <span>{entry.data.date}</span>
+          <time datetime={entry.data.date}>{entry.data.date}</time>
           <span>·</span>
           <span>{entry.data.readingTime}</span>
         </div>
@@ -60,8 +68,8 @@ const { Content } = await render(entry);
 
     <!-- Footer Back Link -->
     <div class="pt-8 border-t border-[var(--border)] flex justify-between items-center font-mono text-xs">
-      <a href="/" class="text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
-        ← Ana Sayfaya Dön
+      <a href="/#articles" class="text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
+        ← Yazılara Dön
       </a>
       <a href="mailto:ahmetihtiyar1453@gmail.com" class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline">
         Yazı Hakkında Geri Bildirim Ver ↗

@@ -1,39 +1,39 @@
 ---
 export interface Props {
   lang?: 'tr' | 'en';
+  targetLangUrl?: string;
 }
 
-const { lang = 'tr' } = Astro.props;
+const { lang = 'tr', targetLangUrl: customTargetLangUrl } = Astro.props;
 const isTr = lang === 'tr';
 
 const navItems = isTr ? [
-  { href: '#pipeline', label: 'Veri Hattı' },
-  { href: '#cases', label: 'Vakalar' },
-  { href: '#secondary-projects', label: 'Sistemler' },
-  { href: '#invariants', label: 'İlkeler' },
-  { href: '#contact', label: 'İletişim' }
+  { href: '/#systems', label: 'Sistemler' },
+  { href: '/#articles', label: 'Yazılar' },
+  { href: '/#invariants', label: 'İlkeler' },
+  { href: '/#contact', label: 'İletişim' }
 ] : [
-  { href: '/en#pipeline', label: 'Pipeline' },
-  { href: '/en#cases', label: 'Cases' },
-  { href: '/en#secondary-projects', label: 'Systems' },
+  { href: '/en#systems', label: 'Systems' },
+  { href: '/en#articles', label: 'Articles' },
   { href: '/en#invariants', label: 'Invariants' },
   { href: '/en#contact', label: 'Contact' }
 ];
 
 const homeUrl = isTr ? '/' : '/en';
-const targetLangUrl = isTr ? '/en' : '/';
+const defaultTargetLangUrl = isTr ? '/en' : '/';
+const targetLangUrl = customTargetLangUrl || defaultTargetLangUrl;
 ---
 
 <header class="w-full border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-md sticky top-0 z-40 transition-colors">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 h-14 flex items-center justify-between">
     <!-- Brand / Identity -->
     <a href={homeUrl} class="flex items-center gap-2.5 group focus:outline-none" aria-label="Ahmet İhtiyar">
-      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] inline-block transition-transform group-hover:scale-125"></span>
+      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] inline-block transition-transform group-hover:scale-125 shrink-0"></span>
       <span class="font-sans text-sm font-semibold tracking-tight text-[var(--text)]">
         Ahmet İhtiyar
       </span>
       <span class="hidden sm:inline font-mono text-[11px] text-[var(--text-dim)] border-l border-[var(--border)] pl-2.5">
-        {isTr ? 'Sistem & Telemetri' : 'Systems & Telemetry'}
+        {isTr ? 'Veritabanı Mimarı' : 'Database Architect'}
       </span>
     </a>
 

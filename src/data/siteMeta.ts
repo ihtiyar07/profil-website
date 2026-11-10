@@ -2,20 +2,20 @@ export const SITE_META = {
   siteUrl: "https://ahmetihtiyar.com",
   author: "Ahmet İhtiyar",
   title: {
-    tr: "Ahmet İhtiyar — Sistem ve Arka Uç Mühendisi | İstanbul",
-    en: "Ahmet İhtiyar — Systems & Backend Engineer | Istanbul"
+    tr: "Ahmet İhtiyar — Veritabanı Mimarı | İstanbul",
+    en: "Ahmet İhtiyar — Database Architect | Istanbul"
   },
   headline: {
-    tr: "Gömülü uç sistemlerden dağıtık mimarilere telemetri ve veri altyapıları geliştiriyorum.",
-    en: "Engineering telemetry and data infrastructure from embedded edge to distributed backends."
+    tr: "Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapıları üzerine çalışan veritabanı mimarı.",
+    en: "Database architect engineering large-scale database systems, storage engines, and zero-impact data infrastructure."
   },
   nowLine: {
-    tr: "Diverjans Bilgi Teknolojileri · Telemetri, Dağıtık Sistemler ve Veri Altyapısı",
-    en: "Diverjans IT · Telemetry, Distributed Systems & Data Infrastructure"
+    tr: "Diverjans Bilgi Teknolojileri · Veritabanı Mimarisi ve Depolama Sistemleri",
+    en: "Diverjans IT · Database Architecture & Storage Systems"
   },
   bioShort: {
-    tr: "Diverjans IT bünyesinde telemetri, dağıtık arka uç servisleri ve veri altyapıları üzerine çalışıyorum. Endüstriyel saha cihazlarının haberleşmesi, zaman serisi verilerinin güvenilir aktarımı ve sistem kararlılığı odaklandığım temel alanlar.",
-    en: "Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Focused on industrial edge communication, reliable time-series data pipelines, and high-availability backend services."
+    tr: "Çok terabaytlık veritabanı mimarisi, dağıtık metadata kataloglama (MetaDB), sorgu yürütme optimizasyonu (PostgreSQL, Oracle, TimescaleDB) ve depolama motoru kararlılığı üzerine çalışıyorum. Canlı üretim sistemlerinde sıfır kilitlenme (zero-impact) ve yüksek ölçekli analitik veri hatları odaklandığım temel alanlar.",
+    en: "Engineering multi-terabyte database architectures, distributed metadata cataloging (MetaDB), query execution optimization (PostgreSQL, Oracle, TimescaleDB), and storage engine reliability. Specializing in zero-impact cataloging and high-throughput analytical pipelines."
   },
   email: "ahmetihtiyar1453@gmail.com",
   github: "https://github.com/ihtiyar07",

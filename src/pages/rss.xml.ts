@@ -7,7 +7,7 @@ import type { APIContext } from 'astro';
 export async function GET(context: APIContext) {
   const posts = await getCollection('posts');
   return rss({
-    title: 'Ahmet İhtiyar — Mühendislik Yazıları',
+    title: 'Ahmet İhtiyar — Veritabanı Mimarisi & Mühendislik Yazıları',
     description: SITE_META.bioShort.tr,
     site: context.site || SITE_META.siteUrl,
     items: posts

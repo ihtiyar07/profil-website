@@ -1,0 +1,55 @@
+---
+title: "MetaDB: Zero-Lock Data Catalog & Lineage Across Multi-Terabyte Production DBs"
+fileNumber: "Case 01"
+slug: "metadb"
+tagline: "Catalog extraction via native database catalog stats (reltuples, NUM_ROWS) and Memgraph schema lineage without locking live tables"
+date: "2024–2025"
+lang: "en"
+testedScale: "10TB+ Live Production Databases · <5ms Metadata Extraction on 100M+ Row Tables"
+summary: "An enterprise metadata catalog and lineage platform extracting schema metrics from multi-terabyte production databases without table locking, powered by native catalog statistics (pg_class.reltuples, ALL_TABLES.NUM_ROWS) and Memgraph graph traversal."
+stack: ["PostgreSQL", "Oracle DB", "Microsoft SQL Server", "Spring Boot 3", "Memgraph (Bolt/Cypher)", "FastAPI", "Temporal"]
+metrics:
+  - label: "Catalog Extraction"
+    value: "Zero-Lock (pg_class & ALL_TABLES)"
+  - label: "Live Lock Contention"
+    value: "Zero (0 Locks)"
+  - label: "Metadata Read Latency"
+    value: "< 5 milliseconds"
+  - label: "Lineage Graph Engine"
+    value: "Memgraph (Cypher / Bolt)"
+---
+
+## 1. Context
+Modern enterprise data landscapes involve dozens of heterogenous database engines (PostgreSQL, Oracle, SQL Server), hundreds of thousands of tables, and complex ETL/ELT dataflows. Regulatory compliance, impact analysis, and data governance mandate centralized visibility into schema evolution and column-level provenance.
+
+MetaDB is an enterprise multi-tenant metadata catalog and lineage platform that extracts metadata from distributed systems, normalizes it into a canonical GLB schema, and indexes relationships inside a Memgraph graph database.
+
+## 2. The Problem and Live Database Constraints
+
+Extracting metadata from multi-terabyte production systems presents severe engineering risks when naive queries are executed:
+1. **Lock Contention and Buffer Thrashing:** Running `SELECT COUNT(*)` or calculating physical disk allocations on 500M+ row tables evicts hot operational pages from OS and database buffer caches, saturates storage I/O, and causes lock starvation on transactional workloads.
+2. **Deep Recursive Lineage Queries:** Modeling multi-step data pipelines in traditional relational tables requires recursive SQL CTEs that degrade exponentially beyond a few hops.
+3. **DMZ and Air-Gapped Networks:** Enterprise databases frequently reside in strict zero-inbound corporate network perimeters where central services cannot establish inbound connections.
+
+## 3. Architecture and the Zero-Impact Guardrail
+
+MetaDB enforces an uncompromising **Zero-Impact Guardrail** to safeguard source systems:
+
+### A. Zero-Lock Catalog Statistics
+Direct table block access and full table scans are strictly prohibited. The ingestion engine exclusively targets native system catalog views:
+- **PostgreSQL:** Queries `pg_class.reltuples` and `pg_stat_user_tables` asynchronously.
+- **Oracle Database:** Reads data dictionary views (`ALL_TABLES.NUM_ROWS`, `ALL_TAB_STATISTICS`) and AWR workload statistics.
+- **Microsoft SQL Server:** Analyzes `sys.dm_db_partition_stats` dynamic management views.
+
+Approximate cardinality and table metadata are captured in **&lt;5ms**, with **zero locks** and no I/O eviction of hot application data.
+
+### B. Graph-Native Schema Lineage via Memgraph
+Extracted tables, views, columns, and dataflow operations are mapped to a canonical schema (`glb.entity_master`, `glb.entity_dataflow_step`) and mirrored to Memgraph with immutable `{uuid}_{ecid}` node identities. Traversing upstream and downstream dependencies executes in sub-milliseconds over Bolt/Cypher.
+
+### C. Temporal Distributed Edge Ingestion
+For air-gapped zones, the `metadb_edge_agent` operates locally within customer infrastructure. Sensitive database credentials are encrypted using an envelope model and never stored in plaintext on central orchestrators. Telemetry and schema records stream asynchronously over HTTP chunked RFC 4180 streams.
+
+## 4. Engineering Trade-offs & Gains
+
+- **Relational SQL vs Graph Database:** Migrating lineage traversal from recursive SQL joins to Memgraph reduced 15-hop dependency queries from 4.2 seconds to 8 milliseconds.
+- **Catalog Statistics vs Full Scans:** Decoupling metadata extraction from physical table scans guaranteed 100% operational safety across critical multi-terabyte production instances.

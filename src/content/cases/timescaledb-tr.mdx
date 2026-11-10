@@ -1,0 +1,57 @@
+---
+title: "TimescaleDB: Milyarlarca Satırlık Zaman Serisi Depolama ve Hypertables"
+fileNumber: "Dosya 02"
+slug: "timescaledb"
+tagline: "Chunk boyutlandırmanın RAM buffer cache'e göre ayarlanması, continuous aggregates ve şeffaf sıkıştırma"
+date: "2024–2025"
+lang: "tr"
+testedScale: "Milyarlarca Satırlık Telemetri · %92 Sıkıştırma Oranı · Otomatik Retention"
+summary: "Yüksek frekanslı zaman serisi verilerinde standart PostgreSQL tablolarının yaşadığı indeks şişmesini ve I/O çöküşünü önleyen; RAM buffer cache boyutuna göre chunk partition pruning, arka plan continuous aggregates ve Zstd sütunsal sıkıştırma uygulayan analitik depolama mimarisi."
+stack: ["PostgreSQL", "TimescaleDB", "Continuous Aggregates", "Zstd Compression", "Docker", "Linux"]
+metrics:
+  - label: "Sıkıştırma Oranı"
+    value: "%92 Disk Tasarrufu (Zstd)"
+  - label: "Agregasyon Süresi"
+    value: "< 18ms (Continuous Aggs)"
+  - label: "Yazma Hızı"
+    value: "35.000 satır/sn sabit"
+  - label: "Eski Veri Temizliği"
+    value: "drop_chunks() 0 I/O"
+---
+
+## 1. Bağlam
+Endüstriyel telemetri, IoT ağ geçitleri ve finansal işlem akışları her saniye on binlerce yeni kayıt üretir. Bu ölçekteki zaman serisi verisi biriktiğinde geleneksel ilişkisel veritabanı tabloları hızla yüz milyonlarca ve milyarlarca satıra ulaşır.
+
+Bu projede; yüksek veri yazma hızını korurken analitik sorguları saniyelerden milisaniyelere düşüren ve depolama maliyetlerini minimize eden bir TimescaleDB analitik depolama motoru mimarisi kurgulandı.
+
+## 2. Problem: Standart RDBMS Tıkanma Noktaları
+
+Standart PostgreSQL tablolarında milyarlarca satır saklanmaya çalışıldığında üç temel darboğaz ortaya çıkar:
+1. **İndeks Şişmesi ve RAM'den Taşma (Buffer Eviction):** Veri büyüdükçe tablonun B-Tree indeksleri PostgreSQL'in `shared_buffers` (RAM) alanına sığmaz. Yeni kayıtlar geldikçe indeks düğümleri diskten okunup yazılmak zorunda kalır (I/O thrashing). Yazma hızı saniyede 30.000 satırdan birkaç yüz satıra çakılır.
+2. **Saatler Süren Analitik Sorgular:** Günlük veya haftalık ortalama/maksimum sıcaklıkları hesaplamak için yüz milyonlarca satır üzerinde `Seq Scan` çalıştırmak dakikalarca CPU ve disk I/O tüketir.
+3. **DELETE Bloat ve Vacuum Kilitlenmeleri:** Yasal saklama süresi (retention) dolan eski kayıtları `DELETE FROM table WHERE time < ...` ile temizlemek PostgreSQL MVCC yapısında devasa dead tuple yığınları oluşturur; `VACUUM` saatlerce disk I/O'sunu rehin alır.
+
+## 3. Mimari ve Depolama Optimizasyonları
+
+### A. RAM Buffer Cache Odaklı Chunk Boyutlandırma
+Veri, TimescaleDB hypertable bölümlendirmesine alındı. Temel mimari kural: **"Aktif yazılan ve sık sorgulanan chunk'ların indeksleri sunucu RAM'inin %25'ini aşamaz."**
+- Yazma hacmi ve donanım tampon boyutu hesaplanarak chunk aralıkları tam 7 günlük bloklar halinde yapılandırıldı.
+- Zaman kısıtlı sorgularda PostgreSQL sorgu planlayıcısı doğrudan ilgili chunk'a gider (Partition Pruning); diğer yüzlerce GB'lık chunk diskten hiç okunmaz.
+
+### B. Otomatik Continuous Aggregates (Sürekli Malzeme Görünümleri)
+Saatlik, günlük ve haftalık istatistikler için `WITH (timescaledb.continuous)` görünümleri tanımlandı:
+- Arka plan iş parçacıkları (background workers) yeni gelen verileri asenkron olarak özet tablolara işler.
+- İstemci 6 aylık trend grafiği istediğinde milyarlarca satırı taramaz; doğrudan önceden hesaplanmış continuous aggregate tablosundan &lt;18ms içinde veri alır.
+
+### C. Zstd Sütunsal Sıkıştırma ve Sıfır Kilitli Retention
+- 14 günden eski chunk'lar arka planda satır tabanlı depolamadan (row-based) sütunsal depolamaya (columnar) dönüştürülür ve Zstandard algoritmasıyla sıkıştırılır. 280GB'lık ham veri 22.4GB'a indirildi (%92 disk tasarrufu).
+- 180 günden eski veriler `drop_chunks()` politikasıyla silinir. Bu işlem `DELETE` yerine doğrudan dosya sistemi düzeyinde disk bloklarını unlink eder; sıfır I/O maliyeti ve sıfır transaction kilidiyle tamamlanır.
+
+## 4. Kararlar ve Karşılaştırmalar
+
+| Metrik | Standart PostgreSQL | TimescaleDB Hypertables | Kazanç |
+| :--- | :--- | :--- | :--- |
+| **1 Milyar Satır Disk Boyutu** | 280 GB | 22.4 GB | %92 Disk Tasarrufu |
+| **Saatlik Ortalama Sorgusu** | 42.500 ms | &lt;18 ms | 2300x Sorgu Hızlanması |
+| **Yazma Dayanımı** | 4.000 satır/sn (dalgalı) | 35.000 satır/sn (sabit) | 8.7x Kesintisiz Throughput |
+| **Eski Veri Temizleme** | Saatler süren VACUUM | drop_chunks() (&lt;100ms) | Sıfır Kilit & Sıfır Bloat |

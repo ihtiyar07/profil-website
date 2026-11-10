@@ -9,6 +9,11 @@ export interface Props {
   description?: string;
   lang?: 'tr' | 'en';
   canonicalPath?: string;
+  targetLangUrl?: string;
+  alternateUrls?: {
+    tr: string;
+    en: string;
+  };
   articleMeta?: {
     publishDate: string;
     tags: string[];
@@ -20,12 +25,22 @@ const {
   title = SITE_META.title[lang],
   description = SITE_META.bioShort[lang],
   canonicalPath = '',
+  targetLangUrl: customTargetLangUrl,
+  alternateUrls,
   articleMeta
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, SITE_META.siteUrl).toString();
-const trUrl = new URL(Astro.url.pathname.replace(/^\/en/, '') || '/', SITE_META.siteUrl).toString();
-const enUrl = new URL(Astro.url.pathname.startsWith('/en') ? Astro.url.pathname : `/en${Astro.url.pathname === '/' ? '' : Astro.url.pathname}`, SITE_META.siteUrl).toString();
+
+const trUrl = alternateUrls?.tr
+  ? new URL(alternateUrls.tr, SITE_META.siteUrl).toString()
+  : new URL(Astro.url.pathname.replace(/^\/en/, '') || '/', SITE_META.siteUrl).toString();
+
+const enUrl = alternateUrls?.en
+  ? new URL(alternateUrls.en, SITE_META.siteUrl).toString()
+  : new URL(Astro.url.pathname.startsWith('/en') ? Astro.url.pathname : `/en${Astro.url.pathname === '/' ? '' : Astro.url.pathname}`, SITE_META.siteUrl).toString();
+
+const resolvedTargetLangUrl = customTargetLangUrl || (lang === 'tr' ? (alternateUrls?.en || '/en') : (alternateUrls?.tr || '/'));
 
 const cleanPath = Astro.url.pathname.replace(/^\/+|\/+$/g, '');
 const ogImagePath = cleanPath === '' 
@@ -40,7 +55,7 @@ const jsonLd = {
   "@type": "Person",
   "name": "Ahmet İhtiyar",
   "url": SITE_META.siteUrl,
-  "jobTitle": lang === 'tr' ? "Sistem ve Arka Uç Mühendisi" : "Systems & Backend Engineer",
+  "jobTitle": lang === 'tr' ? "Veritabanı Mimarı" : "Database Architect",
   "worksFor": {
     "@type": "Organization",
     "name": "Diverjans Bilgi Teknolojileri"
@@ -55,16 +70,16 @@ const jsonLd = {
     SITE_META.linkedin
   ],
   "knowsAbout": [
-    "Industrial IoT",
-    "Distributed Microservices",
-    "ESP32 Firmware",
-    "Modbus RTU/TCP",
-    "RabbitMQ",
-    "PostgreSQL",
-    "TimescaleDB",
-    "Apache Arrow",
-    "Proxmox VE",
-    "Keycloak IAM"
+    "Database Architecture",
+    "PostgreSQL Internals",
+    "Oracle Database Optimization",
+    "TimescaleDB & Hypertables",
+    "Storage Engines & ZFS",
+    "Zero-Impact Metadata Extraction",
+    "Memgraph Schema Lineage",
+    "Apache Arrow IPC",
+    "Distributed Systems",
+    "Query Performance Tuning"
   ]
 };
 ---
@@ -106,7 +121,7 @@ const jsonLd = {
     <meta property="twitter:image" content={ogImageUrl} />
 
     <!-- RSS -->
-    <link rel="alternate" type="application/rss+xml" title="Ahmet İhtiyar — Yazılar" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title={lang === 'tr' ? "Ahmet İhtiyar — Veritabanı Mimarisi Yazıları" : "Ahmet İhtiyar — Database Architecture Notes"} href={lang === 'tr' ? "/rss.xml" : "/en/rss.xml"} />
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
@@ -131,7 +146,7 @@ const jsonLd = {
       {lang === 'tr' ? 'Ana içeriğe atla (Skip to content)' : 'Skip to content'}
     </a>
 
-    <Header lang={lang} />
+    <Header lang={lang} targetLangUrl={resolvedTargetLangUrl} />
 
     <main id="main-content" class="flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-10">
       <slot />

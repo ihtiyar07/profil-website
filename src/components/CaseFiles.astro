@@ -8,86 +8,137 @@ const isTr = lang === 'tr';
 
 const caseDossiers = [
   {
-    anchorId: "case-plasmon",
+    anchorId: "case-metadb",
     fileNo: isTr ? "Dosya 01" : "Case 01",
-    slug: "plasmon",
-    primaryMetric: isTr ? "100K+ Edge Cihaz" : "100K+ Edge Devices",
+    slug: "metadb",
+    primaryMetric: isTr ? "Zero-Lock Katalog" : "Zero-Lock Extraction",
     subMetrics: isTr 
-      ? "%85 Hücresel Kota Tasarrufu · 0 Paket Kaybı" 
-      : "85% Cellular Quota Saved · 0 Packet Loss",
+      ? "<5ms Yanıt · 0 Kilitlenme Etkisi" 
+      : "<5ms Response · 0 Lock Contention",
     title: isTr 
-      ? "Plasmon: 100K+ Edge Cihaz İçin Telemetri Mimarisi" 
-      : "Plasmon: Telemetry Architecture for 100K+ Edge Devices",
+      ? "MetaDB: Çok Terabaytlık Üretim Sistemlerinde Zero-Lock Veri Kataloğu & Lineage" 
+      : "MetaDB: Zero-Lock Data Catalog & Lineage Across Multi-Terabyte Production DBs",
     tagline: isTr 
-      ? "ESP32 firmware, MQTT/TLS RPC, yerel ring-buffer ve RabbitMQ ingest hattı"
-      : "ESP32 firmware, MQTT/TLS RPC, local ring-buffer & RabbitMQ ingestion pipeline",
+      ? "PostgreSQL/Oracle/MSSQL canlı tablolara dokunmadan yerel katalog istatistikleri ve Memgraph şema soykütüğü"
+      : "Catalog extraction via native database catalog stats (reltuples, NUM_ROWS) and Memgraph schema lineage without locking live tables",
     testedScale: isTr 
-      ? "100K+ Cihaz Ölçeği · Saha Hücresel Failover Doğrulaması"
-      : "100K+ Device Scale · Field Cellular Failover Verification",
+      ? "10TB+ Canlı Üretim Veritabanları · 100M+ Satırlı Tablolarda <5ms Metadata Çıkarma"
+      : "10TB+ Live Production Databases · <5ms Metadata Extraction on 100M+ Row Tables",
     problem: isTr 
-      ? "Fabrikalarda GSM/4G bağlantısı sık sık dalgalanıyor, saatlik baz istasyonu kesintileri yaşanıyordu. Geleneksel HTTP yoklamaları bellek taşmalarına ve veri boşluklarına yol açıyordu. Cihazların hem telemetri akıtması hem de güvenli uzaktan setpoint ve OTA alması gerekiyordu."
-      : "Cellular 4G connectivity suffered periodic tower dropouts, causing volatile RAM overflows and data voids with conventional HTTP polling. The system required reliable offline telemetry buffering alongside secure remote setpoint writing and OTA firmware updates.",
+      ? "Çok terabaytlık kurumsal veritabanlarında (PostgreSQL, Oracle, MSSQL) 500M+ satırlı tablolara atılan SELECT COUNT(*) ve tam tablo taramaları disk I/O'sunu tüketiyor, buffer cache'deki aktif sayfaları atıyor ve canlı işlemlerde lock starvation yaratıyordu. Dağıtık veri hatlarında kolon bazlı veri soykütüğünün (lineage) güvenli ve canlı sistemleri etkilemeden çıkarılması gerekiyordu."
+      : "On multi-terabyte enterprise databases (PostgreSQL, Oracle, MSSQL), issuing SELECT COUNT(*) and unindexed full table scans saturated disk I/O, evicted hot pages from buffer caches, and caused lock starvation on transactional workloads. An enterprise catalog required column-level lineage without imposing any operational footprint on source databases.",
     decisions: isTr 
-      ? "ESP32 üzerinde C ve statik bellek tahsisi kullanılarak dinamik malloc fragmentasyonu önlendi. REST yerine kalıcı MQTT/TLS (QoS 1) soketi kurularak hücresel veri tüketimi %85 azaltıldı. Hücresel modemin kilitlenmesine karşı bağımsız transistör güç kesme anahtarlaması eklendi."
-      : "C on FreeRTOS with static memory allocations eliminated malloc heap fragmentation. Persistent MQTT over TLS (QoS 1) preserved 85% cellular quota over HTTP. An automated transistor power-cycling switch resolved cellular modem hangs.",
+      ? "Canlı veri bloklarına tam tarama tamamen yasaklandı (Zero-Impact Guardrail). Bunun yerine pg_class.reltuples, ALL_TABLES.NUM_ROWS ve sys.dm_db_partition_stats gibi yerel katalog istatistikleri asenkron çekildi. Şema ve kolon soykütüğü Memgraph graf veritabanında {uuid}_{ecid} kimlikleriyle modellendi. İzole DMZ ortamları için Temporal tabanlı sıfır-inbound Edge Worker mimarisi kurgulandı."
+      : "Direct table scans were strictly prohibited (Zero-Impact Guardrail). Metadata extraction was decoupled to query native database catalog stats (pg_class.reltuples, ALL_TABLES.NUM_ROWS, sys.dm_db_partition_stats) asynchronously. Column and schema lineage were modeled in Memgraph using {uuid}_{ecid} identities. For air-gapped zones, a zero-inbound Temporal edge worker stream was deployed.",
     result: isTr 
-      ? "100K+ cihaz ölçeğine göre modellendi. 4G hücresel hat kopsa bile 320KB dahili flaş ring-buffer telemetri kaydını RAM taşması yaşamadan sakladı; hat geldiğinde 0 paket kaybıyla kuyruğa boşaltıldı."
-      : "Engineered for 100K+ devices. The ~320KB flash ring-buffer retained continuous telemetry during outages, draining with 0 packet loss upon reconnect.",
+      ? "100M+ satırlık tablolarda metadata ve yaklaşık kardinalite okuma süresi <5ms'ye indi. Canlı üretim veritabanlarında sıfır kilitlenme (0 lock contention) sağlandı. Memgraph üzerinden uçtan uca ETL şema soykütüğü milisaniyelik Cypher sorgularıyla sorgulanabilir kılındı."
+      : "Metadata and approximate cardinality queries executed in <5ms on 100M+ row tables with zero lock contention on production systems. End-to-end dataflow lineage was indexed and traversable in sub-milliseconds in Memgraph.",
     whatDifferently: isTr 
-      ? "Başlangıçta telemetri paketleri için JSON formatı kullanılmıştı. Baştan Protobuf veya saf ikili (packed struct) mimarisine geçseydim hücresel tüketimi ilk günden %65 daha aşağı çekebilirdim."
-      : "Telemetry originally transmitted JSON frames (~180 bytes). Adopting Protobuf or packed binary structs from day one would have reduced bandwidth consumption by 65% upfront.",
-    stack: ["ESP32 (C/FreeRTOS)", "Modbus RTU/TCP", "MQTT/TLS", "RabbitMQ", "TimescaleDB"],
+      ? "İlk prototipte JDBC üzerinden metadata sorguları tek bir transaction içinde senkron yapılıyordu; heterojen veritabanlarındaki ağ gecikmelerini ve bağlantı kopmalarını daha iyi izole etmek için Temporal iş akışları ve asenkron tamponlama en baştan kurgulanmalıydı."
+      : "Early prototypes executed metadata discovery synchronously over single JDBC transactions; adopting Temporal distributed workflows and asynchronous buffer streams from day one would have isolated heterogenous database network timeouts much faster.",
+    stack: ["PostgreSQL", "Oracle DB", "MSSQL", "Spring Boot 3", "Memgraph (Bolt/Cypher)", "FastAPI", "Temporal"],
     telemetryDeltas: [
       {
-        metric: isTr ? "Ağ Protokolü" : "Network Protocol",
-        before: "HTTP Polling",
-        after: "MQTT/TLS QoS 1",
-        gain: isTr ? "%85 hücresel tasarruf" : "85% quota saved"
+        metric: isTr ? "Katalog Okuma Yöntemi" : "Catalog Extraction Method",
+        before: "SELECT COUNT(*) & Seq Scan",
+        after: "pg_class & ALL_TABLES Stats",
+        gain: isTr ? "<5ms okuma, sıfır kilit" : "<5ms response, zero locks"
       },
       {
-        metric: isTr ? "Bellek Tahsisi" : "RAM Allocation",
-        before: "Dinamik malloc",
-        after: "Statik Ring-Buffer",
-        gain: isTr ? "0 heap fragmantasyonu" : "Zero heap fragmentation"
+        metric: isTr ? "Canlı DB I/O Etkisi" : "Production I/O Footprint",
+        before: isTr ? "Tam Disk Blok Taraması" : "Full Disk Block Scan",
+        after: isTr ? "0 Canlı Tablo Taraması" : "0 Table Page Evictions",
+        gain: isTr ? "Sıfır buffer cache tahliyesi & kilit" : "Zero cache thrashing & locks"
       },
       {
-        metric: isTr ? "Hat Kesintisi" : "Cellular Outage",
-        before: "RAM taşması & veri kaybı",
-        after: "320KB Flaş Dairesel Tampon",
-        gain: isTr ? "0 paket kaybı ile tahliye" : "0 packet loss on reconnect"
+        metric: isTr ? "Soykütük Sorgu Karmaşıklığı" : "Lineage Query Latency",
+        before: isTr ? "Çok Katmanlı Recursive SQL" : "Recursive SQL Joins",
+        after: "Memgraph Bolt/Cypher Graph",
+        gain: isTr ? "<10ms çok katmanlı soykütük geçişi" : "Sub-10ms multi-hop traversal"
       }
     ]
   },
   {
-    anchorId: "case-sapmapayi",
+    anchorId: "case-timescaledb",
     fileNo: isTr ? "Dosya 02" : "Case 02",
-    slug: "sapmapayi",
+    slug: "timescaledb",
+    primaryMetric: isTr ? "Milyarlarca Satır" : "Billions of Rows",
+    subMetrics: isTr 
+      ? "%92 Sıkıştırma · <18ms Agregasyon" 
+      : "92% Compression · <18ms Aggregations",
+    title: isTr 
+      ? "TimescaleDB: Milyarlarca Satırlık Zaman Serisi Depolama ve Hypertables" 
+      : "TimescaleDB: Billions of Rows Storage Engine & Hypertable Partitioning",
+    tagline: isTr 
+      ? "Chunk boyutlandırmanın RAM buffer cache'e göre ayarlanması, continuous aggregates ve şeffaf sıkıştırma"
+      : "Sizing chunks to fit RAM buffer cache, continuous aggregates, and columnar compression at scale",
+    testedScale: isTr 
+      ? "Milyarlarca Satırlık Telemetri · %92 Sıkıştırma Oranı · Otomatik Retention"
+      : "Billions of Telemetry Records · 92% Compression Ratio · Automated Retention",
+    problem: isTr 
+      ? "Yüksek frekanslı zaman serisi verisi biriktikçe standart PostgreSQL tabloları şişiyor, B-Tree indeksleri shared_buffers'tan diske taşarak yazma verimini çökertiyordu. Analitik sorgular dakikalar sürüyor, eski verilerin DELETE ile silinmesi ağır vacuum bloat ve kilitlenmelere yol açıyordu."
+      : "High-throughput time-series ingestion caused standard PostgreSQL tables to bloat; B-Tree indexes exceeded shared_buffers, forcing random disk I/O and collapsing write throughput. Analytical aggregations stalled for minutes, and pruning historical data via DELETE caused catastrophic table locks and vacuum bloat.",
+    decisions: isTr 
+      ? "Tablo mimarisi TimescaleDB hypertables yapısına geçirildi. Chunk boyutları sunucunun shared_buffers kapasitesinin %25'ini aşmayacak biçimde (7 günlük aralıklar) yapılandırıldı. Sık sorgulanan metrikler continuous aggregates ile arka planda malzeme edildi. 14 günden eski chunk'lar Zstd sütunsal sıkıştırmaya alındı; 180 günden eski veriler drop_chunks() ile dosya sistemi düzeyinde sıfır I/O maliyetiyle düşürüldü."
+      : "Partitioned tables into TimescaleDB hypertables. Chunk intervals were calibrated to 7-day ranges so active indexes never exceed 25% of RAM buffer cache. Continuous aggregates were materialized in the background. Chunks older than 14 days were compressed into columnar Zstd blocks; data past 180 days was dropped at the metadata level via drop_chunks() with zero vacuum overhead.",
+    result: isTr 
+      ? "Disk alanı %92 oranında küçültüldü (280GB ham veri 22.4GB'a indi). Milyarlarca satır üzerindeki saatlik ve günlük agregasyonlar 42 saniyeden <18 milisaniyeye geriledi. İndeksler RAM'de kaldığı için yazma hızı 35.000 satır/sn seviyesinde sabitlendi."
+      : "Storage footprint contracted by 92% (from 280GB raw to 22.4GB). Aggregate queries across billions of rows plummeted from 42 seconds to <18ms. Ingestion throughput remained steady at 35,000 writes/sec without memory thrashing.",
+    whatDifferently: isTr 
+      ? "İlk kurulumda chunk boyutu 1 aylık geniş aralıklara ayarlanmıştı; bu durum bellek yetersizliğinde disk swapping'e neden oldu. Chunk aralığını veritabanı yazma hacmi ve sunucu RAM boyutu oranına göre ilk günden dinamik hesaplamalıydım."
+      : "Initially configured 30-day chunk intervals which pushed active indexes out of RAM. Hypertable chunk durations should always be sized directly against ingest volume and available shared_buffers from day one.",
+    stack: ["PostgreSQL", "TimescaleDB", "Continuous Aggregates", "Zstd Compression", "Docker", "Linux"],
+    telemetryDeltas: [
+      {
+        metric: isTr ? "Disk Alanı (1 Milyar Satır)" : "Disk Storage (1B Rows)",
+        before: isTr ? "280 GB (Standart Satır)" : "280 GB (Uncompressed)",
+        after: isTr ? "22.4 GB (Zstd Sütunsal)" : "22.4 GB (Timescale Compression)",
+        gain: isTr ? "%92 disk tasarrufu" : "92% disk reduction"
+      },
+      {
+        metric: isTr ? "Saatlik Agregasyon Süresi" : "Hourly Aggregation Latency",
+        before: "42.500 ms (Seq Scan)",
+        after: "<18 ms (Continuous Aggs)",
+        gain: isTr ? "2300x sorgu hızlanması" : "2300x query acceleration"
+      },
+      {
+        metric: isTr ? "Eski Veri Temizliği" : "Historical Data Pruning",
+        before: isTr ? "Saatler süren VACUUM kilitleri" : "Blocking DELETE & Vacuum Bloat",
+        after: "drop_chunks() (<100ms)",
+        gain: isTr ? "Sıfır I/O ve kilitlenme" : "Instant unlink, zero table locks"
+      }
+    ]
+  },
+  {
+    anchorId: "case-arrow",
+    fileNo: isTr ? "Dosya 03" : "Case 03",
+    slug: "apache-arrow",
     primaryMetric: isTr ? "Sıfır Kopyalama IPC" : "Zero-Copy IPC Stream",
     subMetrics: isTr 
-      ? "<15ms Tarayıcı Gecikmesi · %87 Ağ Tasarrufu" 
-      : "<15ms Browser Latency · 87% Network Savings",
+      ? "<15ms UI Gecikmesi · %87 Ağ Tasarrufu" 
+      : "<15ms Client Latency · 87% Network Savings",
     title: isTr 
-      ? "Sapmapayı: Soğuk Zincir Uyum Takibi ve Sıfır Kopyalama Raporlama" 
-      : "Sapmapayı: Cold-Chain Compliance & Zero-Copy Reporting",
+      ? "Apache Arrow: DB'den İstemciye Sıfır Kopyalama (Zero-Copy) Veri Akışı" 
+      : "Apache Arrow: Zero-Copy Binary IPC Data Stream from Database to Client",
     tagline: isTr 
-      ? "TimescaleDB, Apache Arrow Zero-Copy IPC akışı, X.509 e-İmza ve RFC 3161 Zaman Damgası"
-      : "TimescaleDB, Apache Arrow Zero-Copy IPC stream, X.509 e-Signature & RFC 3161 Timestamping",
+      ? "Yüz binlerce satırlık DB sonucunu JSON darboğazından kurtarıp doğrudan Arrow RecordBatch IPC tamponlarıyla istemci belleğine eşleme"
+      : "Bypassing JSON serialization bottlenecks with Apache Arrow RecordBatch IPC streams directly mapped to client memory",
     testedScale: isTr 
-      ? "250K+ Sıcaklık Kaydında Sıfır Kopyalama · 5070 Sayılı Kanun Uyumlu"
-      : "250K+ Records Zero-Copy Stream · Legally Binding X.509 Seal",
+      ? "250.000+ Satırlık Veri Seti · Sıfır Serileştirme Kopyası · <15ms Render"
+      : "250,000+ Row Query Results · Zero Serialization Copy · <15ms UI Render",
     problem: isTr 
-      ? "Bir deponun 30 günlük sıcaklık geçmişi sorgulandığında ~250.000 veri noktası dönüyordu. Bunu JSON formatında tarayıcıya yollamak ~25MB payload yaratıyor ve JavaScript JSON.parse ana iş parçacığını 800ms'den fazla kilitliyordu. Ayrıca üretilen raporların yasal delil niteliği taşıması için resmi e-imza ve zaman damgası zorunluydu."
-      : "Querying a 30-day thermal history returned ~250,000 datapoints. Serializing to JSON generated a 25MB payload that froze browser JavaScript threads for 800ms+. Reports also required legally binding digital signatures and RFC 3161 timestamping.",
+      ? "Analitik veritabanından çekilen 250.000+ satırlık veri JSON olarak iletildiğinde ~25MB yük oluşturuyor; sunucuda yüksek CPU ile serileştirilip istemci tarafında JSON.parse çalıştırıldığında tarayıcının tek iş parçacıklı JavaScript motorunu 850ms kilitliyor ve UI donmalarına yol açıyordu."
+      : "Streaming 250,000+ rows of analytical database records serialized to JSON created a 25MB payload. Server CPU spiked during serialization, and parsing the payload on the client froze the main JavaScript thread for over 850ms.",
     decisions: isTr 
-      ? "JSON REST yerine Apache Arrow IPC streaming seçildi; ikili sütunsal tampon doğrudan Float64Array belleğine kopyalamasız eşlendi. Raporlama katmanında yüksek bellek harcayan headless Chromium terk edilerek doğrudan C# QuestPDF motoruna geçildi. Donanımsal HSM imzalama kuyrukları web thread'lerinden izole edildi."
-      : "Adopted Apache Arrow IPC binary streaming over JSON; columnar buffers map directly into Float64Array memory without intermediate copies. Replaced headless Chromium with QuestPDF in C#, slashing memory footprint from 400MB to 15MB. HSM cryptographic signing was offloaded to dedicated background queues.",
+      ? "Veritabanı sorgu sonucu ikili (binary) Apache Arrow sütunsal formatında RecordBatch tamponlarına dönüştürüldü. HTTP üzerinden application/vnd.apache.arrow.stream protokolüyle akıtılan tamponlar, istemci tarafında JavaScript bellek alanında doğrudan Float64Array tip dizilerine kopyalamasız (zero-copy buffer view) eşlendi."
+      : "Transformed database query results directly into binary columnar Apache Arrow RecordBatch buffers. Streamed over HTTP using application/vnd.apache.arrow.stream, enabling browser clients to instantiate zero-copy views (Float64Array) pointing directly to raw memory buffers without parsing.",
     result: isTr 
-      ? "250.000 satırlık veri JSON ile ~24.8MB iken Arrow IPC ile ~3.1MB seviyesine indi (~%87 ağ tasarrufu). Tarayıcıdaki 850ms'lik donma <15ms'ye geriledi. Tüm raporlar 5070 sayılı kanuna uyumlu X.509 e-imza ve TÜBİTAK Kamu SM zaman damgasıyla mühürlendi."
-      : "A 250K-row dataset dropped from 24.8MB JSON to ~3.1MB Arrow IPC (~87% network savings). Browser thread freeze dropped from 850ms to <15ms. All reports sealed with X.509 digital certificates and certified RFC 3161 timestamps.",
+      ? "Ağ yükü 24.8MB'tan 3.1MB'a geriledi (%87 bant genişliği tasarrufu). İstemci tarafında serileştirme ve parse süresi tamamen ortadan kalktı; grafik çizim gecikmesi 850ms'den <15ms'ye düşerek 60 FPS akıcı render sağlandı."
+      : "Payload collapsed from 24.8MB to 3.1MB (87% bandwidth savings). Serialization and parse overhead dropped to zero, slashing chart render latencies from 850ms to <15ms.",
     whatDifferently: isTr 
-      ? "İlk sürümde HTML-to-PDF kütüphanesi olarak Puppeteer kullanılmıştı. Headless Chrome sunucuda konteyner başına 400MB+ RAM tüketip kilitlenmelere yol açtı. C# yerel çizim motoruna baştan geçilmeliydi."
-      : "Initially used headless Chromium (Puppeteer) which drew 400MB+ RAM per instance and failed under burst loads. I should have engineered native C# vector rendering from day one.",
-    stack: ["TimescaleDB", "Apache Arrow (IPC)", "C# .NET 10", "X.509 / PKCS#11", "RFC 3161", "QuestPDF"],
+      ? "İlk denemelerde sıkıştırmasız düz Arrow IPC kullanıldı; sonradan Zstandard (Zstd) gömülü blok sıkıştırması eklendiğinde ağ boyutu ilave %30 daha azaldı. Zstd sıkıştırmalı Arrow akışını en baştan varsayılan yapmalıydım."
+      : "Initial streams used uncompressed Arrow IPC; embedding LZ4/Zstandard compression directly within the stream header saved an extra 30% bandwidth and should have been implemented from day one.",
+    stack: ["Apache Arrow (IPC Stream)", "TimescaleDB", "C# .NET 10", "TypeScript", "WebGL", "HTTP/2"],
     telemetryDeltas: [
       {
         metric: isTr ? "Veri Yükü (250K Satır)" : "Payload (250K Rows)",
@@ -96,83 +147,38 @@ const caseDossiers = [
         gain: isTr ? "%87 ağ tasarrufu" : "87% bandwidth saved"
       },
       {
-        metric: isTr ? "Tarayıcı UI Donması" : "Browser Thread Freeze",
+        metric: isTr ? "İstemci UI Donması" : "Client Thread Freeze",
         before: "850 ms (JSON.parse)",
         after: "<15 ms (Float64Array)",
         gain: isTr ? "56x hızlanma, akıcı grafik" : "56x speedup, 60fps render"
       },
       {
-        metric: isTr ? "Rapor Oluşturma RAM" : "PDF Generation Memory",
-        before: "400 MB+ (Headless Chrome)",
-        after: "15 MB (QuestPDF)",
-        gain: isTr ? "%96 bellek tasarrufu" : "96% RAM reduction"
-      }
-    ]
-  },
-  {
-    anchorId: "case-auth",
-    fileNo: isTr ? "Dosya 03" : "Case 03",
-    slug: "auth-servisi",
-    primaryMetric: isTr ? "<1ms İptal Gecikmesi" : "<1ms Revocation Latency",
-    subMetrics: isTr 
-      ? "O(1) Redis Karmaşıklığı · <400B Token Boyutu" 
-      : "O(1) Redis Complexity · <400B Token Size",
-    title: isTr 
-      ? "Ortak Auth Servisi: Dağıtık Sistemlerde Anında Yetki İptali" 
-      : "Common Auth Service: Instant Revocation in Distributed Microservices",
-    tagline: isTr 
-      ? "Yetkileri JWT payload'undan çıkarıp Redis'te versiyonlama; Plasmon, Sapmapayı ve Diventra WMS ortak omurgası"
-      : "Decoupling roles from JWT payloads into versioned Redis claims; unified across Plasmon, Sapmapayı & Diventra WMS",
-    testedScale: isTr 
-      ? "<1ms Yetki Doğrulama Gecikmesi · Anında Oturum Feshi"
-      : "<1ms Verification Overhead · Sub-millisecond Session Termination",
-    problem: isTr 
-      ? "Tamamen durumsuz (stateless) JWT yaklaşımı kurumsal sahada kritik bir açık oluşturdu: Bir operatör işten çıkarıldığında veya yetkisi alındığında, elindeki token süresi (örn. 60 dk) bitene kadar sisteme erişebiliyordu. Rollerin token içine gömülmesi HTTP başlıklarını 6KB'a kadar şişiriyordu."
-      : "Pure stateless JWTs created a severe vulnerability: revoked operators retained full access until token expiry (e.g. 60 mins). Embedding deep role trees inflated Authorization headers to 6KB, wasting bandwidth across millions of IoT calls.",
-    decisions: isTr 
-      ? "Hibrit model uygulandı: JWT yalnızca sabit kimliği ve bir sürüm tamsayısını (ver) taşır. Değişken izinler Redis'te saklanır. İptal durumunda sürüm numarası artırılarak eski token'lar anında (<1ms) geçersiz kılındı. Token blacklist tutulmadı; böylece bellek ve arama karmaşıklığı O(1) seviyesinde sabitlendi."
-      : "Engineered a hybrid model: JWT contains only immutable ID and an incrementing version integer (ver). Dynamic rights reside in Redis. Bumping user version instantly revokes all active tokens in <1ms without unbounded blacklist memory growth.",
-    result: isTr 
-      ? "Yetki iptal gecikmesi 60 dakikadan <1 milisaniyeye indi. JWT boyutu 5.2KB'tan <400 bayta düşürüldü. Downstream servislerdeki Redis pipeline sorgusu ortalama 0.3ms ek gecikmeyle çalıştı. Plasmon, Sapmapayı ve Diventra WMS ortak omurgasında çalıştırıldı."
-      : "Revocation latency dropped from 60 minutes to <1 millisecond. Token size fell from 5.2KB to <400 bytes. Redis checks added only ~0.3ms latency, unifying security across Plasmon, Sapmapayı, and Diventra WMS.",
-    whatDifferently: isTr 
-      ? "Redis kümesindeki geçici ağ bölünmelerinde (network partition) meşru isteklerin fail-closed reddedilmesini önlemek için kısa süreli (5 saniye) yerel RAM önbellek (fallback cache) mekanizmasını en baştan kurmalıydım."
-      : "An in-memory local fallback cache (5s TTL) should have been included earlier to handle transient Redis cluster partitions gracefully, avoiding fail-closed rejection during momentary network blips.",
-    stack: ["Spring Boot 3", "C# .NET 10", "Redis (Redlock)", "Keycloak SSO", "OAuth2 / OIDC"],
-    telemetryDeltas: [
-      {
-        metric: isTr ? "Yetki İptal Gecikmesi" : "Revocation Propagation",
-        before: "60 Dakika (Token TTL)",
-        after: "<1 Milisaniye (Redis Bump)",
-        gain: isTr ? "Anında oturum feshi" : "Instant breach defense"
-      },
-      {
-        metric: isTr ? "HTTP Başlık Boyutu" : "Auth Header Size",
-        before: "5.2 KB (Şişkin Rol JWT)",
-        after: "<400 Bayt (Kompakt ID)",
-        gain: isTr ? "%92 başlık tasarrufu" : "92% overhead slashed"
-      },
-      {
-        metric: isTr ? "Arama Karmaşıklığı" : "Lookup Complexity",
-        before: "O(N) Büyüyen Kara Liste",
-        after: "O(1) Redis Sürüm Kontrolü",
-        gain: isTr ? "Sabit bellek & CPU" : "Deterministic memory & CPU"
+        metric: isTr ? "Sunucu Bellek / GC Baskısı" : "Server GC Allocations",
+        before: isTr ? "250K Nesne Tahsisi (GC Bloat)" : "250K Heap Objects",
+        after: isTr ? "1 Bitişik Tampon Akışı" : "1 Contiguous Buffer Stream",
+        gain: isTr ? "GC baskısı %95 azaldı" : "95% GC pressure reduced"
       }
     ]
   }
 ];
 ---
 
-<section id="cases" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+<section id="systems" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16 relative">
+  <!-- Anchor alias for legacy links -->
+  <span id="cases" class="absolute -top-16 left-0 sr-only" aria-hidden="true"></span>
+
   <!-- Section Title & Narrative -->
   <div class="space-y-4 mb-14 max-w-3xl">
+    <div class="font-mono text-xs text-[var(--text-accent)] font-semibold tracking-wider uppercase">
+      {isTr ? 'Mühendislik Dosyaları' : 'Engineering Dossiers'}
+    </div>
     <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
-      {isTr ? 'Seçilmiş Vaka Çalışmaları' : 'Engineering Dossiers'}
+      {isTr ? 'Veritabanı Mimarisi Vaka Dosyaları' : 'Database Architecture Case Files'}
     </h2>
     <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
       {isTr 
-        ? "Saha kısıtları, ağ kopmaları ve veri hacmi altında çalışan üç kritik sistemin mimari analizi. Çözülen problemler, teknik tercihler, ölçülen metrikler ve sinyal akış topolojisi." 
-        : "Architectural analysis of three production systems running under field constraints, network partitions, and heavy data volumes. Core problems, technical tradeoffs, measured metrics, and signal flow topology."}
+        ? "Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapılarında çözülen problemler, teknik tercihler, telemetri deltaları ve veri akış topolojileri." 
+        : "Architectural analysis, technical tradeoffs, telemetry deltas, and dataflow topologies across large-scale databases, storage engines, and zero-impact data infrastructure."}
     </p>
   </div>
 
@@ -289,7 +295,7 @@ const caseDossiers = [
                     <span class="text-[var(--text-muted)] font-medium sm:w-1/3">
                       {delta.metric}
                     </span>
-                    <div class="flex items-center gap-2 sm:w-2/3 justify-between sm:justify-end">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 sm:w-2/3 justify-between sm:justify-end">
                       <span class="text-[var(--text-dim)] line-through">
                         {delta.before}
                       </span>
@@ -303,158 +309,158 @@ const caseDossiers = [
               </div>
             </div>
 
-            <!-- Architectural Data Flow Diagram (Bespoke SVG & Flow Line) -->
+            <!-- Architectural Data Flow Diagram -->
             <div class="space-y-3 pt-4 border-t border-[var(--border)]">
               <div class="flex items-center justify-between pb-2 border-b border-[var(--border)] font-mono text-xs text-[var(--text-dim)]">
                 <span class="font-semibold text-[var(--text)] uppercase tracking-wider">
                   {isTr ? 'Veri Akış Topolojisi' : 'Signal & Data Topology'}
                 </span>
                 <span class="text-[var(--text-accent)]">
-                  {item.slug === 'plasmon' && 'Failover Bus'}
-                  {item.slug === 'sapmapayi' && 'Zero-Copy Pipeline'}
-                  {item.slug === 'auth-servisi' && 'O(1) Verification'}
+                  {item.slug === 'metadb' && (isTr ? 'Zero-Lock Lineage' : 'Zero-Lock Lineage')}
+                  {item.slug === 'timescaledb' && (isTr ? 'Hypertable Pruning' : 'Hypertable Pruning')}
+                  {item.slug === 'apache-arrow' && (isTr ? 'Zero-Copy Stream' : 'Zero-Copy Stream')}
                 </span>
               </div>
 
-              {item.slug === 'plasmon' && (
+              {item.slug === 'metadb' && (
                 <div class="space-y-3 font-mono text-xs">
                   <!-- Node 1 -->
                   <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Saha Donanımı & Sensörler' : '01 · Field Hardware & Sensors'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'Endüstriyel Chiller & İklimlendirme Panoları' : 'Industrial Chillers & HVAC Panels'}</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'RS-485 Modbus RTU · Optik İzolasyon · CRC Doğrulama' : 'RS-485 Modbus RTU · Optical Isolation · CRC Verification'}</div>
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Canlı Üretim Veritabanları (Prod)' : '01 · Live Enterprise Databases'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">PostgreSQL · Oracle · SQL Server</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Katalog Taraması: pg_class.reltuples, ALL_TABLES.NUM_ROWS · Sıfır Kilit' : 'Catalog Stats: pg_class.reltuples, ALL_TABLES.NUM_ROWS · Zero Locks'}</div>
                   </div>
 
                   <!-- Connector Arrow -->
                   <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
-                    <span class="text-[11px]">{isTr ? 'Seri Veri Yolu (FreeRTOS Statik Bellek)' : 'Serial Bus (FreeRTOS Static Memory)'}</span>
+                    <span class="text-[11px]">{isTr ? 'Asenkron Sıfır-Etki Okuma (<5ms, Zero-Lock)' : 'Asynchronous Zero-Impact Probe (<5ms, Zero Locks)'}</span>
                   </div>
 
-                  <!-- Node 2: Firmware & Modem -->
+                  <!-- Node 2 -->
                   <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · Uç Geçit Donanımı (ESP32)' : '02 · Edge Gateway (ESP32)'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'İkili Ağ Denetimi & Donanımsal Watchdog' : 'Dual-Path Routing & Hardware Watchdog'}</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Donanımsal modem güç anahtarlama · Statik bellek tahsisi' : 'Transistor modem power-cycling · Static memory allocation'}</div>
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · MetaDB Dağıtık Ajan & GLB Normalizasyonu' : '02 · MetaDB Edge Agent & GLB Normalization'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'Zarf Modeli Şifreleme & glb.entity_master' : 'Envelope Encryption & Canonical glb Schema'}</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Temporal workflow orkestrasyonu · Zero-inbound RFC 4180 stream' : 'Temporal workflow orchestration · Zero-inbound RFC 4180 stream'}</div>
                   </div>
 
                   <!-- Connector Arrow -->
                   <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
-                    <span class="text-[11px]">{isTr ? 'Hücresel Hat Durumuna Göre Yönlendirme' : 'Route Selection Based on Cellular Link'}</span>
+                    <span class="text-[11px]">{isTr ? 'Bolt / Cypher İkili Graf Yansıtması' : 'Bolt / Cypher Binary Graph Mirroring'}</span>
                   </div>
 
-                  <!-- Node 3: Split Failover -->
+                  <!-- Node 3: Split Targets -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
                     <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
-                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">{isTr ? 'Çevrimiçi Hat (4G Aktif)' : 'Online (4G Link Active)'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">MQTT / TLS (QoS 1)</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '%85 kota tasarrufu · Anında RabbitMQ kuyruğu' : '85% quota saved · Instant RabbitMQ ingestion'}</div>
+                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">{isTr ? 'Memgraph Soykütüğü' : 'Memgraph Lineage Graph'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">&#123;uuid&#125;_&#123;ecid&#125; Graf Ağı</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'Milisaniyelik Cypher sorguları · Kolon bazlı etki analizi' : 'Sub-millisecond Cypher queries · Column-level impact analysis'}</div>
                     </div>
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                      <div class="text-[11px] text-[var(--text-dim)] font-semibold uppercase">{isTr ? 'Çevrimdışı (Hat Kesintisi)' : 'Offline (Outage)'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? 'Dairesel Flaş Bellek' : 'Circular Flash Buffer'}</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '320KB tampon · Yeniden bağlanınca kayıpsız aktarım' : '320KB buffer · Zero data loss on reconnect'}</div>
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">{isTr ? 'Tüketim API & UI' : 'Consumption APIs & UI'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">metadb-ui (Port 5173)</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'Zero-impact veri kataloğu ve interaktif lineage tuvali' : 'Zero-impact data catalog and interactive lineage canvas'}</div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {item.slug === 'sapmapayi' && (
+              {item.slug === 'timescaledb' && (
                 <div class="space-y-3 font-mono text-xs">
                   <!-- Node 1 -->
                   <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Zaman Serisi Katmanı' : '01 · Time-Series Storage'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">TimescaleDB Hypertables</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? '250.000+ periyodik sıcaklık ve nem kaydı' : '250,000+ periodic temperature & humidity records'}</div>
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Yüksek Hızlı Yazma Hattı (Ingest)' : '01 · High-Throughput Ingestion'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? '35.000+ Satır / Saniye Yazma' : '35,000+ Writes / Sec Ingest Stream'}</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Aktif Chunk İndeksleri ≤ RAM Buffer Cache (%25 shared_buffers hedefi)' : 'Active Chunk Indexes ≤ RAM Buffer Cache (25% shared_buffers cap)'}</div>
                   </div>
 
                   <!-- Connector Arrow -->
                   <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
-                    <span class="text-[11px]">{isTr ? 'Sütunsal Veri Akışı' : 'Columnar Binary Stream'}</span>
+                    <span class="text-[11px]">{isTr ? 'Partition Pruning ile Doğrudan Hedefleme' : 'Planner Partition Pruning Routes to Target Chunks'}</span>
                   </div>
 
                   <!-- Node 2 -->
                   <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · İkili Akış Motoru (.NET 10)' : '02 · Binary Streaming Engine (.NET 10)'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">Apache Arrow IPC Aktarımı</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? '24.8MB JSON yerine 3.1MB ikili paket · Sıfır ayrıştırma gecikmesi' : '3.1MB binary payload vs 24.8MB JSON · Zero parsing overhead'}</div>
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · 7 Günlük Hypertables & Continuous Aggs' : '02 · 7-Day Hypertables & Continuous Aggs'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'Arka Plan Malzeme Görünümleri' : 'Background Materialized Aggregates'}</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Saatlik ve günlük özetler asenkron işlenir · <18ms analitik yanıt' : 'Hourly rollups computed asynchronously · <18ms query response'}</div>
                   </div>
 
                   <!-- Connector Arrow -->
                   <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
-                    <span class="text-[11px]">{isTr ? 'Doğrudan Bellek Eşleme' : 'Direct Memory Mapping'}</span>
+                    <span class="text-[11px]">{isTr ? 'Zstd Sütunsal Sıkıştırma ve Yaşam Döngüsü' : 'Zstd Columnar Compression & Lifecycle'}</span>
                   </div>
 
-                  <!-- Node 3: Two Targets -->
+                  <!-- Node 3: Split Targets -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
+                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">{isTr ? '14+ Gün: Sütunsal Depolama' : '14+ Days: Columnar Storage'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? '%92 Disk Tasarrufu (Zstd)' : '92% Disk Savings (Zstd)'}</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '280GB veri 22.4GB\'a iner · Sıkıştırılmış veri üzerinden doğrudan tarama' : '280GB collapsed to 22.4GB · Direct scans on compressed chunks'}</div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">{isTr ? '180+ Gün: drop_chunks()' : '180+ Days: drop_chunks()'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? 'Sıfır I/O Metadata Silme' : 'Zero-I/O Metadata Unlink'}</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'DELETE ve VACUUM kilitlenmesi olmadan anında dosya unlink' : 'Instant filesystem unlink without DELETE locks or vacuum bloat'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {item.slug === 'apache-arrow' && (
+                <div class="space-y-3 font-mono text-xs">
+                  <!-- Node 1 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
+                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Analitik Veritabanı (TimescaleDB / Postgres)' : '01 · Analytical DB (TimescaleDB / Postgres)'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'ADO.NET / Npgsql DataReader Akışı' : 'ADO.NET / Npgsql DataReader Stream'}</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? '250.000+ satırlık ham sorgu · Satır nesnesi tahsis etmeden akış' : '250,000+ rows raw query · Streaming without row DTO heap allocation'}</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">{isTr ? 'Bitişik Sütunsal Tampon Tahsisi (Sıfır GC Baskısı)' : 'Contiguous Columnar Memory Allocation (Zero GC Pressure)'}</span>
+                  </div>
+
+                  <!-- Node 2 -->
+                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
+                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · .NET 10 Arrow RecordBatch İkili Akış' : '02 · .NET 10 Arrow RecordBatch Streaming'}</div>
+                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">application/vnd.apache.arrow.stream</div>
+                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? '24.8MB JSON yerine 3.1MB ikili RecordBatch · İlk chunk anında iletilir' : '3.1MB binary RecordBatch vs 24.8MB JSON · First batch streamed immediately'}</div>
+                  </div>
+
+                  <!-- Connector Arrow -->
+                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="text-[11px]">{isTr ? 'İstemci ArrayBuffer Belleğine Sıfır Kopyalama Eşleme' : 'Zero-Copy Direct View on Browser ArrayBuffer'}</span>
+                  </div>
+
+                  <!-- Node 3: Split Targets -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
                     <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
                       <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">{isTr ? 'Ön Yüz İkili Çizim' : 'Frontend Binary Rendering'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">Canvas & WebGL</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '<15ms gecikme · Kilitsiz akıcı grafik' : '<15ms latency · Smooth thread execution'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">Float64Array / Canvas / WebGL</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '<15ms gecikme · JSON.parse yok · 60 FPS akıcı render' : '<15ms latency · Zero JSON.parse · Smooth 60 FPS render'}</div>
                     </div>
                     <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">{isTr ? 'Resmi Yasal Rapor' : 'Compliance Audit Report'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">PKCS#11 HSM & QuestPDF</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'X.509 e-imza · Kamu SM RFC 3161 Zaman Damgası' : 'X.509 signature · Certified RFC 3161 timestamp'}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {item.slug === 'auth-servisi' && (
-                <div class="space-y-3 font-mono text-xs">
-                  <!-- Node 1 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--border-strong)]">
-                    <div class="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">{isTr ? '01 · Gelen İstemci İsteği' : '01 · Incoming Client Request'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'Kompakt Yetki Başlığı' : 'Compact Authorization Header'}</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? 'Kompakt token (<400B): Sabit kimlik ve oturum sürüm damgası' : 'Compact token (<400B): Immutable identity & session version'}</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">{isTr ? 'İki Aşamalı Doğrulama Hattı' : 'Two-Stage Verification Pipeline'}</span>
-                  </div>
-
-                  <!-- Node 2 -->
-                  <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--text-accent)]">
-                    <div class="text-[11px] text-[var(--text-accent)] uppercase tracking-wider font-semibold">{isTr ? '02 · Doğrulama Katmanı' : '02 · Verification Layer'}</div>
-                    <div class="font-sans font-semibold text-sm text-[var(--text)] mt-0.5">{isTr ? 'İmza Denetimi & Redis Bellek İçi Sürüm Kontrolü' : 'Signature Validation & In-Memory Version Check'}</div>
-                    <div class="text-[11px] text-[var(--text-muted)] mt-0.5">{isTr ? '<0.3ms yanıt süresi · O(1) sabit zamanlı arama' : '<0.3ms latency · Deterministic O(1) lookup'}</div>
-                  </div>
-
-                  <!-- Connector Arrow -->
-                  <div class="flex items-center gap-2 pl-4 text-[var(--text-dim)]">
-                    <svg class="w-3.5 h-3.5 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                    <span class="text-[11px]">{isTr ? 'Sürüm Karşılaştırma Sonucu' : 'Version Comparison Outcome'}</span>
-                  </div>
-
-                  <!-- Node 3: Outcome -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-green)]">
-                      <div class="text-[11px] text-[var(--status-green)] font-semibold uppercase">{isTr ? 'Sürüm Geçerli' : 'Version Active'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? 'İstek Onaylandı (200 OK)' : 'Authorized (200 OK)'}</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'Hedef mikroservise iletildi' : 'Routed to downstream microservice'}</div>
-                    </div>
-                    <div class="p-3 bg-[var(--bg-subtle)] border-l border-[var(--status-red)]">
-                      <div class="text-[11px] text-[var(--status-red)] font-semibold uppercase">{isTr ? 'Yetki İptal / Değişmiş' : 'Privilege Revoked'}</div>
-                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? 'Erişim Engellendi (401)' : 'Unauthorized (401)'}</div>
-                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? '<1ms anında oturum sonlandırma' : '<1ms instant session termination'}</div>
+                      <div class="text-[11px] text-[var(--text-accent)] font-semibold uppercase">{isTr ? 'Sunucu GC Optimizasyonu' : 'Server GC Optimization'}</div>
+                      <div class="font-sans font-medium text-[var(--text)] mt-0.5">{isTr ? '0 Nesne Kopyalama' : 'Zero Heap Allocations'}</div>
+                      <div class="text-[11px] text-[var(--text-dim)] mt-1">{isTr ? 'Bitişik bellek havuzu · Ağır sorgularda sıfır GC duraklaması' : 'Contiguous buffer pool · Zero GC pauses under heavy bursts'}</div>
                     </div>
                   </div>
                 </div>

@@ -1,0 +1,101 @@
+---
+import { getCollection } from 'astro:content';
+import { getPostSlug } from '../data/slugUtils';
+
+export interface Props {
+  lang?: 'tr' | 'en';
+}
+
+const { lang = 'tr' } = Astro.props;
+const isTr = lang === 'tr';
+
+const allPosts = await getCollection('posts');
+const posts = allPosts
+  .filter((post) => post.data.lang === lang)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+---
+
+<section id="articles" class="py-16 sm:py-24 border-b border-[var(--border)] scroll-mt-16">
+  <!-- Section Title & Narrative -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+    <div class="space-y-3 max-w-2xl">
+      <div class="font-mono text-xs text-[var(--text-accent)] font-semibold tracking-wider uppercase">
+        {isTr ? 'Yayınlar & Notlar' : 'Publications & Notes'}
+      </div>
+      <h2 class="text-2xl sm:text-3xl lg:text-4xl font-serif text-[var(--text)] tracking-tight">
+        {isTr ? 'Yazılar & Teknik Notlar' : 'Articles & Technical Notes'}
+      </h2>
+      <p class="text-base text-[var(--text-muted)] font-sans leading-relaxed">
+        {isTr 
+          ? "Büyük ölçekli veritabanları, depolama motorları, sorgu optimizasyonu ve sistem mimarisi üzerine teknik incelemeler." 
+          : "Technical analyses and architectural notes on large-scale databases, storage engines, query execution, and systems optimization."}
+      </p>
+    </div>
+
+    <!-- RSS & Feed Link -->
+    <div class="shrink-0">
+      <a
+        href={isTr ? "/rss.xml" : "/en/rss.xml"}
+        class="font-mono text-xs text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text)] bg-[var(--bg-subtle)] px-3 py-1.5 rounded-[2px] transition-colors inline-flex items-center gap-1.5 tactile-btn"
+        title={isTr ? "RSS Akışı" : "RSS Feed"}
+      >
+        <svg class="w-3.5 h-3.5 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M4 11a9 9 0 0 1 9 9"></path>
+          <path d="M4 4a16 16 0 0 1 16 16"></path>
+          <circle cx="5" cy="19" r="1"></circle>
+        </svg>
+        <span>{isTr ? 'RSS Akışı' : 'RSS Feed'}</span>
+        <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Editorial Articles Directory -->
+  <div class="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+    {posts.map((post) => {
+      const slug = getPostSlug(post);
+      const postUrl = isTr ? `/posts/${slug}` : `/en/posts/${slug}`;
+      return (
+        <article class="py-6 sm:py-8 group transition-colors hover:bg-[var(--bg-subtle)]/40 px-2 -mx-2 rounded-[2px]">
+          <div class="flex flex-col lg:flex-row lg:items-baseline justify-between gap-4">
+            <!-- Left: Metadata & Title & Summary -->
+            <div class="flex-1 space-y-2.5">
+              <div class="flex items-center gap-3 font-mono text-xs text-[var(--text-dim)]">
+                <time datetime={post.data.date}>{post.data.date}</time>
+                <span>·</span>
+                <span>{post.data.readingTime}</span>
+              </div>
+
+              <h3 class="font-serif text-xl sm:text-2xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
+                <a href={postUrl} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
+                  {post.data.title}
+                </a>
+              </h3>
+
+              <p class="text-sm text-[var(--text-muted)] font-sans leading-relaxed max-w-[75ch]">
+                {post.data.summary}
+              </p>
+
+              <!-- Tags -->
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                {post.data.tags.map((tag) => (
+                  <span class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)]">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <!-- Right: Read Link Arrow -->
+            <div class="font-mono text-xs text-[var(--text-accent)] shrink-0 self-start lg:self-center pt-2 lg:pt-0">
+              <a href={postUrl} class="inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform" aria-label={`${post.data.title}`}>
+                <span>{isTr ? 'Yazıyı Oku' : 'Read Note'}</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </div>
+        </article>
+      );
+    })}
+  </div>
+</section>

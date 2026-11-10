@@ -18,15 +18,25 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
+const currentSlug = getCaseSlug(entry);
 ---
 
-<BaseLayout lang="en" title={`${entry.data.title} — Ahmet İhtiyar`} description={entry.data.summary}>
+<BaseLayout 
+  lang="en" 
+  title={`${entry.data.title} — Ahmet İhtiyar`} 
+  description={entry.data.summary}
+  alternateUrls={{
+    tr: `/cases/${currentSlug}`,
+    en: `/en/cases/${currentSlug}`
+  }}
+  targetLangUrl={`/cases/${currentSlug}`}
+>
   <article class="py-8 sm:py-12 space-y-8 max-w-4xl mx-auto">
     <!-- Header -->
     <div class="space-y-3 pb-6 border-b border-[var(--border)]">
       <div class="flex items-center justify-between">
-        <a href="/en#cases" class="font-mono text-xs text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
-          ← Back to Dossiers ({entry.data.fileNumber})
+        <a href="/en#systems" class="font-mono text-xs text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
+          ← Back to Systems ({entry.data.fileNumber})
         </a>
         <span class="font-mono text-xs text-[var(--text-dim)]">
           {entry.data.date}
@@ -58,8 +68,8 @@ const { Content } = await render(entry);
 
     <!-- Footer Back Link -->
     <div class="pt-8 border-t border-[var(--border)] flex justify-between items-center font-mono text-xs">
-      <a href="/en#cases" class="text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
-        ← Back to Case Studies
+      <a href="/en#systems" class="text-[var(--text-accent)] hover:underline inline-flex items-center gap-1">
+        ← Back to Systems Architecture
       </a>
       <a href="mailto:ahmetihtiyar1453@gmail.com" class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline">
         Email to Discuss Architecture ↗

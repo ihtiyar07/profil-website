@@ -13,25 +13,25 @@ const isTr = lang === 'tr';
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
     <!-- Left 8 Columns: Narrative & Headline -->
     <div class="lg:col-span-8 space-y-7">
-      <!-- Live Status Telemetry Bar -->
+      <!-- Location & Specialization Byline -->
       <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
-        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--status-green)] font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
-          <span>{isTr ? 'Üretimde Aktif' : 'Production Active'}</span>
+        <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)] font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0" aria-hidden="true"></span>
+          <span>{isTr ? 'İstanbul, TR' : 'Istanbul, TR'}</span>
         </span>
         <span class="text-[var(--border-strong)]">·</span>
-        <span>{isTr ? 'Diverjans IT · Telemetri ve Veri Altyapısı' : 'Diverjans IT · Telemetry & Data Infrastructure'}</span>
+        <span>{isTr ? 'Diverjans IT · Veritabanı Mimarisi & Depolama' : 'Diverjans IT · Database Architecture & Storage'}</span>
       </div>
 
       <!-- Main Headline -->
       <h1 class="text-3xl sm:text-4xl lg:text-[3.25rem] font-serif leading-[1.14] tracking-tight text-[var(--text)]">
         {isTr ? (
           <>
-            Gömülü uç sistemlerden dağıtık mimarilere <span class="italic font-normal">telemetri ve veri altyapıları</span> geliştiriyorum.
+            Büyük ölçekli veritabanları, depolama motorları ve <span class="italic font-normal">sıfır etkili veri altyapıları</span> üzerine çalışan veritabanı mimarı.
           </>
         ) : (
           <>
-            Engineering telemetry and data infrastructure <span class="italic font-normal">from embedded edge to distributed backends.</span>
+            Database architect engineering <span class="italic font-normal">large-scale database systems, storage engines,</span> and zero-impact data infrastructure.
           </>
         )}
       </h1>
@@ -40,53 +40,31 @@ const isTr = lang === 'tr';
       <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
         {isTr ? (
           <>
-            Diverjans IT bünyesinde telemetri, dağıtık arka uç servisleri ve veri altyapıları üzerine çalışıyorum. Endüstriyel saha cihazlarının haberleşmesi, zaman serisi verilerinin güvenilir aktarımı ve sistem kararlılığı odaklandığım temel alanlar.
+            Çok terabaytlık veritabanı mimarisi, dağıtık metadata kataloglama (MetaDB), sorgu yürütme optimizasyonu (PostgreSQL, Oracle, TimescaleDB) ve depolama motoru kararlılığı üzerine çalışıyorum. Canlı üretim sistemlerine sıfır kilitlenme etkisi ve yüksek ölçekli analitik veri hatları odaklandığım temel alanlar.
           </>
         ) : (
           <>
-            Engineering distributed telemetry and data systems at Diverjans IT in Istanbul. Focused on industrial edge communication, reliable time-series data pipelines, and high-availability backend services.
+            Engineering multi-terabyte database architectures, distributed metadata cataloging (MetaDB), query execution optimization (PostgreSQL, Oracle, TimescaleDB), and storage engine reliability. Specializing in zero-impact cataloging and high-throughput analytical pipelines.
           </>
         )}
       </p>
 
-      <!-- Integrated Architectural Telemetry Matrix -->
-      <div class="pt-2 border-t border-[var(--border)]">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 py-3 font-mono">
-          <div>
-            <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">100K+</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Hedef Cihaz Kapasitesi' : 'Target Fleet Capacity'}</div>
-          </div>
-          <div>
-            <div class="text-xl sm:text-2xl font-semibold text-[var(--text-accent)] tracking-tight">&lt;15ms</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Arrow İkili Akış Gecikmesi' : 'Arrow IPC Latency'}</div>
-          </div>
-          <div>
-            <div class="text-xl sm:text-2xl font-semibold text-[var(--text)] tracking-tight">&lt;1ms</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'O(1) Yetki İptal Süresi' : 'O(1) Revocation'}</div>
-          </div>
-          <div>
-            <div class="text-xl sm:text-2xl font-semibold text-[var(--status-green)] tracking-tight">0</div>
-            <div class="text-[11px] text-[var(--text-dim)] mt-0.5">{isTr ? 'Kesintide Veri Kaybı' : 'Outage Data Loss'}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Clean Action Links -->
-      <div class="flex flex-wrap items-center gap-4 pt-1">
+      <!-- Calm Editorial Action Links -->
+      <div class="flex flex-wrap items-center gap-4 pt-2">
         <a
-          href={isTr ? '#pipeline' : '/en#pipeline'}
+          href={isTr ? '#articles' : '/en#articles'}
           class="px-5 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
-          <span>{isTr ? 'Veri Hattını İncele' : 'Explore Data Pipeline'}</span>
-          <span aria-hidden="true">↓</span>
+          <span>{isTr ? 'Yazıları Oku' : 'Read Articles'}</span>
+          <span aria-hidden="true">→</span>
         </a>
 
         <a
-          href={isTr ? '#cases' : '/en#cases'}
+          href={isTr ? '#systems' : '/en#systems'}
           class="px-5 py-2.5 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
-          <span>{isTr ? 'Vaka Çalışmaları' : 'Case Studies'}</span>
-          <span aria-hidden="true">→</span>
+          <span>{isTr ? 'Sistem Mimarileri' : 'System Architectures'}</span>
+          <span aria-hidden="true">↓</span>
         </a>
 
         <a
@@ -99,7 +77,7 @@ const isTr = lang === 'tr';
       </div>
     </div>
 
-    <!-- Right 4 Columns: Direct, Architectural Portrait -->
+    <!-- Right 4 Columns: Architectural Portrait -->
     <div class="lg:col-span-4 flex flex-col items-start lg:items-end">
       <div class="w-48 sm:w-56 space-y-3">
         <div class="aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
@@ -117,8 +95,8 @@ const isTr = lang === 'tr';
         </div>
 
         <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] px-0.5">
-          <span>İstanbul · Diverjans IT</span>
-          <span class="text-[var(--status-green)] font-medium">● {isTr ? 'Aktif' : 'Active'}</span>
+          <span>{isTr ? 'İstanbul · Diverjans IT' : 'Istanbul · Diverjans IT'}</span>
+          <span class="text-[var(--text-muted)] font-medium">{isTr ? 'Veritabanı Mimarı' : 'Database Architect'}</span>
         </div>
       </div>
     </div>

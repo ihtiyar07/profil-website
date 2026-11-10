@@ -1,28 +1,28 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
-import DataPipeline from '../components/DataPipeline.astro';
 import CaseFiles from '../components/CaseFiles.astro';
-import SecondaryProjects from '../components/SecondaryProjects.astro';
+import ArticlesSection from '../components/ArticlesSection.astro';
 import Invariants from '../components/Invariants.astro';
+import SecondaryProjects from '../components/SecondaryProjects.astro';
 import ContactSection from '../components/ContactSection.astro';
 ---
 
 <BaseLayout lang="tr">
-  <!-- 00. Hero: H1, "Şu an" Notu, 2 Aksiyon, Portre Fotoğrafı -->
+  <!-- 00. Hero: H1, Başlık, Sakin Aksiyonlar, Portre Fotoğrafı -->
   <Hero lang="tr" />
 
-  <!-- 01. Omurga: "Verinin Yolu" İnteraktif Hattı & Altyapı Zemini -->
-  <DataPipeline lang="tr" />
-
-  <!-- 02. Seçilmiş İşler: 3 Birincil Vaka Çalışması (Dosya 01 / 02 / 03) -->
+  <!-- 01. Sistem Mimarileri: 3 Birincil Vaka Dosyası (MetaDB, TimescaleDB, Arrow) -->
   <CaseFiles lang="tr" />
 
-  <!-- 03. İkincil İşler: Kompakt Kayıt Defteri -->
-  <SecondaryProjects lang="tr" />
+  <!-- 02. Yazılar & Teknik Notlar: Editoryal Yayınlar Listesi -->
+  <ArticlesSection lang="tr" />
 
-  <!-- 04. Değişmezler: Kural -> Nasıl Bozulur -> Çözüm -> Nerede Doğruladım -->
+  <!-- 03. Değişmezler: Mimari İlkeler ve Savunma Modelleri -->
   <Invariants lang="tr" />
+
+  <!-- 04. Sistem Kayıt Defteri: İkincil Altyapılar -->
+  <SecondaryProjects lang="tr" />
 
   <!-- 05. İletişim: E-posta, GitHub, LinkedIn -->
   <ContactSection lang="tr" />

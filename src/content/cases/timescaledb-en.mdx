@@ -1,0 +1,57 @@
+---
+title: "TimescaleDB: Billions of Rows Storage Engine & Hypertable Partitioning"
+fileNumber: "Case 02"
+slug: "timescaledb"
+tagline: "Sizing chunks to fit RAM buffer cache, continuous aggregates, and columnar compression at scale"
+date: "2024–2025"
+lang: "en"
+testedScale: "Billions of Telemetry Records · 92% Compression Ratio · Automated Retention"
+summary: "An analytical storage architecture preventing index thrashing and I/O collapse in standard PostgreSQL; designed around RAM buffer cache chunk sizing, continuous aggregates, and Zstd columnar compression."
+stack: ["PostgreSQL", "TimescaleDB", "Continuous Aggregates", "Zstd Compression", "Docker", "Linux"]
+metrics:
+  - label: "Compression Ratio"
+    value: "92% Disk Reduction (Zstd)"
+  - label: "Aggregation Latency"
+    value: "< 18ms (Continuous Aggs)"
+  - label: "Ingest Throughput"
+    value: "35,000 writes/sec sustained"
+  - label: "Data Pruning Overhead"
+    value: "drop_chunks() 0 I/O"
+---
+
+## 1. Context
+Industrial telemetry, IoT sensor networks, and transaction streams generate tens of thousands of inserts every second. As time-series data accumulates, traditional relational tables grow into hundreds of millions and billions of rows.
+
+This project engineered a scalable TimescaleDB storage engine architecture that sustains heavy insert throughput, accelerates analytical aggregation queries from minutes to sub-20ms, and radically reduces disk footprint.
+
+## 2. The Problem: Standard RDBMS Bottlenecks
+
+Attempting to store billions of time-series records in vanilla PostgreSQL tables causes three major architectural failures:
+1. **Index Bloat and Buffer Eviction:** As tables expand, B-Tree indexes exceed the server's `shared_buffers` (RAM). New inserts trigger random disk page reads to update indexes (I/O thrashing). Write throughput degrades from 30,000 writes/sec to a fraction of that capacity.
+2. **Exhaustive Analytical Scans:** Calculating hourly or daily aggregations over millions of rows forces sequential scans (`Seq Scan`), locking CPU cores and starving disk bandwidth.
+3. **DELETE Bloat and Vacuum Lockouts:** Clearing outdated data via `DELETE FROM table WHERE time < ...` creates massive dead tuple bloat in PostgreSQL's MVCC engine; subsequent `VACUUM` operations lock disk resources for hours.
+
+## 3. Architecture and Storage Optimizations
+
+### A. RAM Buffer Cache-Centric Chunk Sizing
+Data was partitioned into TimescaleDB hypertables under a strict architectural rule: **"Active chunks and indexes must not consume more than 25% of available server RAM."**
+- Chunk intervals were mathematically calibrated to 7-day windows based on ingest volume and available `shared_buffers`.
+- Time-bounded queries leverage partition pruning: the query planner touches only target chunks, bypassing hundreds of gigabytes of historical data on disk.
+
+### B. Materialized Continuous Aggregates
+Hourly, daily, and monthly rollup views were configured with `WITH (timescaledb.continuous)`:
+- Background worker threads asynchronously aggregate incoming records into pre-calculated summaries.
+- Fetching 6-month historical trends does not scan billions of raw points; it reads directly from materialized summaries in &lt;18ms.
+
+### C. Zstd Columnar Compression and Zero-Lock Retention
+- Chunks older than 14 days are converted from row-based storage into columnar compression utilizing the Zstandard algorithm. A 280GB raw table collapsed to 22.4GB (92% space savings).
+- Historical records beyond 180 days are pruned via automated `drop_chunks()` policies. This drops filesystem blocks directly without generating MVCC dead tuples, executing in milliseconds with zero transaction locking.
+
+## 4. Architectural Trade-offs & Benchmarks
+
+| Metric | Standard PostgreSQL | TimescaleDB Hypertables | Gain |
+| :--- | :--- | :--- | :--- |
+| **1 Billion Rows Disk Footprint** | 280 GB | 22.4 GB | 92% Disk Savings |
+| **Hourly Average Query Latency** | 42,500 ms | &lt;18 ms | 2300x Acceleration |
+| **Ingestion Throughput** | 4,000 rows/sec (erratic) | 35,000 rows/sec (steady) | 8.7x Stable Ingest |
+| **Historical Data Pruning** | Multi-hour VACUUM lock | drop_chunks() (&lt;100ms) | Zero Lock & Zero Bloat |

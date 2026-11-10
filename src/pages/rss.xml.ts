@@ -8,10 +8,9 @@ export async function GET(context: APIContext) {
   const posts = await getCollection('posts');
   return rss({
     title: 'Ahmet İhtiyar — Veritabanı Mimarisi & Mühendislik Yazıları',
-    description: SITE_META.bioShort.tr,
+    description: SITE_META.bioShort,
     site: context.site || SITE_META.siteUrl,
     items: posts
-      .filter((p) => p.data.lang === 'tr')
       .map((post) => ({
         title: post.data.title,
         pubDate: new Date(post.data.date),

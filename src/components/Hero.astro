@@ -1,12 +1,5 @@
 ---
 import { SITE_META } from '../data/siteMeta';
-
-export interface Props {
-  lang?: 'tr' | 'en';
-}
-
-const { lang = 'tr' } = Astro.props;
-const isTr = lang === 'tr';
 ---
 
 <section class="py-12 sm:py-20 border-b border-[var(--border)]">
@@ -17,53 +10,37 @@ const isTr = lang === 'tr';
       <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--text-dim)]">
         <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)] font-medium">
           <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0" aria-hidden="true"></span>
-          <span>{isTr ? 'İstanbul, TR' : 'Istanbul, TR'}</span>
+          <span>İstanbul, TR</span>
         </span>
         <span class="text-[var(--border-strong)]">·</span>
-        <span>{isTr ? 'Diverjans IT · Veritabanı Mimarisi & Depolama' : 'Diverjans IT · Database Architecture & Storage'}</span>
+        <span>Diverjans IT · Veritabanı Mimarisi & Depolama</span>
       </div>
 
       <!-- Main Headline -->
       <h1 class="text-3xl sm:text-4xl lg:text-[3.25rem] font-serif leading-[1.14] tracking-tight text-[var(--text)]">
-        {isTr ? (
-          <>
-            Büyük ölçekli veritabanları, depolama motorları ve <span class="italic font-normal">sıfır etkili veri altyapıları</span> üzerine çalışan veritabanı mimarı.
-          </>
-        ) : (
-          <>
-            Database architect engineering <span class="italic font-normal">large-scale database systems, storage engines,</span> and zero-impact data infrastructure.
-          </>
-        )}
+        Büyük ölçekli veritabanları, depolama motorları ve <span class="italic font-normal">sıfır etkili veri altyapıları</span> üzerine çalışan veritabanı mimarı.
       </h1>
 
       <!-- Bio / Context Narrative -->
       <p class="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed max-w-[65ch] font-sans">
-        {isTr ? (
-          <>
-            Çok terabaytlık veritabanı mimarisi, dağıtık metadata kataloglama (MetaDB), sorgu yürütme optimizasyonu (PostgreSQL, Oracle, TimescaleDB) ve depolama motoru kararlılığı üzerine çalışıyorum. Canlı üretim sistemlerine sıfır kilitlenme etkisi ve yüksek ölçekli analitik veri hatları odaklandığım temel alanlar.
-          </>
-        ) : (
-          <>
-            Engineering multi-terabyte database architectures, distributed metadata cataloging (MetaDB), query execution optimization (PostgreSQL, Oracle, TimescaleDB), and storage engine reliability. Specializing in zero-impact cataloging and high-throughput analytical pipelines.
-          </>
-        )}
+        Çok terabaytlık veritabanı mimarisi, dağıtık metadata kataloglama (MetaDB), sorgu yürütme optimizasyonu (PostgreSQL, Oracle, TimescaleDB) ve depolama motoru kararlılığı üzerine çalışıyorum. Canlı üretim sistemlerine sıfır kilitlenme etkisi ve yüksek ölçekli analitik veri hatları odaklandığım temel alanlar.
       </p>
 
       <!-- Calm Editorial Action Links -->
       <div class="flex flex-wrap items-center gap-4 pt-2">
         <a
-          href={isTr ? '#articles' : '/en#articles'}
+          href="#articles"
           class="px-5 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
-          <span>{isTr ? 'Yazıları Oku' : 'Read Articles'}</span>
+          <span>Yazıları Oku</span>
           <span aria-hidden="true">→</span>
         </a>
 
         <a
-          href={isTr ? '#systems' : '/en#systems'}
+          href="#systems"
           class="px-5 py-2.5 bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px]"
         >
-          <span>{isTr ? 'Sistem Mimarileri' : 'System Architectures'}</span>
+          <span>Sistem Mimarileri</span>
           <span aria-hidden="true">↓</span>
         </a>
 
@@ -71,7 +48,7 @@ const isTr = lang === 'tr';
           href={`mailto:${SITE_META.email}`}
           class="px-3 py-2.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors text-xs font-mono inline-flex items-center gap-1.5"
         >
-          <span>{isTr ? 'Doğrudan İletişim' : 'Direct Contact'}</span>
+          <span>Doğrudan İletişim</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
         </a>
       </div>
@@ -95,8 +72,8 @@ const isTr = lang === 'tr';
         </div>
 
         <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] px-0.5">
-          <span>{isTr ? 'İstanbul · Diverjans IT' : 'Istanbul · Diverjans IT'}</span>
-          <span class="text-[var(--text-muted)] font-medium">{isTr ? 'Veritabanı Mimarı' : 'Database Architect'}</span>
+          <span>İstanbul · Diverjans IT</span>
+          <span class="text-[var(--text-muted)] font-medium">Veritabanı Mimarı</span>
         </div>
       </div>
     </div>

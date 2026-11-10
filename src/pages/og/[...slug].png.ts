@@ -7,7 +7,6 @@ export interface Props {
   subtitle: string;
   badge: string;
   meta?: string;
-  lang?: 'tr' | 'en';
 }
 
 function escapeXml(unsafe: string): string {
@@ -36,8 +35,7 @@ function wrapText(text: string, maxCharsPerLine: number = 38): string[] {
   return lines;
 }
 
-function generateSvgCard({ title, subtitle, badge, meta, lang = 'tr' }: Props): string {
-  const isEn = lang === 'en';
+function generateSvgCard({ title, subtitle, badge, meta }: Props): string {
   const lines = wrapText(title, 34).slice(0, 3);
   const tspans = lines
     .map((line, idx) => `<tspan x="96" dy="${idx === 0 ? 0 : 56}">${escapeXml(line)}</tspan>`)
@@ -48,8 +46,8 @@ function generateSvgCard({ title, subtitle, badge, meta, lang = 'tr' }: Props): 
     .map((line, idx) => `<tspan x="96" dy="${idx === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
     .join('');
 
-  const brandTag = isEn ? 'DATABASE ARCHITECT' : 'VERİTABANI MİMARI';
-  const defaultMeta = isEn ? '· Database Architecture' : '· Veritabanı Mimarisi';
+  const brandTag = 'VERİTABANI MİMARI';
+  const defaultMeta = '· Veritabanı Mimarisi';
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <rect width="1200" height="630" fill="#0A0F1D" />
@@ -88,24 +86,13 @@ function generateSvgCard({ title, subtitle, badge, meta, lang = 'tr' }: Props): 
 }
 
 export async function getStaticPaths() {
-  const paths = [
+  const paths: { params: { slug: string }; props: Props }[] = [
     {
       params: { slug: 'index' },
       props: {
-        lang: 'tr',
         title: 'Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapıları üzerine çalışan veritabanı mimarı.',
         subtitle: 'Ahmet İhtiyar — Veritabanı Mimarı | İstanbul',
         badge: 'Veritabanı Mimarisi',
-        meta: 'PostgreSQL · Oracle · TimescaleDB · Memgraph · Arrow',
-      },
-    },
-    {
-      params: { slug: 'en/index' },
-      props: {
-        lang: 'en',
-        title: 'Database architect engineering large-scale database systems, storage engines, and zero-impact data infrastructure.',
-        subtitle: 'Ahmet İhtiyar — Database Architect | Istanbul',
-        badge: 'Database Architecture',
         meta: 'PostgreSQL · Oracle · TimescaleDB · Memgraph · Arrow',
       },
     },
@@ -114,12 +101,10 @@ export async function getStaticPaths() {
   // Cases
   const cases = await getCollection('cases');
   for (const entry of cases) {
-    const isEn = entry.data.lang === 'en';
     const slug = getCaseSlug(entry);
     paths.push({
-      params: { slug: isEn ? `en/cases/${slug}` : `cases/${slug}` },
+      params: { slug: `cases/${slug}` },
       props: {
-        lang: isEn ? 'en' : 'tr',
         title: entry.data.title,
         subtitle: entry.data.tagline,
         badge: entry.data.fileNumber,
@@ -131,15 +116,13 @@ export async function getStaticPaths() {
   // Posts
   const posts = await getCollection('posts');
   for (const post of posts) {
-    const isEn = post.data.lang === 'en';
     const slug = getPostSlug(post);
     paths.push({
-      params: { slug: isEn ? `en/posts/${slug}` : `posts/${slug}` },
+      params: { slug: `posts/${slug}` },
       props: {
-        lang: isEn ? 'en' : 'tr',
         title: post.data.title,
         subtitle: post.data.summary,
-        badge: isEn ? 'Technical Note' : 'Mühendislik Yazısı',
+        badge: 'Mühendislik Yazısı',
         meta: `${post.data.date} · ${post.data.tags.slice(0, 3).join(', ')}`,
       },
     });

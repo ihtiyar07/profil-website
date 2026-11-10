@@ -7,13 +7,6 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://ahmetihtiyar.com',
   trailingSlash: 'never',
-  i18n: {
-    defaultLocale: 'tr',
-    locales: ['tr', 'en'],
-    routing: {
-      prefixDefaultLocale: false,
-    },
-  },
   integrations: [
     mdx({
       syntaxHighlight: 'shiki',

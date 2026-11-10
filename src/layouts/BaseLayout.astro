@@ -7,13 +7,7 @@ import { SITE_META } from '../data/siteMeta';
 export interface Props {
   title?: string;
   description?: string;
-  lang?: 'tr' | 'en';
   canonicalPath?: string;
-  targetLangUrl?: string;
-  alternateUrls?: {
-    tr: string;
-    en: string;
-  };
   articleMeta?: {
     publishDate: string;
     tags: string[];
@@ -21,33 +15,18 @@ export interface Props {
 }
 
 const {
-  lang = 'tr',
-  title = SITE_META.title[lang],
-  description = SITE_META.bioShort[lang],
+  title = SITE_META.title,
+  description = SITE_META.bioShort,
   canonicalPath = '',
-  targetLangUrl: customTargetLangUrl,
-  alternateUrls,
   articleMeta
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, SITE_META.siteUrl).toString();
 
-const trUrl = alternateUrls?.tr
-  ? new URL(alternateUrls.tr, SITE_META.siteUrl).toString()
-  : new URL(Astro.url.pathname.replace(/^\/en/, '') || '/', SITE_META.siteUrl).toString();
-
-const enUrl = alternateUrls?.en
-  ? new URL(alternateUrls.en, SITE_META.siteUrl).toString()
-  : new URL(Astro.url.pathname.startsWith('/en') ? Astro.url.pathname : `/en${Astro.url.pathname === '/' ? '' : Astro.url.pathname}`, SITE_META.siteUrl).toString();
-
-const resolvedTargetLangUrl = customTargetLangUrl || (lang === 'tr' ? (alternateUrls?.en || '/en') : (alternateUrls?.tr || '/'));
-
 const cleanPath = Astro.url.pathname.replace(/^\/+|\/+$/g, '');
 const ogImagePath = cleanPath === '' 
   ? '/og/index.png' 
-  : cleanPath === 'en' 
-    ? '/og/en/index.png' 
-    : `/og/${cleanPath}.png`;
+  : `/og/${cleanPath}.png`;
 const ogImageUrl = new URL(ogImagePath, SITE_META.siteUrl).toString();
 
 const jsonLd = {
@@ -55,7 +34,7 @@ const jsonLd = {
   "@type": "Person",
   "name": "Ahmet İhtiyar",
   "url": SITE_META.siteUrl,
-  "jobTitle": lang === 'tr' ? "Veritabanı Mimarı" : "Database Architect",
+  "jobTitle": "Veritabanı Mimarı",
   "worksFor": {
     "@type": "Organization",
     "name": "Diverjans Bilgi Teknolojileri"
@@ -85,7 +64,7 @@ const jsonLd = {
 ---
 
 <!DOCTYPE html>
-<html lang={lang}>
+<html lang="tr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -96,18 +75,13 @@ const jsonLd = {
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
 
-    <!-- i18n hreflang -->
-    <link rel="alternate" hreflang="tr" href={trUrl} />
-    <link rel="alternate" hreflang="en" href={enUrl} />
-    <link rel="alternate" hreflang="x-default" href={trUrl} />
-
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content={articleMeta ? "article" : "website"} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="Ahmet İhtiyar" />
-    <meta property="og:locale" content={lang === 'tr' ? 'tr_TR' : 'en_US'} />
+    <meta property="og:locale" content="tr_TR" />
     <meta property="og:image" content={ogImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -121,7 +95,7 @@ const jsonLd = {
     <meta property="twitter:image" content={ogImageUrl} />
 
     <!-- RSS -->
-    <link rel="alternate" type="application/rss+xml" title={lang === 'tr' ? "Ahmet İhtiyar — Veritabanı Mimarisi Yazıları" : "Ahmet İhtiyar — Database Architecture Notes"} href={lang === 'tr' ? "/rss.xml" : "/en/rss.xml"} />
+    <link rel="alternate" type="application/rss+xml" title="Ahmet İhtiyar — Veritabanı Mimarisi Yazıları" href="/rss.xml" />
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
@@ -143,16 +117,16 @@ const jsonLd = {
   </head>
   <body class="min-h-screen flex flex-col">
     <a href="#main-content" class="skip-link">
-      {lang === 'tr' ? 'Ana içeriğe atla (Skip to content)' : 'Skip to content'}
+      Ana içeriğe atla
     </a>
 
-    <Header lang={lang} targetLangUrl={resolvedTargetLangUrl} />
+    <Header />
 
     <main id="main-content" class="flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-10">
       <slot />
     </main>
 
-    <Footer lang={lang} />
+    <Footer />
 
     <!-- Global Accessible Toast Notification -->
     <div id="global-toast" role="status" aria-live="polite">
@@ -176,7 +150,6 @@ const jsonLd = {
       // Automatic tactile copy button for article pre blocks
       (function() {
         function setupArticlePreCopy() {
-          const isTr = document.documentElement.lang === 'tr';
           document.querySelectorAll('.prose pre').forEach((pre) => {
             if (pre.closest('.pre-copy-wrapper')) return;
 
@@ -189,19 +162,19 @@ const jsonLd = {
             btn.type = 'button';
             btn.className = 'absolute top-2.5 right-2.5 px-2 py-0.5 rounded-[2px] bg-[var(--bg-card)]/90 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] text-[11px] font-mono opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm tactile-btn';
             const copyIconSvg = `<svg class="w-3 h-3 text-[var(--text-dim)] shrink-0 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-            btn.setAttribute('aria-label', isTr ? 'Kodu kopyala' : 'Copy code');
-            btn.innerHTML = `<span class="inline-flex items-center">${copyIconSvg}${isTr ? 'Kopyala' : 'Copy'}</span>`;
+            btn.setAttribute('aria-label', 'Kodu kopyala');
+            btn.innerHTML = `<span class="inline-flex items-center">${copyIconSvg}Kopyala</span>`;
 
             btn.addEventListener('click', async () => {
               const code = pre.querySelector('code')?.innerText || pre.innerText;
               try {
                 await navigator.clipboard.writeText(code);
-                btn.innerHTML = `<span class="text-[var(--status-green)] inline-flex items-center font-semibold">✓ ${isTr ? 'Kopyalandı' : 'Copied'}</span>`;
+                btn.innerHTML = `<span class="text-[var(--status-green)] inline-flex items-center font-semibold">✓ Kopyalandı</span>`;
                 if (typeof window.showToast === 'function') {
-                  window.showToast(isTr ? '✓ Kod parçacığı panoya kopyalandı' : '✓ Code copied to clipboard');
+                  window.showToast('✓ Kod parçacığı panoya kopyalandı');
                 }
                 setTimeout(() => {
-                  btn.innerHTML = `<span class="inline-flex items-center">${copyIconSvg}${isTr ? 'Kopyala' : 'Copy'}</span>`;
+                  btn.innerHTML = `<span class="inline-flex items-center">${copyIconSvg}Kopyala</span>`;
                 }, 2000);
               } catch (_) {
                 prompt('Kod:', code);

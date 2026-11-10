@@ -12,7 +12,7 @@ const cases = defineCollection({
     fileNumber: z.string(), // "Dosya 01", "Dosya 02", "Dosya 03"
     tagline: z.string(),
     date: z.string(),
-    lang: z.enum(['tr', 'en']),
+    lang: z.literal('tr').default('tr'),
     testedScale: z.string(),
     summary: z.string(),
     stack: z.array(z.string()),
@@ -35,7 +35,7 @@ const posts = defineCollection({
     slug: z.string().optional(),
     date: z.string(),
     summary: z.string(),
-    lang: z.enum(['tr', 'en']),
+    lang: z.literal('tr').default('tr'),
     tags: z.array(z.string()),
     readingTime: z.string(),
   }),

@@ -23,7 +23,7 @@ const { Content } = await render(entry);
   description={entry.data.summary}
   articleMeta={{ publishDate: entry.data.date, tags: entry.data.tags }}
 >
-  <article class="py-8 sm:py-12 space-y-8 max-w-3xl mx-auto">
+  <article class="py-4 sm:py-8 space-y-8 max-w-3xl">
     <!-- Header -->
     <div class="space-y-4 pb-6 border-b border-[var(--border)]">
       <div class="flex items-center justify-between">
@@ -53,7 +53,7 @@ const { Content } = await render(entry);
       <div class="flex flex-wrap items-center gap-1.5 pt-1">
         {entry.data.tags.map((tag) => (
           <a
-            href={`/#articles?tag=${encodeURIComponent(tag)}`}
+            href={`/?tag=${encodeURIComponent(tag)}#articles`}
             class="font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors cursor-pointer"
             title={`#${tag} etiketine ait yazıları filtrele`}
           >

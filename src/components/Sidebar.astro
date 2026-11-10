@@ -24,6 +24,9 @@ const topics = [
   { name: 'ZFS', tag: 'ZFS' },
   { name: 'Redis', tag: 'Redis' }
 ];
+
+const isPostsPage = Astro.url.pathname.startsWith('/posts');
+const isCasesPage = Astro.url.pathname.startsWith('/cases');
 ---
 
 <!-- Desktop Persistent Sidebar (Sticky, h-screen) -->
@@ -74,18 +77,24 @@ const topics = [
         <div class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider px-2 py-1">
           Gezinti
         </div>
-        {navItems.map((item) => (
-          <a
-            href={item.href}
-            data-nav-section={item.id}
-            class="sidebar-nav-link flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-sans rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-all group"
-          >
-            <svg class="nav-icon w-4 h-4 text-[var(--text-dim)] group-hover:text-[var(--accent)] shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
-            </svg>
-            <span class="truncate">{item.label}</span>
-          </a>
-        ))}
+        {navItems.map((item) => {
+          const isInitialActive = (item.id === 'articles' && isPostsPage) || (item.id === 'systems' && isCasesPage);
+          return (
+            <a
+              href={item.href}
+              data-nav-section={item.id}
+              class={`sidebar-nav-link flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-sans rounded-[2px] transition-all group ${
+                isInitialActive ? 'is-active' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
+              }`}
+              aria-current={isInitialActive ? 'page' : undefined}
+            >
+              <svg class="nav-icon w-4 h-4 text-[var(--text-dim)] group-hover:text-[var(--accent)] shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+              </svg>
+              <span class="truncate">{item.label}</span>
+            </a>
+          );
+        })}
       </nav>
 
       <!-- Topic Explorer (Tags / Categories) -->
@@ -96,7 +105,7 @@ const topics = [
         <div class="flex flex-wrap gap-1.5 px-2">
           {topics.map((t) => (
             <a
-              href={`/#articles?tag=${encodeURIComponent(t.tag)}`}
+              href={`/?tag=${encodeURIComponent(t.tag)}#articles`}
               data-tag={t.tag}
               class="sidebar-topic-tag font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors cursor-pointer"
             >
@@ -258,18 +267,24 @@ const topics = [
   <!-- Mobile Drawer Menu (Hidden by default) -->
   <div id="mobile-drawer" class="hidden border-t border-[var(--border)] bg-[var(--bg)] px-4 py-4 space-y-4 shadow-lg">
     <nav aria-label="Mobil Gezinti Menüsü" class="space-y-1">
-      {navItems.map((item) => (
-        <a
-          href={item.href}
-          data-nav-section={item.id}
-          class="mobile-nav-link flex items-center gap-2.5 px-3 py-2 text-sm font-sans rounded-[2px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-all"
-        >
-          <svg class="nav-icon w-4 h-4 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
-          </svg>
-          <span>{item.label}</span>
-        </a>
-      ))}
+      {navItems.map((item) => {
+        const isInitialActive = (item.id === 'articles' && isPostsPage) || (item.id === 'systems' && isCasesPage);
+        return (
+          <a
+            href={item.href}
+            data-nav-section={item.id}
+            class={`mobile-nav-link flex items-center gap-2.5 px-3 py-2 text-sm font-sans rounded-[2px] transition-all ${
+              isInitialActive ? 'is-active' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
+            }`}
+            aria-current={isInitialActive ? 'page' : undefined}
+          >
+            <svg class="nav-icon w-4 h-4 text-[var(--text-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+            </svg>
+            <span>{item.label}</span>
+          </a>
+        );
+      })}
     </nav>
 
     <!-- Mobile Topics -->
@@ -278,9 +293,9 @@ const topics = [
       <div class="flex flex-wrap gap-1.5">
         {topics.map((t) => (
           <a
-            href={`/#articles?tag=${encodeURIComponent(t.tag)}`}
+            href={`/?tag=${encodeURIComponent(t.tag)}#articles`}
             data-tag={t.tag}
-            class="mobile-nav-link sidebar-topic-tag font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] cursor-pointer"
+            class="sidebar-topic-tag font-mono text-[11px] px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors cursor-pointer"
           >
             #{t.name}
           </a>
@@ -379,51 +394,58 @@ const topics = [
         const tag = link.getAttribute('data-tag');
         if (!tag) return;
 
-        if (window.location.pathname === '/' || window.location.pathname === '') {
+        const isHomepage = window.location.pathname === '/' || 
+                           window.location.pathname === '' || 
+                           window.location.pathname === '/index.html';
+
+        if (isHomepage) {
           e.preventDefault();
+          e.stopPropagation();
           closeMobileMenu();
 
           if (typeof window.filterArticlesByTag === 'function') {
-            window.filterArticlesByTag(tag);
+            window.filterArticlesByTag(tag, true);
           }
           const articlesSection = document.getElementById('articles');
           if (articlesSection) {
             articlesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-          try {
-            const url = new URL(window.location.href);
-            url.searchParams.set('tag', tag);
-            url.hash = 'articles';
-            window.history.pushState(null, '', url.pathname + url.search + url.hash);
-          } catch (_) {}
         }
       });
     });
 
-    // 4. Smooth Anchor Navigation on Homepage
-    const allNavLinks = document.querySelectorAll('.sidebar-nav-link, .mobile-nav-link');
-    allNavLinks.forEach(link => {
+    // 4. Smooth Anchor Navigation on Homepage for Navigation Links
+    const mainNavLinks = document.querySelectorAll('.sidebar-nav-link[data-nav-section], .mobile-nav-link[data-nav-section]');
+    mainNavLinks.forEach(link => {
       link.addEventListener('click', (e) => {
-        const href = link.getAttribute('href');
-        if (!href || !href.startsWith('/#')) return;
+        const sectionId = link.getAttribute('data-nav-section');
+        if (!sectionId) return;
 
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          const sectionId = href.replace('/#', '');
+        const isHomepage = window.location.pathname === '/' || 
+                           window.location.pathname === '' || 
+                           window.location.pathname === '/index.html';
+
+        if (isHomepage) {
           const targetSection = document.getElementById(sectionId);
           if (targetSection) {
             e.preventDefault();
             closeMobileMenu();
             targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             try {
-              window.history.pushState(null, '', href);
+              window.history.pushState(null, '', `/#${sectionId}`);
             } catch (_) {}
           }
         }
       });
     });
 
-    // 5. Scrollspy via IntersectionObserver
+    // 5. Scrollspy via IntersectionObserver & Trigger-Offset Evaluation
     (function setupScrollspy() {
+      const isHomepage = window.location.pathname === '/' || 
+                         window.location.pathname === '' || 
+                         window.location.pathname === '/index.html';
+      if (!isHomepage) return;
+
       const sectionIds = ['articles', 'systems', 'invariants', 'secondary-projects', 'contact'];
       const sections = sectionIds.map(id => document.getElementById(id)).filter(Boolean);
       if (sections.length === 0) return;
@@ -454,19 +476,23 @@ const topics = [
           return;
         }
 
+        // Trigger offset: 35% of viewport height (minimum 150px)
+        const triggerOffset = Math.max(150, window.innerHeight * 0.35);
+
         // Before first section (Hero area) -> none active
         const firstSectionTop = sections[0].getBoundingClientRect().top;
-        if (firstSectionTop > window.innerHeight * 0.4) {
+        if (firstSectionTop > triggerOffset) {
           setActiveSection('');
           return;
         }
 
-        // Find current section in reading view
+        // Find last section whose top has crossed the trigger line and whose bottom is still visible
         let currentId = '';
-        for (const section of sections) {
-          const rect = section.getBoundingClientRect();
-          if (rect.top <= window.innerHeight * 0.45 && rect.bottom > window.innerHeight * 0.15) {
-            currentId = section.id;
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const sec = sections[i];
+          const rect = sec.getBoundingClientRect();
+          if (rect.top <= triggerOffset && rect.bottom > 40) {
+            currentId = sec.id;
             break;
           }
         }
@@ -474,17 +500,17 @@ const topics = [
         setActiveSection(currentId);
       }
 
-      // IntersectionObserver for trigger updates
+      // IntersectionObserver for update triggers
       const observer = new IntersectionObserver(() => {
         evaluateActiveSection();
       }, {
-        rootMargin: '-10% 0px -50% 0px',
-        threshold: [0, 0.2, 0.5]
+        rootMargin: '-10% 0px -40% 0px',
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0]
       });
 
       sections.forEach(sec => observer.observe(sec));
 
-      // Scroll listener with passive flag for immediate position checks
+      // Scroll listener with requestAnimationFrame
       let scrollTimer = null;
       window.addEventListener('scroll', () => {
         if (!scrollTimer) {
@@ -493,6 +519,11 @@ const topics = [
             scrollTimer = null;
           });
         }
+      }, { passive: true });
+
+      // Resize listener
+      window.addEventListener('resize', () => {
+        evaluateActiveSection();
       }, { passive: true });
 
       // Initial evaluation

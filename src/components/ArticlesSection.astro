@@ -178,6 +178,7 @@ const filterTags = [
     function initArticleFiltering() {
       const filterButtons = document.querySelectorAll('.article-filter-btn');
       const articleItems = document.querySelectorAll('.article-item');
+      const articlesList = document.getElementById('articles-list');
       const emptyState = document.getElementById('articles-empty-state');
       const emptyTagSpan = document.getElementById('articles-empty-tag');
       const resetBtn = document.getElementById('reset-filter-btn');
@@ -186,20 +187,38 @@ const filterTags = [
 
       if (!filterButtons.length || !articleItems.length) return;
 
-      function normalize(str) {
-        return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      function normalizeTag(str) {
+        if (!str) return '';
+        return str
+          .trim()
+          .toLocaleLowerCase('tr-TR')
+          .replace(/ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/ş/g, 's')
+          .replace(/ı/g, 'i')
+          .replace(/ö/g, 'o')
+          .replace(/ç/g, 'c')
+          .replace(/[^a-z0-9]/g, '');
+      }
+
+      function matchTag(articleTagNorm, targetNorm) {
+        if (!articleTagNorm || !targetNorm) return false;
+        if (articleTagNorm === targetNorm) return true;
+        // Allow prefix matching for shorthands like postgres -> postgresql, timescale -> timescaledb
+        if (targetNorm.length >= 3 && articleTagNorm.startsWith(targetNorm)) return true;
+        return false;
       }
 
       function filterArticles(targetTag, updateUrl = true) {
         const isAll = !targetTag || targetTag === 'all' || targetTag === 'tumu' || targetTag === 'Tümü';
-        const cleanTarget = normalize(targetTag);
+        const cleanTarget = normalizeTag(targetTag);
 
         let visibleCount = 0;
 
-        // Update button active states
+        // 1. Update filter toolbar button active states
         filterButtons.forEach(btn => {
           const btnTag = btn.getAttribute('data-tag-filter');
-          const isBtnActive = (isAll && btnTag === 'all') || (!isAll && (normalize(btnTag) === cleanTarget || cleanTarget.includes(normalize(btnTag)) || normalize(btnTag).includes(cleanTarget)));
+          const isBtnActive = (isAll && btnTag === 'all') || (!isAll && matchTag(normalizeTag(btnTag), cleanTarget));
 
           if (isBtnActive) {
             btn.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
@@ -212,37 +231,66 @@ const filterTags = [
           }
         });
 
-        // Filter article cards
-        articleItems.forEach(item => {
-          const rawTags = item.getAttribute('data-tags') || '';
-          const tagsArray = rawTags.split(',').map(normalize);
-          const matches = isAll || tagsArray.some(t => t === cleanTarget || t.includes(cleanTarget) || cleanTarget.includes(t));
-
-          if (matches) {
-            item.classList.remove('hidden');
-            visibleCount++;
+        // 2. Sync sidebar topic tags active indicator
+        const sidebarTopicTags = document.querySelectorAll('.sidebar-topic-tag');
+        sidebarTopicTags.forEach(stTag => {
+          const rawTag = stTag.getAttribute('data-tag');
+          const isMatch = !isAll && matchTag(normalizeTag(rawTag), cleanTarget);
+          if (isMatch) {
+            stTag.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
+            stTag.classList.add('bg-[var(--text)]', 'text-[var(--bg)]', 'border-[var(--text)]', 'font-medium');
           } else {
-            item.classList.add('hidden');
+            stTag.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]', 'border-[var(--text)]', 'font-medium');
+            stTag.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
           }
         });
 
-        // Update indicator
+        // 3. Filter article cards with smooth reveal
+        articleItems.forEach(item => {
+          const rawTags = item.getAttribute('data-tags') || '';
+          const tagsArray = rawTags.split(',').map(normalizeTag);
+          const matches = isAll || tagsArray.some(t => matchTag(t, cleanTarget));
+
+          if (matches) {
+            const wasHidden = item.classList.contains('hidden');
+            if (wasHidden) {
+              item.classList.remove('hidden');
+              item.style.opacity = '0';
+              item.style.transform = 'translateY(6px)';
+              window.requestAnimationFrame(() => {
+                item.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+              });
+            }
+            visibleCount++;
+          } else {
+            item.classList.add('hidden');
+            item.style.transition = '';
+            item.style.opacity = '';
+            item.style.transform = '';
+          }
+        });
+
+        // 4. Update count indicator
         if (countIndicator) {
           countIndicator.textContent = `${visibleCount} yazı`;
         }
 
-        // Empty state
+        // 5. Empty state and list visibility
         if (emptyState) {
           if (visibleCount === 0) {
             emptyState.classList.remove('hidden');
             if (emptyTagSpan) emptyTagSpan.textContent = targetTag;
+            if (articlesList) articlesList.classList.add('hidden');
           } else {
             emptyState.classList.add('hidden');
+            if (articlesList) articlesList.classList.remove('hidden');
           }
         }
 
-        // Update URL
-        if (updateUrl && window.history && window.history.replaceState) {
+        // 6. Update URL (using pushState for browser history back/forward navigation)
+        if (updateUrl && window.history && window.history.pushState) {
           try {
             const url = new URL(window.location.href);
             if (isAll) {
@@ -250,7 +298,12 @@ const filterTags = [
             } else {
               url.searchParams.set('tag', targetTag);
             }
-            window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+            const hash = url.hash ? url.hash : '';
+            const newUrl = url.pathname + (url.search ? url.search : '') + hash;
+            const currentUrl = window.location.pathname + window.location.search + window.location.hash;
+            if (newUrl !== currentUrl) {
+              window.history.pushState({ tag: isAll ? null : targetTag }, '', newUrl);
+            }
           } catch (_) {}
         }
       }
@@ -262,7 +315,7 @@ const filterTags = [
       filterButtons.forEach(btn => {
         btn.addEventListener('click', () => {
           const tag = btn.getAttribute('data-tag-filter') || 'all';
-          filterArticles(tag);
+          filterArticles(tag, true);
         });
       });
 
@@ -273,7 +326,7 @@ const filterTags = [
           e.stopPropagation();
           const tag = badge.getAttribute('data-tag-click');
           if (tag) {
-            filterArticles(tag);
+            filterArticles(tag, true);
             const section = document.getElementById('articles');
             if (section) {
               section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -284,15 +337,39 @@ const filterTags = [
 
       // Reset button click
       if (resetBtn) {
-        resetBtn.addEventListener('click', () => filterArticles('all'));
+        resetBtn.addEventListener('click', () => filterArticles('all', true));
       }
 
-      // Read initial tag from URL if present
+      // History navigation (Back / Forward button popstate)
+      window.addEventListener('popstate', (e) => {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlTag = urlParams.get('tag') || (e.state && e.state.tag) || 'all';
+          filterArticles(urlTag, false);
+        } catch (_) {
+          filterArticles('all', false);
+        }
+      });
+
+      // Read initial tag from URL (supports both standard ?tag= and fallback #articles?tag=)
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const urlTag = urlParams.get('tag');
-        if (urlTag) {
-          filterArticles(urlTag, false);
+        let initialTag = urlParams.get('tag');
+        if (!initialTag && window.location.hash.includes('tag=')) {
+          const match = window.location.hash.match(/[?&]tag=([^&#]+)/);
+          if (match) {
+            initialTag = decodeURIComponent(match[1]);
+          }
+        }
+        if (initialTag) {
+          filterArticles(initialTag, false);
+          // If loaded with a specific tag filter, scroll to articles section
+          window.requestAnimationFrame(() => {
+            const section = document.getElementById('articles');
+            if (section && window.scrollY < 100) {
+              section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
         }
       } catch (_) {}
     }

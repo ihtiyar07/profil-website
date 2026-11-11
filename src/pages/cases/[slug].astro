@@ -147,27 +147,6 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </div>
       )}
 
-      <!-- Case Meta Card -->
-      <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/30 p-4 rounded-[2px] space-y-2.5 font-mono text-xs">
-        <div class="text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold border-b border-[var(--border)] pb-2 flex items-center justify-between">
-          <span>Vaka Dosyası</span>
-          <span class="text-[var(--text-accent)]">{entry.data.fileNumber}</span>
-        </div>
-        <div class="space-y-1.5 text-[var(--text-muted)] text-[11px]">
-          <div class="flex justify-between">
-            <span class="text-[var(--text-dim)]">Ölçek:</span>
-            <span class="text-[var(--text)] truncate max-w-[18ch]" title={entry.data.testedScale}>{entry.data.testedScale}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-[var(--text-dim)]">Mimar:</span>
-            <span class="text-[var(--text)]">Ahmet İhtiyar</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-[var(--text-dim)]">Tarih:</span>
-            <span class="text-[var(--text)]">{entry.data.date}</span>
-          </div>
-        </div>
-      </div>
 
       <!-- Other Cases Card -->
       {otherCases.length > 0 && (

@@ -150,22 +150,6 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </div>
       )}
 
-      <!-- Article Meta Card -->
-      <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/30 p-4 rounded-[2px] space-y-2.5 font-mono text-xs">
-        <div class="text-[11px] uppercase tracking-wider text-[var(--text-dim)] font-semibold border-b border-[var(--border)] pb-2">
-          <span>Yazı Künyesi</span>
-        </div>
-        <div class="space-y-1.5 text-[var(--text-muted)] text-[11px]">
-          <div class="flex justify-between">
-            <span class="text-[var(--text-dim)]">Tarih:</span>
-            <span class="text-[var(--text)]">{entry.data.date}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-[var(--text-dim)]">Yazar:</span>
-            <span class="text-[var(--text)]">Ahmet İhtiyar</span>
-          </div>
-        </div>
-      </div>
 
       <!-- Related Posts Card -->
       {otherPosts.length > 0 && (

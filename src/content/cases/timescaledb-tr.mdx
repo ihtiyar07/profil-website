@@ -49,9 +49,9 @@ Saatlik, günlük ve haftalık istatistikler için `WITH (timescaledb.continuous
 
 ## 4. Kararlar ve Karşılaştırmalar
 
-| Metrik | Standart PostgreSQL | TimescaleDB Hypertables | Kazanç |
+| Metrik | Standart PostgreSQL | TimescaleDB Hypertables | Elde Edilen Kazanç |
 | :--- | :--- | :--- | :--- |
-| **1 Milyar Satır Disk Boyutu** | 280 GB | 22.4 GB | %92 Disk Tasarrufu |
-| **Saatlik Ortalama Sorgusu** | 42.500 ms | &lt;18 ms | 2300x Sorgu Hızlanması |
-| **Yazma Dayanımı** | 4.000 satır/sn (dalgalı) | 35.000 satır/sn (sabit) | 8.7x Kesintisiz Throughput |
-| **Eski Veri Temizleme** | Saatler süren VACUUM | drop_chunks() (&lt;100ms) | Sıfır Kilit & Sıfır Bloat |
+| **1 Milyar Satır Disk Boyutu** | 280 GB | 22.4 GB | **%92 Disk Tasarrufu** |
+| **Saatlik Ortalama Sorgusu** | 42.500 ms | < 18 ms | **2.300 Kat Hızlanma** |
+| **Yazma Dayanımı (Throughput)** | 4.000 satır/sn (dalgalı) | 35.000 satır/sn (sabit) | **8.7 Kat Kesintisiz Yazma** |
+| **Eski Veri Temizleme (Retention)** | Saatler süren `VACUUM` | `drop_chunks()` (< 100ms) | **Sıfır Kilit & Sıfır Bloat** |

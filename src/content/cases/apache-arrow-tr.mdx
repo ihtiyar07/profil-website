@@ -58,9 +58,9 @@ Gelen ikili akış tarayıcıda bir `ArrayBuffer` olarak karşılanır. JavaScri
 
 ## 4. Kararlar ve Performans Sonuçları
 
-| Metrik | Geleneksel JSON REST | Apache Arrow IPC | Fark |
+| Metrik | Geleneksel JSON REST | Apache Arrow IPC | Elde Edilen Kazanç |
 | :--- | :--- | :--- | :--- |
-| **Ağ Veri Boyutu (250K Satır)** | 24.8 MB | 3.1 MB | %87 Bant Genişliği Tasarrufu |
-| **İstemci UI Donması** | 850 ms (kilitli ekran) | &lt;15 ms (kesintisiz 60 FPS) | 56 Kat Hızlanma |
-| **Sunucu GC Tahsisi** | 250.000 heap nesnesi | 1 adet bitişik tampon | %95 GC Rahatlaması |
-| **Serileştirme Yükü** | Ağır string dönüşümü | Saf ikili bellek kopyası | 8x CPU Tasarrufu |
+| **Ağ Veri Boyutu (250K Satır)** | 24.8 MB | 3.1 MB | **%87 Bant Genişliği Tasarrufu** |
+| **İstemci UI Donması** | 850 ms (kilitli ekran) | < 15 ms (kesintisiz 60 FPS) | **56 Kat Hızlanma** |
+| **Sunucu GC Tahsisi** | 250.000 heap nesnesi | 1 adet bitişik tampon | **%95 GC Rahatlaması** |
+| **Serileştirme Yükü** | Ağır string dönüşümü | Saf ikili bellek kopyası | **8 Kat CPU Tasarrufu** |

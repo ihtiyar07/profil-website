@@ -192,10 +192,26 @@ const jsonLd = {
           });
         }
 
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', setupArticlePreCopy);
-        } else {
+        function setupResponsiveTables() {
+          document.querySelectorAll('.prose table, article table').forEach((table) => {
+            if (table.closest('.table-responsive-wrapper')) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive-wrapper';
+            table.parentNode?.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+          });
+        }
+
+        function initArticleEnhancements() {
           setupArticlePreCopy();
+          setupResponsiveTables();
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initArticleEnhancements);
+        } else {
+          initArticleEnhancements();
         }
       })();
     </script>

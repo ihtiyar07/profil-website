@@ -241,3 +241,104 @@ section[id], article[id], div[id] {
 .article-item {
   transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
 }
+
+/* ==========================================================================
+   Editorial Data Tables (Publication Quality)
+   ========================================================================== */
+.table-responsive-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-responsive-wrapper table,
+.prose table,
+article table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
+}
+
+.prose table:not(.table-responsive-wrapper table) {
+  margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose thead,
+article thead {
+  background-color: var(--bg-subtle);
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.prose thead th,
+article thead th {
+  padding: 0.75rem 0.9rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.prose tbody tr,
+article tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.12s ease;
+}
+
+.prose tbody tr:last-child,
+article tbody tr:last-child {
+  border-bottom: none;
+}
+
+.prose tbody tr:hover,
+article tbody tr:hover {
+  background-color: var(--bg-subtle);
+}
+
+.prose tbody td,
+article tbody td {
+  padding: 0.75rem 0.9rem;
+  color: var(--text-muted);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+
+.prose tbody td:first-child,
+article tbody td:first-child {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prose tbody td strong,
+article tbody td strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prose tbody td code,
+article tbody td code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+

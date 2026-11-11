@@ -12,36 +12,18 @@ import { SITE_META } from '../data/siteMeta';
       </h1>
 
       <!-- Editorial Lead & Mission Note -->
-      <div class="space-y-4 max-w-[65ch]">
-        <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
-          PostgreSQL ve Oracle çekirdek süreçleri, bellek havuzları, WAL/Redo döngüleri ve ZFS depolama mimarisi üzerine çalışıyorum.
+      <div class="space-y-3.5 max-w-[66ch]">
+        <p class="text-base sm:text-lg text-[var(--text)] font-sans leading-relaxed">
+          PostgreSQL ve Oracle çekirdek süreçleri, bellek havuzları (Shared Buffers / SGA), WAL/Redo döngüleri ve ZFS depolama blok düzeni üzerine çalışıyorum.
         </p>
 
-        <div class="border-l-2 border-[var(--accent)] pl-4 py-1 text-sm sm:text-[15px] text-[var(--text)] font-sans leading-relaxed bg-[var(--accent-subtle)]/20 rounded-r-[2px]">
-          Canlı üretim ortamlarında karşılaştığım darboğazları, sorgu yürütme planlarını ve sıfır etkili (zero-impact) mimari kararlarını adım adım aktardığım kişisel teknik rehber.
-        </div>
-      </div>
-
-      <!-- Core Technical Pillars (3-Column Micro Specs) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 font-mono">
-        <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 space-y-1">
-          <div class="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold">Motorlar</div>
-          <div class="text-[var(--text)] text-xs leading-snug font-medium">PostgreSQL · Oracle · TimescaleDB</div>
-        </div>
-
-        <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 space-y-1">
-          <div class="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold">Altyapı & I/O</div>
-          <div class="text-[var(--text)] text-xs leading-snug font-medium">ZFS Blok Düzeni · NVMe · Page Cache</div>
-        </div>
-
-        <div class="p-3 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 space-y-1">
-          <div class="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold">İlkeler</div>
-          <div class="text-[var(--text)] text-xs leading-snug font-medium">Zero-Lock Analitik · Arrow IPC</div>
-        </div>
+        <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
+          Bu site; canlı üretim sistemlerinde karşılaştığım darboğazları, sorgu planlarını, sıfır etkili (zero-impact) mimari kararlarını ve depolama katmanındaki optimizasyonları adım adım aktardığım kişisel teknik rehber niteliğindedir.
+        </p>
       </div>
 
       <!-- Action Links -->
-      <div class="flex flex-wrap items-center gap-3 pt-2">
+      <div class="flex flex-wrap items-center gap-3 pt-1">
         <a
           href="#articles"
           class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px] shadow-xs"
@@ -62,9 +44,9 @@ import { SITE_META } from '../data/siteMeta';
 
     <!-- Right 5-4 Columns: Architectural Identity Card -->
     <div class="lg:col-span-5 xl:col-span-4 flex flex-col items-center lg:items-end pt-2 lg:pt-0">
-      <div class="w-full max-w-[280px] border border-[var(--border)] bg-[var(--bg-card)] p-4 rounded-[2px] space-y-3.5 shadow-xs">
+      <div class="w-full max-w-[260px] border border-[var(--border)] bg-[var(--bg-card)] p-3.5 rounded-[2px] space-y-3 shadow-xs">
         <!-- Card Header -->
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5 font-mono text-xs">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 font-mono text-xs">
           <span class="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">Mimar Dosyası</span>
           <span class="inline-flex items-center gap-1 text-[11px] text-[var(--accent)]">
             <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
@@ -73,14 +55,14 @@ import { SITE_META } from '../data/siteMeta';
         </div>
 
         <!-- Framed Portrait -->
-        <div class="aspect-[4/4.5] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
+        <div class="aspect-[4/4.2] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
           <picture>
             <source srcset="/profile.webp" type="image/webp" />
             <img
               src="/profile.png"
               alt="Ahmet İhtiyar — Veritabanı ve Depolama Mimarı"
-              width="280"
-              height="315"
+              width="260"
+              height="273"
               loading="eager"
               fetchpriority="high"
               class="w-full h-full object-cover object-center transition-all duration-300 filter contrast-[1.02] group-hover:contrast-105"
@@ -90,22 +72,22 @@ import { SITE_META } from '../data/siteMeta';
 
         <!-- Identity & Status Specs -->
         <div class="space-y-1.5 font-mono text-xs">
-          <div class="flex items-center justify-between text-[11.5px]">
+          <div class="flex items-center justify-between text-[11px]">
             <span class="text-[var(--text-dim)]">Mühendis:</span>
             <span class="font-semibold text-[var(--text)]">Ahmet İhtiyar</span>
           </div>
-          <div class="flex items-center justify-between text-[11.5px]">
+          <div class="flex items-center justify-between text-[11px]">
             <span class="text-[var(--text-dim)]">Uzmanlık:</span>
             <span class="text-[var(--text-muted)]">Veritabanı & Depolama</span>
           </div>
-          <div class="flex items-center justify-between text-[11.5px]">
+          <div class="flex items-center justify-between text-[11px]">
             <span class="text-[var(--text-dim)]">Konum:</span>
             <span class="text-[var(--text-muted)]">İstanbul, Türkiye</span>
           </div>
         </div>
 
         <!-- Direct Social / Contact Links -->
-        <div class="pt-2.5 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)]">
+        <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)]">
           <a href={SITE_META.github} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text)] transition-colors">
             GitHub ↗
           </a>

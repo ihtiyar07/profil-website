@@ -36,9 +36,12 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     </div>
   </div>
   
-  <div class="p-4 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[160px] bg-[var(--bg)]/40 cursor-zoom-in group" title="Büyütmek için tıklayabilir veya Tam Ekran butonunu kullanabilirsiniz">
-    <div class="mermaid-diagram opacity-0 transition-opacity duration-300 w-full flex justify-center" id={uniqueId} data-code={code}>
-      <pre class="font-mono text-xs text-[var(--text-muted)] p-2 overflow-x-auto">{code.trim()}</pre>
+  <div class="p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[180px] bg-[var(--bg-subtle)]/30 cursor-zoom-in group" title="Büyütmek için tıklayabilir veya Tam Ekran butonunu kullanabilirsiniz">
+    <div class="mermaid-diagram w-full flex justify-center" id={uniqueId} data-code={code}>
+      <div class="mermaid-loading flex items-center justify-center py-10 px-4 text-xs font-mono text-[var(--text-dim)] gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
+        <span>Mimari diyagram yükleniyor...</span>
+      </div>
     </div>
   </div>
 
@@ -130,23 +133,34 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
 </figure>
 
 <style is:global>
+  .mermaid-diagram {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
   .mermaid-diagram svg {
-    min-width: 620px;
-    max-width: 100%;
-    height: auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    display: block;
+    margin: 0 auto;
   }
   .mermaid-diagram svg .node.has-tooltip {
     cursor: pointer;
   }
   .mermaid-diagram svg .node.has-tooltip:hover {
-    filter: brightness(1.05) drop-shadow(0 2px 6px rgba(232, 89, 12, 0.2));
+    filter: brightness(1.05) drop-shadow(0 2px 6px var(--accent-subtle));
   }
   .mermaid-diagram svg .node.active-tooltip rect,
   .mermaid-diagram svg .node.active-tooltip polygon,
   .mermaid-diagram svg .node.active-tooltip circle,
   .mermaid-diagram svg .node.active-tooltip path {
     stroke: var(--accent) !important;
-    stroke-width: 2px !important;
+    stroke-width: 2.5px !important;
+  }
+  .mermaid-diagram svg text {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
   }
 </style>
 
@@ -650,31 +664,31 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       fontFamily: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif",
       securityLevel: 'loose',
       themeVariables: isDark ? {
-        primaryColor: '#1A202C',
-        primaryTextColor: '#E2E8F0',
-        primaryBorderColor: '#3A4250',
+        primaryColor: '#161B24',
+        primaryTextColor: '#F8FAFC',
+        primaryBorderColor: '#475569',
         lineColor: '#94A3B8',
-        secondaryColor: '#141820',
-        tertiaryColor: '#1A202C',
-        mainBkg: '#1A202C',
-        nodeBorder: '#3A4250',
-        clusterBkg: '#141820',
-        clusterBorder: '#3A4250',
-        edgeLabelBackground: '#141820',
-        fontSize: '12px'
+        secondaryColor: '#11141B',
+        tertiaryColor: '#161B24',
+        mainBkg: '#161B24',
+        nodeBorder: '#475569',
+        clusterBkg: '#0D1017',
+        clusterBorder: '#334155',
+        edgeLabelBackground: '#161B24',
+        fontSize: '14px'
       } : {
-        primaryColor: '#F1F5F9',
-        primaryTextColor: '#0F172A',
-        primaryBorderColor: '#CBD5E1',
-        lineColor: '#64748B',
+        primaryColor: '#FFFFFF',
+        primaryTextColor: '#0B1220',
+        primaryBorderColor: '#64748B',
+        lineColor: '#334155',
         secondaryColor: '#FFFFFF',
         tertiaryColor: '#F8FAFC',
         mainBkg: '#FFFFFF',
-        nodeBorder: '#CBD5E1',
+        nodeBorder: '#64748B',
         clusterBkg: '#F8FAFC',
         clusterBorder: '#CBD5E1',
         edgeLabelBackground: '#FFFFFF',
-        fontSize: '12px'
+        fontSize: '14px'
       }
     });
 
@@ -687,7 +701,6 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
         const id = 'svg-' + el.id + '-' + Math.random().toString(36).substring(2, 6);
         const { svg } = await mermaid.render(id, code.trim());
         el.innerHTML = svg;
-        el.classList.remove('opacity-0');
 
         const figure = el.closest('.mermaid-container') as HTMLElement;
         if (figure) {
@@ -696,7 +709,12 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
         }
       } catch (err) {
         console.error('Mermaid render error:', err);
-        el.classList.remove('opacity-0');
+        el.innerHTML = `
+          <div class="p-4 text-xs font-mono text-[var(--text-dim)] border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] text-center space-y-2">
+            <p>Diyagram yüklenirken bir sorun oluştu.</p>
+            <pre class="text-[11px] text-[var(--text-muted)] p-2 bg-[var(--bg-code)] overflow-x-auto text-left">${code.trim()}</pre>
+          </div>
+        `;
       }
     });
   }

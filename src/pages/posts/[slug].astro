@@ -44,8 +44,8 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 >
   <div class="flex-1 w-full flex flex-col xl:flex-row items-stretch relative min-h-screen">
     <!-- Main Article Column (Expands to fill available space) -->
-    <div id="article-main-col" class="flex-1 min-w-0 px-6 sm:px-10 lg:px-12 xl:px-14 py-6 sm:py-10 transition-all duration-300">
-      <article class="max-w-[820px] 2xl:max-w-[860px] mx-auto xl:mx-0 space-y-8">
+    <div id="article-main-col" class="flex-1 min-w-0 px-5 sm:px-8 lg:px-10 py-6 sm:py-10 transition-all duration-300">
+      <article class="w-full space-y-8">
         <!-- Header -->
         <div class="space-y-4 pb-6 border-b border-[var(--border)]">
           <div class="flex items-center justify-between">
@@ -122,7 +122,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       )}
 
       <!-- Article Content with Optimal Reading Typography -->
-      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
+      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:max-w-[75ch] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
         <Content />
       </div>
 

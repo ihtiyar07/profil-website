@@ -6,9 +6,9 @@
   <!-- Component Header -->
   <div class="px-4 py-3 bg-[var(--bg)] border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
     <div class="flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
+      <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
       <span class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)]">
-        PostgREST Adım Adım Mimari & Çalışma Boru Hattı
+        PostgREST Mimari & Çalışma Akışı
       </span>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)]">
@@ -167,7 +167,7 @@ COMMIT;</code></pre>
     "sicaklik": 24.80,
     "nem": 47.50,
     "voltaj": 3.26,
-    "kayit_zamani": "2026-11-10T16:50:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:50:15.900579+00:00"
   },
   {
     "id": 5,
@@ -175,7 +175,7 @@ COMMIT;</code></pre>
     "sicaklik": 42.50,
     "nem": 31.00,
     "voltaj": 3.12,
-    "kayit_zamani": "2026-11-10T16:49:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:49:15.900579+00:00"
   },
   {
     "id": 2,
@@ -183,7 +183,7 @@ COMMIT;</code></pre>
     "sicaklik": 24.10,
     "nem": 47.90,
     "voltaj": 3.27,
-    "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:45:15.900579+00:00"
   }
 ]`}</code></pre>
         </div>
@@ -196,9 +196,8 @@ COMMIT;</code></pre>
             <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-[2px] bg-[var(--text-dim)] text-white">ADIM 4</span>
             <span class="font-mono text-xs font-semibold text-[var(--text)]">Görsel Web Arayüzü (Swagger UI & OpenAPI 3.0)</span>
           </div>
-          <span class="text-[10px] font-mono text-[var(--status-green)] font-semibold flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]"></span>
-            Canlı Arayüz
+          <span class="text-[10px] font-mono text-[var(--text-dim)]">
+            OpenAPI / Swagger
           </span>
         </div>
 
@@ -272,7 +271,7 @@ COMMIT;`,
     "sicaklik": 24.80,
     "nem": 47.50,
     "voltaj": 3.26,
-    "kayit_zamani": "2026-11-10T16:50:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:50:15.900579+00:00"
   },
   {
     "id": 5,
@@ -280,7 +279,7 @@ COMMIT;`,
     "sicaklik": 42.50,
     "nem": 31.00,
     "voltaj": 3.12,
-    "kayit_zamani": "2026-11-10T16:49:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:49:15.900579+00:00"
   },
   {
     "id": 2,
@@ -288,7 +287,7 @@ COMMIT;`,
     "sicaklik": 24.10,
     "nem": 47.90,
     "voltaj": 3.27,
-    "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:45:15.900579+00:00"
   }
 ]`,
         note: "PostgREST, gelen HTTP sorgu parametrelerini doğrudan tek bir AST derleyicisi üzerinden tekil SQL CTE sorgusuna çevirir. PostgreSQL sonucu veritabanı motoru seviyesinde doğrudan JSON olarak üretir; ortada ORM nesnesi veya backend serileştirme yükü bulunmaz."
@@ -421,7 +420,7 @@ COMMIT;`,
     "sicaklik": 21.40,
     "nem": 55.20,
     "voltaj": 3.28,
-    "kayit_zamani": "2026-11-10T16:40:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:40:15.900579+00:00"
   },
   {
     "id": 2,
@@ -429,7 +428,7 @@ COMMIT;`,
     "sicaklik": 24.10,
     "nem": 47.90,
     "voltaj": 3.27,
-    "kayit_zamani": "2026-11-10T16:45:15.900579+00:00"
+    "kayit_zamani": "2025-09-15T16:45:15.900579+00:00"
   }
 ]`,
         note: "PostgREST, JWT içindeki tüm claim'leri PostgreSQL oturum değişkenine (request.jwt.claims) aktarır. Yetkilendirme web çatısında değil, PostgreSQL çekirdeğindeki RLS kuralları ile işletilir."

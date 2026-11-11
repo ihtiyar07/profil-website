@@ -37,7 +37,7 @@ const posts = defineCollection({
     summary: z.string(),
     lang: z.literal('tr').default('tr'),
     tags: z.array(z.string()),
-    readingTime: z.string(),
+    readingTime: z.string().optional(),
   }),
 });
 

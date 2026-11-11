@@ -1,11 +1,10 @@
 ---
 title: "PostgreSQL Mimarisi: Süreç Modeli, Bellek Yönetimi ve Temel Prensipler"
 slug: "postgresql-mimarisi-ve-calisma-prensipleri"
-date: "2026-04-05"
+date: "2025-10-25"
 lang: "tr"
 summary: "İstemci bağlantı modelinden Shared Buffers yönetimine, WAL döngüsünden MVCC ve autovacuum mekanizmasına PostgreSQL'in çekirdek mimari ilkeleri."
 tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
-readingTime: "5 dk"
 ---
 
 PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.

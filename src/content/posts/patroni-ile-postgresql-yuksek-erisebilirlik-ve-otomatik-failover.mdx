@@ -1,12 +1,9 @@
 ---
 title: "Patroni ile PostgreSQL Yüksek Erişilebilirlik (HA), Konsensüs ve Otomatik Failover Mimarisi"
-date: "2026-03-30"
-readingTime: "8 dk"
+date: "2025-09-28"
 summary: "PostgreSQL streaming replication'ın ötesine geçiş: etcd konsensüs motoru, Patroni yaşam döngüsü, split-brain savunması, pg_rewind ile hızlı kurtarma ve HAProxy yük dengeleme mimarisi."
 tags: ["PostgreSQL", "Patroni", "Yüksek Erişilebilirlik", "etcd", "HAProxy", "Veritabanı", "Mimari"]
 ---
-
-import PatroniInteractiveExplorer from '../../components/PatroniInteractiveExplorer.astro';
 
 PostgreSQL, ACID garantileri ve güvenilirliği kanıtlanmış bir depolama motorudur. Ancak tek bir sunucu üzerinde çalışan PostgreSQL, ne kadar güçlü donanıma sahip olursa olsun **tek hata noktasıdır (Single Point of Failure - SPOF)**. 
 
@@ -20,14 +17,6 @@ Birçok ekip işe yerel `Streaming Replication` kurarak başlar: Bir `Primary` s
 2. **Kör Otomasyon ve Split-Brain Felaketi:** Mühendis müdahalesini ortadan kaldırmak için yazılan basit bash script'leri veya kör ping kontrolleri çoğu zaman daha büyük bir felakete yol açar: Bir ağ dalgalanmasında primary ile replikanın iletişimi koptuğunda replika kendini primary ilan ederse, kümede aynı anda iki primary oluşur (**Split-Brain**). Her iki sunucu da farklı istemcilerden bağımsız yazma kabul eder ve veritabanı zaman çizgisi (timeline) geri döndürülemez biçimde çatallanır.
 
 **Patroni**, bu problemi dağıtık konsensüs algoritmaları (Raft/Paxos tabanlı etcd veya Consul) ile çözen, PostgreSQL için endüstri standardı haline gelmiş yüksek erişilebilirlik (HA) orkestratörüdür.
-
----
-
-## İnteraktif Patroni Küme & Failover Simülatörü
-
-Aşağıdaki interaktif simülatörde 3 düğümlü bir PostgreSQL kümesinde normal senkron akışı, kontrollü switchover operasyonunu, donanım çökmesinde otomatik failover sürecini ve split-brain korumasını canlı olarak test edebilirsiniz:
-
-<PatroniInteractiveExplorer />
 
 ---
 
@@ -161,7 +150,217 @@ Patroni, **`use_pg_rewind: true`** parametresi ile bu sorunu kökten çözer:
 
 ---
 
-## 6. Görsel Yönetim ve İzleme Arayüzleri: Patroni-UI, HAProxy Stats ve Grafana
+## 6. Sahada 5 Kritik Operasyonel Senaryo ve Gerçek Komut Çıktıları
+
+Teorik mimariyi sahada doğrulamak için 3 düğümlü bir kümede (`pg-node-1: 192.168.10.11`, `pg-node-2: 192.168.10.12`, `pg-node-3: 192.168.10.13`) karşılaşılan 5 temel operasyonel senaryo, bu senaryolarda yürütülen komutlar ve alınan terminal çıktıları aşağıda adım adım modellenmiştir.
+
+### Senaryo 01: Normal Çalışma & Senkron Replikasyon Doğrulaması
+
+**Olay & Başlangıç Durumu:** Küme sağlıklı ve üretim yükü altındadır. `pg-node-1` birincil (Primary), `pg-node-2` senkron replika (`Sync Standby`), `pg-node-3` asenkron replikadır (`Replica`).
+
+1. **Küme Topolojisini Sorgulama:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml list postgres-ha
+```
+```text
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
+| pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
+| pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+```
+
+2. **etcd Dağıtık Konsensüs Durumunu Doğrulama:**
+```bash
+$ etcdctl get --prefix /service/postgres-ha/leader
+```
+```json
+{"version": "3.3.0", "role": "primary", "state": "running", "leader": "pg-node-1"}
+```
+
+3. **HAProxy Sağlık Uç Noktası Kontrolü:**
+```bash
+$ curl -s -i http://192.168.10.11:8008/primary
+```
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+{"state": "running", "role": "primary", "server_version": 160002}
+```
+
+* **Küme Durum Özeti:** Lider `pg-node-1` (Timeline 1). `synchronous_mode: true` devrede olduğundan `pg-node-1` yerel diske yazdığı WAL kaydını `pg-node-2`'ye onaylatmadan COMMIT yanıtı dönmez. Veri kaybı riski sıfırdır (RPO = 0).
+
+---
+
+### Senaryo 02: Planlı Bakım ve Kontrollü Switchover Operasyonu
+
+**Tetikleyici Olay:** Sunucu güncellemesi veya RAM yükseltmesi nedeniyle DBA, liderlik rolünü `pg-node-1`'den `pg-node-2`'ye kontrollü olarak devretmek ister.
+
+1. **Switchover Komutunu Yürütme:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml switchover \
+    --master pg-node-1 \
+    --candidate pg-node-2 \
+    --scheduled now
+```
+```text
+Current cluster topology
++-----------+---------------+---------+---------+----+-----------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Primary | running |  1 |           |
+| pg-node-2 | 192.168.10.12 | Sync    | running |  1 |         0 |
+| pg-node-3 | 192.168.10.13 | Replica | running |  1 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+Are you sure you want to switch over to pg-node-2? [y/N]: y
+2025-09-30 14:32:00.120 Successfully switched over to leader pg-node-2
+```
+
+2. **Geçiş Sonrası Yeni Topolojiyi Doğrulama:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml list postgres-ha
+```
+```text
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | running |  2 |         0 |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+```
+
+* **Kümedeki Değişim (State Delta):**
+  * **Lider Değişimi:** `pg-node-1` temiz checkpoint alıp kapatıldı ➔ `pg-node-2` Primary oldu.
+  * **Yeni Senkron Standby:** `pg-node-3` senkron onay rolüne yükseltildi (`Sync`).
+  * **Timeline Artışı:** `TL 1` ➔ `TL 2` (Zaman çizgisi çatallanmadan kontrollü ilerledi).
+  * **RPO & RTO:** Veri kaybı `0 byte` (RPO = 0), devir süresi `~1.8 saniye` (RTO < 2s).
+  * **Eski Lider:** LSN'ler eşitken kapatıldığı için `pg_rewind` gerekmeksizin doğrudan replika olarak bağlandı.
+
+---
+
+### Senaryo 03: Birincil Düğüm Çökmesi (Donanım Arızası & Otomatik Failover)
+
+**Tetikleyici Olay:** `pg-node-1` sunucusunda donanım arızası (anakart yanması / elektrik kesintisi) yaşandı. Sunucu aniden kapandı.
+
+1. **DCS Süre Aşımı ve Otomatik Seçim:**
+   `pg-node-1` üzerindeki Patroni her 10 saniyede bir gönderdiği etcd kalp atışını gönderemedi. 30 saniyelik TTL süresi dolunca etcd üzerindeki `/service/postgres-ha/leader` anahtarı silindi. Senkron replika `pg-node-2`, en ileri WAL LSN pozisyonuna sahip olduğu için CAS (Compare-And-Swap) ile yeni lider anahtarını aldı ve kendini promote etti.
+
+2. **Failover Sonrası Topoloji Durumu:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml list postgres-ha
+```
+```text
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | stopped |  1 |   unknown |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+WARNING: Member pg-node-1 is unreachable and marked stopped
+```
+
+3. **HAProxy Uç Nokta Doğrulaması:**
+```bash
+# Eski primary bağlantı reddeder:
+$ curl -s -i --connect-timeout 1 http://192.168.10.11:8008/primary
+curl: (7) Failed to connect to 192.168.10.11: Connection refused
+
+# Yeni primary anında 200 OK yanıtlar:
+$ curl -s -i http://192.168.10.12:8008/primary
+HTTP/1.1 200 OK
+{"state": "running", "role": "primary", "server_version": 160002}
+```
+
+* **Kümedeki Değişim (State Delta):**
+  * `pg-node-1` kümeden düştü (`stopped`).
+  * `pg-node-2` tek başına otomatik olarak birincil düğüm oldu (Primary, TL 2).
+  * HAProxy port 5000 yazma havuzu trafiği otomatik olarak `192.168.10.12` adresine yönlendirdi.
+  * **RPO & RTO:** Senkron replikasyon sayesinde sıfır veri kaybı (RPO = 0), toplam failover süresi `~32 saniye` (30s TTL + 2s promote).
+
+---
+
+### Senaryo 04: Ağ Bölünmesi (Network Partition) ve Fencing ile Split-Brain Savunması
+
+**Tetikleyici Olay:** Veri merkezinde ağ anahtarı (switch) bozuldu. `pg-node-1` sunucusu çalışıyor; ancak diğer iki düğüm ve 3 düğümlü etcd kümesi ile bağlantısı koptu (İzole Düğüm).
+
+1. **İzole Düğümün Patroni Sistem Günlükleri:**
+```bash
+$ journalctl -u patroni -n 20 --no-pager
+```
+```text
+2025-09-30 15:02:11 [ERROR] Failed to reach etcd quorum (1/3 available nodes)
+2025-09-30 15:02:15 [CRITICAL] Lost leader lease lock! Initiating emergency fencing.
+2025-09-30 15:02:15 [INFO] Demoting PostgreSQL engine...
+2025-09-30 15:02:15 [INFO] Executing: pg_ctl stop -D /var/lib/postgresql/data -m immediate
+2025-09-30 15:02:16 [INFO] PostgreSQL forcibly terminated. Split-brain prevented.
+```
+
+2. **Sağlam Kalan Düğümlerin Durumu:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml list postgres-ha
+```
+```text
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | stopped |  1 |   unknown |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+```
+
+* **Fencing ve Split-Brain Analizi:**
+  * etcd çoğunluk kuralı (Quorum: 2/3) gereği, tek başına kalan `pg-node-1` asla liderlik kilidini tazeleyemez.
+  * Patroni, liderlik kilidini kaybettiği milisaniyede PostgreSQL'e `SIGQUIT` (`-m immediate`) göndererek veritabanını acil modda kapatır.
+  * Böylece kümede aynı anda iki liderin oluşması (**Split-Brain**) matematiksel olarak engellenir.
+
+---
+
+### Senaryo 05: Çöken Eski Liderin `pg_rewind` ile Kümeye Yeniden Katılması
+
+**Tetikleyici Olay:** Senaryo 3 veya 4'te çöken eski lider `pg-node-1` donanımı onarıldıktan sonra yeniden başlatıldı. Ancak yerel diskinde eski Timeline 1 kayıtları varken, küme Timeline 2 üzerinde ilerlemiştir (Ayrışmış / Diverged Düğüm).
+
+1. **Patroni'nin Otomatik `pg_rewind` Kurtarma Logları:**
+```bash
+$ journalctl -u patroni -n 25 --no-pager
+```
+```text
+2025-09-30 15:10:02 [INFO] Local timeline 1 diverged from cluster timeline 2 at LSN 0/184549384
+2025-09-30 15:10:02 [INFO] Running pg_rewind from target pg-node-2 (192.168.10.12)...
+servers diverged at WAL position 0/184549384 on timeline 1
+rewinding from last common checkpoint at 0/184549300
+fetching changed blocks from primary...
+Done!
+2025-09-30 15:10:05 [INFO] Created standby.signal with primary_conninfo pointing to pg-node-2
+2025-09-30 15:10:06 [INFO] PostgreSQL started as replica tracking pg-node-2 on Timeline 2
+```
+
+2. **Kümeye Katılım Sonrası Güncel Topoloji:**
+```bash
+$ patronictl -c /etc/patroni/patroni.yml list postgres-ha
+```
+```text
++ Cluster: postgres-ha (7349182391029381023) +---------+
+| Member    | Host          | Role    | State   | TL | Lag in MB |
++-----------+---------------+---------+---------+----+-----------+
+| pg-node-1 | 192.168.10.11 | Replica | running |  2 |         0 |
+| pg-node-2 | 192.168.10.12 | Primary | running |  2 |           |
+| pg-node-3 | 192.168.10.13 | Sync    | running |  2 |         0 |
++-----------+---------------+---------+---------+----+-----------+
+```
+
+* **Kurtarma Analizi:**
+  * Yüzlerce gigabaytlık veritabanını ağ üzerinden baştan çekmek (`pg_basebackup`) yerine, `pg_rewind` yalnızca çatallanmadan sonra değişen birkaç megabaytlık bloğu kopyaladı.
+  * Sunucu **4 saniye içinde** Timeline 2 replikası olarak kümeye geri katıldı.
+  * Küme sıfır insan müdahalesiyle 3/3 tam yedeklilik seviyesine geri döndü.
+
+---
+
+## 7. Görsel Yönetim ve İzleme Arayüzleri: Patroni-UI, HAProxy Stats ve Grafana
 
 "Patroni'nin görsel bir kullanıcı arayüzü (UI) var mı?" sorusu sahada sıkça sorulur. Patroni bir arka plan daemon'u olarak çalışır; ancak zengin REST API'si sayesinde ekosistemde çok güçlü görsel arayüzlerle entegre edilir:
 
@@ -193,7 +392,7 @@ Zalando tarafından sağlanan kurumsal Grafana dashboard'u (Dashboard ID: 14247)
 
 ---
 
-## 7. Operasyonel Yönetim: `patronictl` Komut Defteri
+## 8. Operasyonel Yönetim: `patronictl` Komut Defteri
 
 Üretim ortamında bir veritabanı mimarının en çok kullandığı `patronictl` komutları:
 
@@ -219,7 +418,7 @@ patronictl -c /etc/patroni/patroni.yml reload
 
 ---
 
-## 8. Mimari Karar Matrisi: Ne Zaman Patroni Tercih Edilmeli?
+## 9. Mimari Karar Matrisi: Ne Zaman Patroni Tercih Edilmeli?
 
 | İhtiyaç / Kriter | Standart Streaming Replication | Patroni + etcd HA Kümesi |
 | :--- | :--- | :--- |
@@ -237,3 +436,4 @@ patronictl -c /etc/patroni/patroni.yml reload
 ### Ne Zaman Gereksizdir?
 * Geliştirme/test ortamları veya günlük birkaç saatlik kesintinin tolere edilebildiği dahili raporlama araçlarında.
 * AWS RDS Multi-AZ veya Google Cloud SQL gibi bulut sağlayıcısının yerel HA katmanının kullanıldığı senaryolarda.
+

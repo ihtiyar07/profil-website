@@ -106,9 +106,8 @@ const filterTags = coreTopicTags.map(topic => ({
           data-tags={postTagsAttr}
         >
           <div class="space-y-3">
-            <div class="flex items-center justify-between font-mono text-xs text-[var(--text-dim)]">
+            <div class="font-mono text-xs text-[var(--text-dim)]">
               <time datetime={post.data.date}>{post.data.date}</time>
-              <span>{post.data.readingTime}</span>
             </div>
 
             <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">

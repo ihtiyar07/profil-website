@@ -1,52 +1,211 @@
 ---
-interface Props {
+interface TabItem {
+  id: string;
+  label: string;
   code: string;
-  title?: string;
+  ariaLabel?: string;
+  summarySteps?: string[];
 }
 
-const { code, title } = Astro.props;
+interface Props {
+  code?: string;
+  title?: string;
+  tabs?: TabItem[];
+  ariaLabel?: string;
+  summarySteps?: string[];
+}
+
+const { code, title, tabs, ariaLabel, summarySteps } = Astro.props;
 const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+const isTabbed = Array.isArray(tabs) && tabs.length > 0;
 ---
 
-<figure class="mermaid-container relative my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] shadow-xs">
-  <div class="px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[var(--text-dim)] select-none">
-    <span class="flex items-center gap-2 font-medium text-[var(--text)]">
-      <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-      <span>{title || 'Mimari Şema'}</span>
+<figure class="mermaid-container relative my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] shadow-xs" id={uniqueId}>
+  <!-- Top Bar -->
+  <div class="px-3 sm:px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between gap-2 text-xs font-mono text-[var(--text-dim)] select-none">
+    <span class="flex items-center gap-2 font-medium text-[var(--text)] truncate">
+      <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+      <span class="mermaid-container-title truncate">{title || 'Mimari Şema'}</span>
     </span>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1.5 shrink-0">
       <span class="text-[10px] text-[var(--text-dim)] border border-[var(--border)] px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] hidden sm:flex items-center gap-1.5">
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
         <span>Bileşen detayları için tıkla</span>
       </span>
-    </div>
-  </div>
-  
-  <div class="p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[180px] bg-[var(--bg-subtle)]/30">
-    <div class="mermaid-diagram w-full flex justify-center" id={uniqueId} data-code={code}>
-      <div class="mermaid-loading flex items-center justify-center py-10 px-4 text-xs font-mono text-[var(--text-dim)] gap-2">
-        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
-        <span>Mimari diyagram yükleniyor...</span>
-      </div>
+
+      <!-- Fullscreen / Zoom Button -->
+      <button 
+        type="button" 
+        class="mermaid-fullscreen-btn flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-2 py-0.5 rounded-[2px] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer shrink-0"
+        aria-label="Şemayı tam ekran aç"
+        title="Tam ekran aç (ESC ile kapat)"
+      >
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+        <span>Tam Ekran</span>
+      </button>
     </div>
   </div>
 
-  <!-- Interactive Component Details Dialog / Popover -->
-  <div 
-    class="mermaid-node-dialog pointer-events-none opacity-0 fixed z-[120] transition-all duration-200 w-80 max-w-[calc(100vw-2rem)] p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-card)] shadow-xl text-left backdrop-blur-sm"
-    role="dialog"
-    aria-hidden="true"
-  >
-    <div class="flex items-start justify-between gap-2 border-b border-[var(--border)] pb-2 mb-2">
-      <div>
-        <span class="node-dialog-role font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block"></span>
-        <h4 class="node-dialog-title font-serif text-sm font-semibold text-[var(--text)] leading-tight"></h4>
-      </div>
-      <button type="button" class="node-dialog-close text-[var(--text-dim)] hover:text-[var(--text)] p-1 -mr-1 -mt-1 cursor-pointer transition-colors text-xs font-mono" aria-label="Kapat">✕</button>
+  <!-- Tabs Header (if tabbed) -->
+  {isTabbed && (
+    <div 
+      role="tablist" 
+      aria-label="Mimari Şema Sekmeleri" 
+      class="mermaid-tablist flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--bg)]/60 overflow-x-auto scrollbar-none text-xs font-mono select-none"
+    >
+      {tabs.map((tab, idx) => (
+        <button
+          type="button"
+          role="tab"
+          id={`${uniqueId}-tab-${tab.id}`}
+          aria-selected={idx === 0 ? "true" : "false"}
+          aria-controls={`${uniqueId}-pane-${tab.id}`}
+          tabindex={idx === 0 ? 0 : -1}
+          data-tab-id={tab.id}
+          class={`mermaid-tab-btn px-3 py-1.5 rounded-[2px] transition-all cursor-pointer border whitespace-nowrap text-xs ${
+            idx === 0
+              ? "bg-[var(--bg-card)] text-[var(--accent)] font-semibold border-[var(--border)] shadow-xs"
+              : "text-[var(--text-dim)] hover:text-[var(--text)] border-transparent hover:bg-[var(--bg-subtle)]"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
-    <p class="node-dialog-desc text-xs text-[var(--text-muted)] leading-relaxed mb-2 font-sans"></p>
-    <div class="node-dialog-detail text-[11px] font-mono text-[var(--text-dim)] bg-[var(--bg-subtle)] p-2 rounded-[2px] border border-[var(--border)] hidden"></div>
+  )}
+
+  <!-- Diagram Content Area -->
+  <div class="mermaid-diagrams-wrap relative p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[220px] bg-[var(--bg-subtle)]/30">
+    {isTabbed ? (
+      tabs.map((tab, idx) => (
+        <div
+          role="tabpanel"
+          id={`${uniqueId}-pane-${tab.id}`}
+          aria-labelledby={`${uniqueId}-tab-${tab.id}`}
+          tabindex={0}
+          class={`mermaid-tabpane w-full ${idx === 0 ? "block" : "hidden"}`}
+        >
+          <div 
+            class="mermaid-diagram w-full flex justify-center" 
+            id={`${uniqueId}-${tab.id}`} 
+            data-code={tab.code}
+            role="img"
+            aria-label={tab.ariaLabel || `${tab.label} Şeması`}
+          >
+            <div class="mermaid-loading flex items-center justify-center py-10 px-4 text-xs font-mono text-[var(--text-dim)] gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
+              <span>Şema yükleniyor...</span>
+            </div>
+          </div>
+        </div>
+      ))
+    ) : (
+      <div 
+        class="mermaid-diagram w-full flex justify-center" 
+        id={uniqueId} 
+        data-code={code}
+        role="img"
+        aria-label={ariaLabel || title || "Mimari Şema"}
+      >
+        <div class="mermaid-loading flex items-center justify-center py-10 px-4 text-xs font-mono text-[var(--text-dim)] gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
+          <span>Mimari şema yükleniyor...</span>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <!-- Fixed Component Details Panel (Underneath the diagram) -->
+  <div class="mermaid-details-panel border-t border-[var(--border)] bg-[var(--bg-card)] p-3.5 sm:p-4 text-left transition-colors">
+    <div class="details-default-view flex items-center justify-between text-xs font-mono text-[var(--text-dim)]">
+      <div class="flex items-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+        <span class="font-medium text-[var(--text)]">Bileşen Detayı:</span>
+        <span class="text-[var(--text-dim)]">Bir bileşene tıklayın</span>
+      </div>
+      <span class="text-[10px] text-[var(--text-dim)] hidden sm:inline">Enter/Tıkla: Detay Göster · ESC: Temizle</span>
+    </div>
+
+    <div class="details-active-view hidden space-y-2">
+      <div class="flex items-start justify-between gap-3 border-b border-[var(--border)] pb-2">
+        <div>
+          <span class="details-role font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block"></span>
+          <h4 class="details-title font-serif text-base font-semibold text-[var(--text)] leading-tight"></h4>
+        </div>
+        <button 
+          type="button" 
+          class="details-reset-btn text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-1.5 py-0.5 rounded-[2px] text-[10px] font-mono cursor-pointer transition-colors bg-[var(--bg-subtle)]"
+          aria-label="Detay panelini sıfırla"
+        >
+          Temizle
+        </button>
+      </div>
+      <p class="details-desc text-xs sm:text-[13px] text-[var(--text-muted)] leading-relaxed font-sans"></p>
+      <div class="details-extra text-[11px] font-mono text-[var(--text-dim)] bg-[var(--bg-subtle)] p-2 rounded-[2px] border border-[var(--border)] hidden"></div>
+    </div>
+  </div>
+
+  <!-- Collapsible Textual Summary (Accessibility details/summary) -->
+  <div class="mermaid-text-summaries border-t border-[var(--border)] bg-[var(--bg-subtle)]/40 text-xs font-mono">
+    {isTabbed ? (
+      tabs.map((tab, idx) => (
+        tab.summarySteps && tab.summarySteps.length > 0 ? (
+          <details 
+            class={`mermaid-text-summary px-4 py-2 text-[var(--text-dim)] ${idx === 0 ? "block" : "hidden"}`} 
+            data-summary-for={tab.id}
+          >
+            <summary class="cursor-pointer hover:text-[var(--text)] transition-colors select-none font-medium flex items-center gap-1.5">
+              <span>Metin olarak oku: {tab.label} adımları</span>
+            </summary>
+            <ol class="mt-2.5 space-y-1.5 list-decimal pl-5 text-[var(--text-muted)] font-sans leading-relaxed text-xs">
+              {tab.summarySteps.map((step) => (
+                <li>{step}</li>
+              ))}
+            </ol>
+          </details>
+        ) : null
+      ))
+    ) : summarySteps && summarySteps.length > 0 ? (
+      <details class="mermaid-text-summary px-4 py-2 text-[var(--text-dim)]">
+        <summary class="cursor-pointer hover:text-[var(--text)] transition-colors select-none font-medium flex items-center gap-1.5">
+          <span>Metin olarak oku (Şema Adımları)</span>
+        </summary>
+        <ol class="mt-2.5 space-y-1.5 list-decimal pl-5 text-[var(--text-muted)] font-sans leading-relaxed text-xs">
+          {summarySteps.map((step) => (
+            <li>{step}</li>
+          ))}
+        </ol>
+      </details>
+    ) : null}
+  </div>
+
+  <!-- Fullscreen Modal Container -->
+  <div 
+    class="mermaid-modal fixed inset-0 z-[200] hidden bg-[var(--bg)]/95 backdrop-blur-md flex flex-col p-4 sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Tam Ekran Mimari Şema"
+  >
+    <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+        <h3 class="font-mono text-sm font-semibold text-[var(--text)] modal-title">{title || 'Mimari Şema (Tam Ekran)'}</h3>
+      </div>
+      <button 
+        type="button" 
+        class="modal-close-btn flex items-center gap-1.5 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-2.5 py-1 rounded-[2px] bg-[var(--bg-subtle)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
+        aria-label="Tam ekranı kapat"
+      >
+        <span>Kapat (ESC)</span>
+        <span aria-hidden="true">✕</span>
+      </button>
+    </div>
+    <div class="flex-1 overflow-auto flex items-center justify-center p-2 modal-content">
+      <!-- Active SVG injected here -->
+    </div>
   </div>
 </figure>
 
@@ -64,21 +223,128 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     display: block;
     margin: 0 auto;
   }
-  .mermaid-diagram svg .node.has-tooltip {
+  .mermaid-diagram svg .node {
     cursor: pointer;
+    transition: stroke 0.15s ease, filter 0.15s ease;
   }
-  .mermaid-diagram svg .node.has-tooltip:hover {
-    filter: brightness(1.05) drop-shadow(0 2px 6px var(--accent-subtle));
+  .mermaid-diagram svg .node:hover rect,
+  .mermaid-diagram svg .node:hover polygon,
+  .mermaid-diagram svg .node:hover circle,
+  .mermaid-diagram svg .node:hover path {
+    stroke: var(--accent) !important;
+    stroke-width: 2px !important;
   }
-  .mermaid-diagram svg .node.active-tooltip rect,
-  .mermaid-diagram svg .node.active-tooltip polygon,
-  .mermaid-diagram svg .node.active-tooltip circle,
-  .mermaid-diagram svg .node.active-tooltip path {
+  .mermaid-diagram svg .node.selected-node rect,
+  .mermaid-diagram svg .node.selected-node polygon,
+  .mermaid-diagram svg .node.selected-node circle,
+  .mermaid-diagram svg .node.selected-node path {
     stroke: var(--accent) !important;
     stroke-width: 2.5px !important;
+    filter: drop-shadow(0 1px 4px var(--accent-subtle));
   }
   .mermaid-diagram svg text {
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 14px !important;
+  }
+
+  /* Light Theme ClassDef Palettes */
+  .mermaid-diagram svg .node.process > rect,
+  .mermaid-diagram svg .node.process > polygon,
+  .mermaid-diagram svg .node.process > circle {
+    fill: #EFF6FF !important;
+    stroke: #2563EB !important;
+    stroke-width: 1.5px !important;
+  }
+  .mermaid-diagram svg .node.process text {
+    fill: #0F172A !important;
+  }
+
+  .mermaid-diagram svg .node.memory > rect,
+  .mermaid-diagram svg .node.memory > polygon,
+  .mermaid-diagram svg .node.memory > circle {
+    fill: #F0FDFA !important;
+    stroke: #0D9488 !important;
+    stroke-width: 1.5px !important;
+  }
+  .mermaid-diagram svg .node.memory text {
+    fill: #042F2E !important;
+  }
+
+  .mermaid-diagram svg .node.storage > rect,
+  .mermaid-diagram svg .node.storage > polygon,
+  .mermaid-diagram svg .node.storage > circle,
+  .mermaid-diagram svg .node.storage > path {
+    fill: #F5F5F4 !important;
+    stroke: #78716C !important;
+    stroke-width: 1.5px !important;
+  }
+  .mermaid-diagram svg .node.storage text {
+    fill: #292524 !important;
+  }
+
+  .mermaid-diagram svg .node.primary > rect,
+  .mermaid-diagram svg .node.primary > polygon,
+  .mermaid-diagram svg .node.primary > circle {
+    stroke: var(--accent) !important;
+    stroke-width: 2.5px !important;
+  }
+
+  .mermaid-diagram svg .node.primaryMem > rect,
+  .mermaid-diagram svg .node.primaryMem > polygon,
+  .mermaid-diagram svg .node.primaryMem > circle {
+    fill: #F0FDFA !important;
+    stroke: var(--accent) !important;
+    stroke-width: 2.5px !important;
+  }
+
+  /* Dark Theme Overrides */
+  html[data-theme="dark"] .mermaid-diagram svg .node.process > rect,
+  html[data-theme="dark"] .mermaid-diagram svg .node.process > polygon,
+  html[data-theme="dark"] .mermaid-diagram svg .node.process > circle {
+    fill: #1E293B !important;
+    stroke: #60A5FA !important;
+    stroke-width: 1.5px !important;
+  }
+  html[data-theme="dark"] .mermaid-diagram svg .node.process text {
+    fill: #F8FAFC !important;
+  }
+
+  html[data-theme="dark"] .mermaid-diagram svg .node.memory > rect,
+  html[data-theme="dark"] .mermaid-diagram svg .node.memory > polygon,
+  html[data-theme="dark"] .mermaid-diagram svg .node.memory > circle {
+    fill: #134E4A !important;
+    stroke: #2DD4BF !important;
+    stroke-width: 1.5px !important;
+  }
+  html[data-theme="dark"] .mermaid-diagram svg .node.memory text {
+    fill: #F0FDFA !important;
+  }
+
+  html[data-theme="dark"] .mermaid-diagram svg .node.storage > rect,
+  html[data-theme="dark"] .mermaid-diagram svg .node.storage > polygon,
+  html[data-theme="dark"] .mermaid-diagram svg .node.storage > circle,
+  html[data-theme="dark"] .mermaid-diagram svg .node.storage > path {
+    fill: #292524 !important;
+    stroke: #A8A29E !important;
+    stroke-width: 1.5px !important;
+  }
+  html[data-theme="dark"] .mermaid-diagram svg .node.storage text {
+    fill: #F5F5F4 !important;
+  }
+
+  html[data-theme="dark"] .mermaid-diagram svg .node.primary > rect,
+  html[data-theme="dark"] .mermaid-diagram svg .node.primary > polygon,
+  html[data-theme="dark"] .mermaid-diagram svg .node.primary > circle {
+    stroke: var(--accent) !important;
+    stroke-width: 2.5px !important;
+  }
+
+  html[data-theme="dark"] .mermaid-diagram svg .node.primaryMem > rect,
+  html[data-theme="dark"] .mermaid-diagram svg .node.primaryMem > polygon,
+  html[data-theme="dark"] .mermaid-diagram svg .node.primaryMem > circle {
+    fill: #134E4A !important;
+    stroke: var(--accent) !important;
+    stroke-width: 2.5px !important;
   }
 </style>
 
@@ -551,98 +817,57 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     return null;
   }
 
-  function setupInteractiveTooltips(figure: HTMLElement) {
-    const dialog = figure.querySelector('.mermaid-node-dialog') as HTMLElement | null;
-    if (!dialog) return;
+  function setupInteractiveDetails(figure: HTMLElement) {
+    const panel = figure.querySelector('.mermaid-details-panel') as HTMLElement | null;
+    if (!panel) return;
 
-    const titleEl = dialog.querySelector('.node-dialog-title') as HTMLElement;
-    const roleEl = dialog.querySelector('.node-dialog-role') as HTMLElement;
-    const descEl = dialog.querySelector('.node-dialog-desc') as HTMLElement;
-    const detailEl = dialog.querySelector('.node-dialog-detail') as HTMLElement;
-    const closeBtn = dialog.querySelector('.node-dialog-close') as HTMLElement;
+    const defaultView = panel.querySelector('.details-default-view') as HTMLElement;
+    const activeView = panel.querySelector('.details-active-view') as HTMLElement;
+    const roleEl = panel.querySelector('.details-role') as HTMLElement;
+    const titleEl = panel.querySelector('.details-title') as HTMLElement;
+    const descEl = panel.querySelector('.details-desc') as HTMLElement;
+    const extraEl = panel.querySelector('.details-extra') as HTMLElement;
+    const resetBtn = panel.querySelector('.details-reset-btn') as HTMLElement;
 
-    let isPinned = false;
-    let activeNode: Element | null = null;
+    let selectedNode: Element | null = null;
 
-    function showDialog(exp: typeof EXPLANATIONS[string], targetRect: DOMRect, pin = false) {
+    function clearSelection() {
+      if (selectedNode) {
+        selectedNode.classList.remove('selected-node');
+        selectedNode.removeAttribute('aria-current');
+        selectedNode = null;
+      }
+      activeView.classList.add('hidden');
+      defaultView.classList.remove('hidden');
+    }
+
+    function selectNode(node: Element, exp: { title: string; role: string; desc: string; detail?: string }) {
+      if (selectedNode) {
+        selectedNode.classList.remove('selected-node');
+        selectedNode.removeAttribute('aria-current');
+      }
+      selectedNode = node;
+      node.classList.add('selected-node');
+      node.setAttribute('aria-current', 'true');
+
+      roleEl.textContent = exp.role || 'BİLEŞEN';
       titleEl.textContent = exp.title;
-      roleEl.textContent = exp.role;
       descEl.textContent = exp.desc;
       if (exp.detail) {
-        detailEl.textContent = exp.detail;
-        detailEl.classList.remove('hidden');
+        extraEl.textContent = exp.detail;
+        extraEl.classList.remove('hidden');
       } else {
-        detailEl.classList.add('hidden');
+        extraEl.classList.add('hidden');
       }
-
-      const isMobile = window.innerWidth < 640;
-
-      if (isMobile) {
-        dialog.style.left = '16px';
-        dialog.style.right = '16px';
-        dialog.style.top = 'auto';
-        dialog.style.bottom = '20px';
-        dialog.style.width = 'auto';
-      } else {
-        const dialogWidth = 320;
-        let left = targetRect.left + targetRect.width / 2 - dialogWidth / 2;
-        if (left < 16) left = 16;
-        if (left + dialogWidth > window.innerWidth - 16) {
-          left = window.innerWidth - dialogWidth - 16;
-        }
-
-        const spaceBelow = window.innerHeight - targetRect.bottom;
-        const spaceAbove = targetRect.top;
-
-        let top = targetRect.bottom + 8;
-        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-          top = Math.max(16, targetRect.top - 240);
-        }
-
-        dialog.style.left = `${left}px`;
-        dialog.style.top = `${top}px`;
-        dialog.style.right = 'auto';
-        dialog.style.bottom = 'auto';
-        dialog.style.width = `${dialogWidth}px`;
-      }
-
-      dialog.classList.remove('opacity-0', 'pointer-events-none');
-      dialog.classList.add('opacity-100', 'pointer-events-auto');
-      isPinned = pin;
+      defaultView.classList.add('hidden');
+      activeView.classList.remove('hidden');
     }
 
-    function hideDialog() {
-      if (isPinned) return;
-      dialog.classList.remove('opacity-100', 'pointer-events-auto');
-      dialog.classList.add('opacity-0', 'pointer-events-none');
-      if (activeNode) {
-        activeNode.classList.remove('active-tooltip');
-        activeNode = null;
-      }
-    }
-
-    function forceCloseDialog() {
-      isPinned = false;
-      dialog.classList.remove('opacity-100', 'pointer-events-auto');
-      dialog.classList.add('opacity-0', 'pointer-events-none');
-      if (activeNode) {
-        activeNode.classList.remove('active-tooltip');
-        activeNode = null;
-      }
-    }
-
-    closeBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      forceCloseDialog();
-    });
+    resetBtn?.addEventListener('click', clearSelection);
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') forceCloseDialog();
-    });
-
-    document.addEventListener('click', (e) => {
-      if (isPinned && !dialog.contains(e.target as Node) && !activeNode?.contains(e.target as Node)) {
-        forceCloseDialog();
+      if (e.key === 'Escape' && selectedNode) {
+        clearSelection();
       }
     });
 
@@ -652,49 +877,194 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       const exp = findExplanation(node.id, text);
       if (!exp) return;
 
-      node.classList.add('has-tooltip');
-
-      node.addEventListener('mouseenter', () => {
-        if (isPinned) return;
-        if (activeNode) activeNode.classList.remove('active-tooltip');
-        activeNode = node;
-        node.classList.add('active-tooltip');
-        showDialog(exp, node.getBoundingClientRect(), false);
-      });
-
-      node.addEventListener('mouseleave', () => {
-        if (!isPinned) hideDialog();
-      });
+      node.setAttribute('tabindex', '0');
+      node.setAttribute('role', 'button');
+      node.setAttribute('aria-label', `${exp.title} detaylarını göster`);
+      node.classList.add('cursor-pointer');
 
       node.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (isPinned && activeNode === node) {
-          forceCloseDialog();
-          return;
+        if (selectedNode === node) {
+          clearSelection();
+        } else {
+          selectNode(node, exp);
         }
-        if (activeNode) activeNode.classList.remove('active-tooltip');
-        activeNode = node;
-        node.classList.add('active-tooltip');
-        showDialog(exp, node.getBoundingClientRect(), true);
+      });
+
+      node.addEventListener('keydown', (e) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key === 'Enter' || ke.key === ' ') {
+          ke.preventDefault();
+          ke.stopPropagation();
+          if (selectedNode === node) {
+            clearSelection();
+          } else {
+            selectNode(node, exp);
+          }
+        }
       });
     });
   }
 
+  function setupTabs(figure: HTMLElement) {
+    const tabList = figure.querySelector('.mermaid-tablist') as HTMLElement | null;
+    if (!tabList) return;
+
+    const tabs = Array.from(figure.querySelectorAll('.mermaid-tab-btn')) as HTMLButtonElement[];
+    const panes = Array.from(figure.querySelectorAll('.mermaid-tabpane')) as HTMLElement[];
+    const summaries = Array.from(figure.querySelectorAll('.mermaid-text-summary')) as HTMLElement[];
+
+    function switchTab(newTab: HTMLButtonElement, shouldFocus = true) {
+      const tabId = newTab.getAttribute('data-tab-id');
+      if (!tabId) return;
+
+      tabs.forEach((tab) => {
+        const isSelected = tab === newTab;
+        tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        tab.tabIndex = isSelected ? 0 : -1;
+        if (isSelected) {
+          tab.className = 'mermaid-tab-btn px-3 py-1.5 rounded-[2px] transition-all cursor-pointer border whitespace-nowrap text-xs bg-[var(--bg-card)] text-[var(--accent)] font-semibold border-[var(--border)] shadow-xs';
+        } else {
+          tab.className = 'mermaid-tab-btn px-3 py-1.5 rounded-[2px] transition-all cursor-pointer border whitespace-nowrap text-xs text-[var(--text-dim)] hover:text-[var(--text)] border-transparent hover:bg-[var(--bg-subtle)]';
+        }
+      });
+
+      panes.forEach((pane) => {
+        const match = pane.id.endsWith(`-pane-${tabId}`);
+        if (match) {
+          pane.classList.remove('hidden');
+          pane.classList.add('block');
+        } else {
+          pane.classList.add('hidden');
+          pane.classList.remove('block');
+        }
+      });
+
+      summaries.forEach((sum) => {
+        const match = sum.getAttribute('data-summary-for') === tabId;
+        if (match) {
+          sum.classList.remove('hidden');
+          sum.classList.add('block');
+        } else {
+          sum.classList.add('hidden');
+          sum.classList.remove('block');
+        }
+      });
+
+      // Clear details panel selection on tab switch
+      const panel = figure.querySelector('.mermaid-details-panel') as HTMLElement | null;
+      if (panel) {
+        const defaultView = panel.querySelector('.details-default-view') as HTMLElement;
+        const activeView = panel.querySelector('.details-active-view') as HTMLElement;
+        defaultView?.classList.remove('hidden');
+        activeView?.classList.add('hidden');
+        figure.querySelectorAll('.selected-node').forEach(el => el.classList.remove('selected-node'));
+      }
+
+      if (shouldFocus) {
+        newTab.focus();
+      }
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => switchTab(tab, false));
+
+      tab.addEventListener('keydown', (e) => {
+        let targetIndex = index;
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          targetIndex = (index + 1) % tabs.length;
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          targetIndex = (index - 1 + tabs.length) % tabs.length;
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          targetIndex = 0;
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          targetIndex = tabs.length - 1;
+        }
+        if (targetIndex !== index) {
+          switchTab(tabs[targetIndex], true);
+        }
+      });
+    });
+  }
+
+  function setupFullscreenModal(figure: HTMLElement) {
+    const btn = figure.querySelector('.mermaid-fullscreen-btn') as HTMLButtonElement | null;
+    const modal = figure.querySelector('.mermaid-modal') as HTMLElement | null;
+    if (!btn || !modal) return;
+
+    const closeBtn = modal.querySelector('.modal-close-btn') as HTMLButtonElement | null;
+    const modalContent = modal.querySelector('.modal-content') as HTMLElement | null;
+    const modalTitle = modal.querySelector('.modal-title') as HTMLElement | null;
+
+    function openModal() {
+      const activePane = figure.querySelector('.mermaid-tabpane:not(.hidden)') || figure.querySelector('.mermaid-diagrams-wrap');
+      const svg = activePane?.querySelector('svg');
+      if (!svg || !modalContent) return;
+
+      modalContent.innerHTML = '';
+      const clonedSvg = svg.cloneNode(true) as SVGElement;
+      clonedSvg.style.maxWidth = '100%';
+      clonedSvg.style.maxHeight = '82vh';
+      clonedSvg.style.width = 'auto';
+      clonedSvg.style.height = 'auto';
+      clonedSvg.style.margin = 'auto';
+      modalContent.appendChild(clonedSvg);
+
+      const activeTab = figure.querySelector('.mermaid-tab-btn[aria-selected="true"]');
+      if (activeTab && modalTitle) {
+        modalTitle.textContent = `${activeTab.textContent?.trim()} (Tam Ekran Görünüm)`;
+      }
+
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      closeBtn?.focus();
+    }
+
+    function closeModal() {
+      modal?.classList.add('hidden');
+      document.body.style.overflow = '';
+      if (modalContent) modalContent.innerHTML = '';
+      btn.focus();
+    }
+
+    btn.addEventListener('click', openModal);
+    closeBtn?.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || (e.target as HTMLElement).classList.contains('modal-content')) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+  }
+
   function renderAllMermaid() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     
     mermaid.initialize({
       startOnLoad: false,
-      theme: isDark ? 'dark' : 'neutral',
+      theme: 'base',
       fontFamily: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif",
       securityLevel: 'loose',
       themeVariables: isDark ? {
-        primaryColor: '#161B24',
+        darkMode: true,
+        background: '#11141B',
+        primaryColor: '#1E293B',
         primaryTextColor: '#F8FAFC',
-        primaryBorderColor: '#475569',
+        primaryBorderColor: '#60A5FA',
         lineColor: '#94A3B8',
-        secondaryColor: '#11141B',
-        tertiaryColor: '#161B24',
+        secondaryColor: '#134E4A',
+        tertiaryColor: '#292524',
         mainBkg: '#161B24',
         nodeBorder: '#475569',
         clusterBkg: '#0D1017',
@@ -702,14 +1072,16 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
         edgeLabelBackground: '#161B24',
         fontSize: '14px'
       } : {
-        primaryColor: '#FFFFFF',
-        primaryTextColor: '#0B1220',
-        primaryBorderColor: '#64748B',
-        lineColor: '#334155',
-        secondaryColor: '#FFFFFF',
-        tertiaryColor: '#F8FAFC',
+        darkMode: false,
+        background: '#FFFFFF',
+        primaryColor: '#EFF6FF',
+        primaryTextColor: '#0F172A',
+        primaryBorderColor: '#2563EB',
+        lineColor: '#475569',
+        secondaryColor: '#F0FDFA',
+        tertiaryColor: '#F5F5F4',
         mainBkg: '#FFFFFF',
-        nodeBorder: '#64748B',
+        nodeBorder: '#CBD5E1',
         clusterBkg: '#F8FAFC',
         clusterBorder: '#CBD5E1',
         edgeLabelBackground: '#FFFFFF',
@@ -729,7 +1101,9 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
 
         const figure = el.closest('.mermaid-container') as HTMLElement;
         if (figure) {
-          setupInteractiveTooltips(figure);
+          setupInteractiveDetails(figure);
+          setupTabs(figure);
+          setupFullscreenModal(figure);
         }
       } catch (err) {
         console.error('Mermaid render error:', err);
@@ -760,4 +1134,12 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     }
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // Also listen for system dark mode changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (!document.documentElement.getAttribute('data-theme')) {
+      document.querySelectorAll('.mermaid-diagram').forEach(el => el.removeAttribute('data-processed'));
+      renderAllMermaid();
+    }
+  });
 </script>

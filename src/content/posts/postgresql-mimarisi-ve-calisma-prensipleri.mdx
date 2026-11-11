@@ -5,7 +5,9 @@ date: "2025-10-25"
 lang: "tr"
 summary: "İstemci bağlantı modelinden Shared Buffers yönetimine, WAL döngüsünden MVCC ve autovacuum mekanizmasına PostgreSQL'in çekirdek mimari ilkeleri."
 tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
----PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
+---
+
+PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
 import Mermaid from '../../components/Mermaid.astro';
 
@@ -13,68 +15,147 @@ Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm
 
 <Mermaid 
   title="PostgreSQL Süreç ve Bellek Mimarisi (Çekirdek Düzeyi)" 
-  code={`
+  tabs={[
+    {
+      id: "connection",
+      label: "Bağlantı Modeli",
+      ariaLabel: "PostgreSQL İstemci Bağlantı ve Süreç Modeli Şeması",
+      code: `
+flowchart LR
+    Client["Client (İstemci)"] -->|TCP: 5432| Postmaster["Postmaster (Ana Süreç)"]
+    Postmaster -->|fork| Backend["Backend Process"]
+    Backend -->|Özel Kullanır| LocalMem["Local Memory"]
+    Backend -->|IPC ile Erişir| SharedMem["Shared Memory"]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+
+    class Client,Postmaster process
+    class Backend primary
+    class LocalMem,SharedMem memory
+`,
+      summarySteps: [
+        "1. İstemci uygulama, TCP 5432 portu üzerinden PostgreSQL sunucusuna bağlanır.",
+        "2. Postmaster ana süreci isteği doğrular ve işletim sisteminin fork() çağrısıyla bağımsız bir Backend Process (postgres) çatallar.",
+        "3. Backend Process, her istemci için yalıtılmış Local Memory (work_mem, temp_buffers) alanını özel olarak kullanır.",
+        "4. Backend Process, paylaşımlı veri havuzu ve kilit koordinasyonu için IPC üzerinden Shared Memory'ye erişir."
+      ]
+    },
+    {
+      id: "memory",
+      label: "Bellek Yapısı",
+      ariaLabel: "PostgreSQL Local ve Shared Memory Bellek Hiyerarşisi Şeması",
+      code: `
 flowchart TB
-    subgraph Clients ["Connection & Process"]
+    Backend["Backend Process"]
+
+    subgraph LocalMemGroup["Local Memory (Oturuma Özel)"]
         direction LR
-        Client["Client"] -->|TCP: 5432| Postmaster["Postmaster"]
-        Postmaster -->|fork| BackendProc["Backend Process"]
+        WorkMem["work_mem"]
+        MaintMem["maintenance_work_mem"]
+        TempBuf["temp_buffers"]
+        CatCache["Catalog ve Plan Cache"]
     end
 
-    subgraph Memory ["Memory Architecture (RAM)"]
-        direction LR
-
-        subgraph LocalMem ["Local Memory (Backend-Private)"]
-            direction TB
-            WorkMem["work_mem"]
-            MaintMem["maintenance_work_mem"]
-            TempBuf["temp_buffers"]
-            LocalCache["Catalog & Plan Cache"]
+    subgraph SharedMemGroup["Shared Memory (Global ve IPC)"]
+        direction TB
+        subgraph SB["shared_buffers (Veri Tamponu)"]
+            direction LR
+            BufHash["Buffer Mapping Hash Table"] --> DescHead["Buffer Descriptors"]
+            DescHead --> PoolFrames["Buffer Pool (8KB Sayfalar)"]
+            ClockSweep["Clock Sweep"] -.->|Tahliye İbresi| DescHead
         end
-
-        subgraph SharedMem ["Shared Memory (Global / IPC)"]
-            direction TB
-            subgraph SB ["shared_buffers"]
-                direction LR
-                BufHash["Buffer Mapping Hash Table"] --> DescHead["Buffer Descriptors"] --> PoolFrames["Buffer Pool (8KB Frames)"]
-                ClockSweep["Clock Sweep"] -.-> DescHead
-            end
-            subgraph OtherShared ["Other Shared Areas"]
-                direction LR
-                WALBuf["wal_buffers"]
-                ProcArray["Lock & ProcArray"]
-            end
+        subgraph OtherShared["Diğer Ortak Alanlar"]
+            direction LR
+            WALBuf["wal_buffers"]
+            ProcArray["Lock ve ProcArray"]
         end
     end
 
-    subgraph Workers ["Background Workers"]
+    Backend -->|Özel Tahsis| LocalMemGroup
+    Backend ==>|IPC ile Ortak| SharedMemGroup
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef primary fill:#F0FDFA,stroke:#1D4ED8,stroke-width:2.5px,color:#042F2E
+
+    class Backend process
+    class WorkMem,MaintMem,TempBuf,CatCache,BufHash,DescHead,PoolFrames,ClockSweep,WALBuf,ProcArray memory
+    class SB primary
+`,
+      summarySteps: [
+        "1. Backend Process iki ana bellek kümesine bağlanır: Oturuma Özel Yerel Bellek (Local Memory) ve Ortak Bellek (Shared Memory).",
+        "2. Local Memory içinde work_mem (sıralama/hash), maintenance_work_mem (bakım/DDL), temp_buffers (geçici tablolar) ve Catalog/Plan Cache izole çalışır.",
+        "3. Shared Memory'nin kalbi olan shared_buffers; Buffer Mapping Hash Table -> Buffer Descriptors -> Buffer Pool (8KB Sayfalar) katmanlarından oluşur.",
+        "4. Boş tampon kalmadığında Clock Sweep algoritması Buffer Descriptors dizisini dairesel tarayarak sayfa tahliyesi yapar.",
+        "5. wal_buffers ve Lock & ProcArray alanları tüm oturumlar tarafından IPC üzerinden ortaklaşa kullanılır."
+      ]
+    },
+    {
+      id: "write-path",
+      label: "Yazma Yolu",
+      ariaLabel: "PostgreSQL Veri Değişikliği ve Kalıcı Depolama Yazma Döngüsü Şeması",
+      code: `
+flowchart TB
+    subgraph ClientMem["İstemci ve Bellek"]
         direction LR
-        Checkpointer["Checkpointer"]
-        BGWriter["BGWriter"]
+        Backend["Backend Process"]
+        SharedBuffers["shared_buffers"]
+        WALBuffers["wal_buffers"]
+    end
+
+    subgraph BgWorkers["Arka Plan Yazıcıları"]
+        direction LR
         WALWriter["WAL Writer"]
+        BGWriter["BGWriter"]
+        Checkpointer["Checkpointer"]
         Autovacuum["Autovacuum"]
     end
 
-    subgraph Storage ["Storage (Disk)"]
+    subgraph StorageFiles["Kalıcı Depolama (Disk)"]
         direction LR
-        DiskHeap[("Data Files (Heap & Index)")]
-        DiskWAL[("WAL Files (pg_wal)")]
-        DiskTemp[("Temp Files (pgsql_tmp)")]
+        WALFiles[("pg_wal (WAL Dosyaları)")]
+        DataFiles[("Data Files (Heap ve Index)")]
     end
 
-    %% Bağlantılar
-    BackendProc --- LocalMem
-    BackendProc ==>|IPC Shared Access| SharedMem
+    Backend -->|1. Sayfa Değişir - Kirli| SharedBuffers
+    Backend -->|2. WAL Kaydı Yazılır| WALBuffers
 
-    SharedMem ==>|Dirty Page Flush| Checkpointer
-    SharedMem ==>|Proactive Flush| BGWriter
-    WALBuf ==>|Log Flush| WALWriter
+    WALBuffers -->|3. Flush Eder| WALWriter
+    WALWriter -->|Senkron ve Periyodik| WALFiles
 
-    Checkpointer --> DiskHeap
-    BGWriter --> DiskHeap
-    WALWriter --> DiskWAL
-    Autovacuum -.->|Cleanup| SharedMem
-`} />
+    SharedBuffers -->|4. Yavaşça Yazar| BGWriter
+    BGWriter -->|Proaktif Flush| DataFiles
+
+    SharedBuffers -->|5. Toplu Flush| Checkpointer
+    Checkpointer -->|Checkpoint Anında| DataFiles
+
+    Autovacuum -.->|6. Ölü Satır Temizliği| DataFiles
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef primaryMem fill:#F0FDFA,stroke:#1D4ED8,stroke-width:2.5px,color:#042F2E
+
+    class Backend,BGWriter,Autovacuum process
+    class Checkpointer,WALWriter primary
+    class SharedBuffers primaryMem
+    class WALBuffers memory
+    class WALFiles,DataFiles storage
+`,
+      summarySteps: [
+        "1. Backend Process, hedef veri sayfasını shared_buffers içinde günceller (sayfa kirli / dirty duruma geçer).",
+        "2. Yapılan değişikliğin WAL kaydı eşzamanlı olarak wal_buffers tamponuna yazılır.",
+        "3. WAL Writer süreci, wal_buffers içeriğini diske (pg_wal dosyaları) senkron veya periyodik olarak flush eder.",
+        "4. BGWriter süreci, dirty sayfaları shared_buffers'tan yavaşça ve proaktif olarak Data Files'a yazar.",
+        "5. Checkpointer süreci, checkpoint anında kalan tüm dirty sayfaları toplu olarak Data Files'a yazar ve kurtarma başlangıç noktasını ilerletir.",
+        "6. Autovacuum süreci, ölü satırları (dead tuples) Data Files üzerinden temizler ve boş alanları tekrar kullanıma açar."
+      ]
+    }
+  ]}
+/>
 
 ## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?
 

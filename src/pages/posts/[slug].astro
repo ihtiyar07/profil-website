@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getPostSlug } from '../../data/slugUtils';
+import { SITE_META } from '../../data/siteMeta';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -18,9 +19,18 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 
 const allPosts = await getCollection('posts');
-const otherPosts = allPosts
-  .filter((p) => getPostSlug(p) !== Astro.params.slug)
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+const sortedPosts = allPosts
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+
+const currentSlug = getPostSlug(entry);
+const currentIndex = sortedPosts.findIndex((p) => getPostSlug(p) === currentSlug);
+
+// Prev and Next posts in chronological/catalog reading order:
+const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
+const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
+
+const otherPosts = sortedPosts
+  .filter((p) => getPostSlug(p) !== currentSlug)
   .slice(0, 3);
 
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
@@ -98,22 +108,60 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         <Content />
       </div>
 
-      <!-- Footer Back Link & Feedback -->
-      <div class="pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between sm:items-center gap-4 font-mono text-xs">
-        <a
-          href="/#articles"
-          class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-        >
-          <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-          <span>Yazılara Dön</span>
-        </a>
-        <a
-          href="mailto:ahmetihtiyar1453@gmail.com"
-          class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1"
-        >
-          <span>Yazı Hakkında Geri Bildirim Ver</span>
-          <span aria-hidden="true">↗</span>
-        </a>
+      <!-- Article Bottom Navigation & Feedback -->
+      <div class="pt-8 border-t border-[var(--border)] space-y-5">
+        <!-- Top bar: Back link + Subtle feedback link -->
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 font-mono text-xs text-[var(--text-dim)]">
+          <a
+            href="/#articles"
+            class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
+            aria-label="Tüm yazılara dön"
+          >
+            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+            <span>Tüm Yazılar ve Notlar</span>
+          </a>
+
+          <a
+            href={`mailto:${SITE_META.email}?subject=${encodeURIComponent(`Geri Bildirim: ${entry.data.title}`)}`}
+            class="hover:text-[var(--text)] hover:underline inline-flex items-center gap-1 transition-colors"
+          >
+            <span>Yazı hakkında geri bildirim veya katkı ilet</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <!-- Next / Prev Article Navigation Cards -->
+        <nav aria-label="Yazı gezintisi" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          {prevPost ? (
+            <a
+              href={`/posts/${getPostSlug(prevPost)}`}
+              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2"
+            >
+              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center gap-1.5 transition-colors">
+                <span aria-hidden="true">←</span> Önceki Yazı
+              </span>
+              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
+                {prevPost.data.title}
+              </span>
+            </a>
+          ) : (
+            <div class="hidden sm:block"></div>
+          )}
+
+          {nextPost && (
+            <a
+              href={`/posts/${getPostSlug(nextPost)}`}
+              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2 text-right sm:col-start-2"
+            >
+              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center justify-end gap-1.5 transition-colors">
+                Sonraki Yazı <span aria-hidden="true">→</span>
+              </span>
+              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
+                {nextPost.data.title}
+              </span>
+            </a>
+          )}
+        </nav>
       </div>
     </article>
 

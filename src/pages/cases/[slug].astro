@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCaseSlug } from '../../data/slugUtils';
+import { SITE_META } from '../../data/siteMeta';
 
 export async function getStaticPaths() {
   const cases = await getCollection('cases');
@@ -18,7 +19,14 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 
 const allCases = await getCollection('cases');
-const otherCases = allCases.filter((c) => getCaseSlug(c) !== Astro.params.slug);
+const sortedCases = allCases.sort((a, b) => a.data.fileNumber.localeCompare(b.data.fileNumber));
+const currentSlug = getCaseSlug(entry);
+const currentIndex = sortedCases.findIndex((c) => getCaseSlug(c) === currentSlug);
+
+const prevCase = currentIndex > 0 ? sortedCases[currentIndex - 1] : null;
+const nextCase = currentIndex < sortedCases.length - 1 ? sortedCases[currentIndex + 1] : null;
+
+const otherCases = sortedCases.filter((c) => getCaseSlug(c) !== currentSlug);
 
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
@@ -95,22 +103,60 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         <Content />
       </div>
 
-      <!-- Footer Back Link & Discussion -->
-      <div class="pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between sm:items-center gap-4 font-mono text-xs">
-        <a
-          href="/"
-          class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-        >
-          <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-          <span>Ana Sayfaya Dön</span>
-        </a>
-        <a
-          href="mailto:ahmetihtiyar1453@gmail.com"
-          class="text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1"
-        >
-          <span>Mimariyi Tartışmak İçin E-posta Gönder</span>
-          <span aria-hidden="true">↗</span>
-        </a>
+      <!-- Case Study Bottom Navigation & Discussion -->
+      <div class="pt-8 border-t border-[var(--border)] space-y-5">
+        <!-- Top bar: Back link + Subtle feedback link -->
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 font-mono text-xs text-[var(--text-dim)]">
+          <a
+            href="/"
+            class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
+            aria-label="Ana sayfaya dön"
+          >
+            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+            <span>Ana Sayfaya Dön</span>
+          </a>
+
+          <a
+            href={`mailto:${SITE_META.email}?subject=${encodeURIComponent(`Vaka İncelemesi: ${entry.data.title}`)}`}
+            class="hover:text-[var(--text)] hover:underline inline-flex items-center gap-1 transition-colors"
+          >
+            <span>Mimariyi tartışmak için e-posta gönder</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <!-- Next / Prev Case Navigation Cards -->
+        <nav aria-label="Vaka gezintisi" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          {prevCase ? (
+            <a
+              href={`/cases/${getCaseSlug(prevCase)}`}
+              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2"
+            >
+              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center gap-1.5 transition-colors">
+                <span aria-hidden="true">←</span> Önceki Vaka ({prevCase.data.fileNumber})
+              </span>
+              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
+                {prevCase.data.title}
+              </span>
+            </a>
+          ) : (
+            <div class="hidden sm:block"></div>
+          )}
+
+          {nextCase && (
+            <a
+              href={`/cases/${getCaseSlug(nextCase)}`}
+              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2 text-right sm:col-start-2"
+            >
+              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center justify-end gap-1.5 transition-colors">
+                Sonraki Vaka ({nextCase.data.fileNumber}) <span aria-hidden="true">→</span>
+              </span>
+              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
+                {nextCase.data.title}
+              </span>
+            </a>
+          )}
+        </nav>
       </div>
     </article>
 

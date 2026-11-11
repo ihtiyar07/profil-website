@@ -7,6 +7,5 @@ export const SITE_META = {
   bioShort: "Öğrendiklerimi, sahada karşılaştığım problemleri ve veritabanı altyapıları üzerine edindiğim deneyimleri adım adım aktardığım kişisel teknik rehber.",
   email: "ahmetihtiyar1453@gmail.com",
   github: "https://github.com/ihtiyar07",
-  linkedin: "https://linkedin.com/in/ahmet-ihtiyar",
-  fontsNote: "Tipografi: Newsreader, IBM Plex Sans, JetBrains Mono. Barındırma: Kişisel Proxmox VE / Caddy."
+  linkedin: "https://linkedin.com/in/ahmet-ihtiyar"
 };

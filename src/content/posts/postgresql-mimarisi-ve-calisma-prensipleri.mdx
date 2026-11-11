@@ -14,26 +14,29 @@ Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm
 <Mermaid 
   title="PostgreSQL Süreç ve Bellek Mimarisi" 
   code={`
-flowchart TD
-    Client["İstemci Uygulamaları"] -->|TCP Bağlantısı| Postmaster["Postmaster (Ana Süreç)"]
-    Postmaster -->|fork| BP1["Backend Process 1"]
-    Postmaster -->|fork| BP2["Backend Process 2"]
-    
-    BP1 -->|IPC / Bellek Eşleme| SharedMem
-    BP2 -->|IPC / Bellek Eşleme| SharedMem
-
-    subgraph SharedMem ["PAYLAŞILAN BELLEK (Shared Memory)"]
+flowchart LR
+    subgraph ClientSect ["1. İstemci & Süreçler"]
         direction TB
-        SB["shared_buffers (Veri Sayfaları)"]
-        WB["wal_buffers (WAL Günlükleri)"]
+        Client["İstemci Uygulamaları"] -->|TCP :5432| Postmaster["Postmaster (Ana Süreç)"]
+        Postmaster -->|fork| BP["Backend Süreçleri (postgres)"]
+    end
+
+    subgraph SharedMem ["2. PAYLAŞILAN BELLEK (Shared Memory)"]
+        direction TB
+        SB["shared_buffers<br/>(8KB Veri Sayfaları)"]
+        WB["wal_buffers<br/>(WAL Günlükleri)"]
         Locks["Kilit Tabloları & ProcArray"]
     end
 
-    SharedMem --> Checkpointer["Checkpointer / BGWriter"]
-    SharedMem --> WALWriter["WAL Writer"]
+    subgraph StorageSect ["3. Yazıcılar & Kalıcı Disk"]
+        direction TB
+        CP["Checkpointer / BGWriter"] -->|8KB Sayfa| HeapDisk[("Fiziksel Disk: Heap")]
+        WW["WAL Writer"] -->|16MB Segment| WALDisk[("Fiziksel Disk: pg_wal")]
+    end
 
-    Checkpointer -->|8KB Veri Sayfaları| HeapDisk[("Fiziksel Disk: Heap")]
-    WALWriter -->|16MB Segmentler| WALDisk[("Fiziksel Disk: pg_wal")]
+    BP -->|IPC / Bellek Eşleme| SharedMem
+    SharedMem --> CP
+    SharedMem --> WW
 `} />
 
 ## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?

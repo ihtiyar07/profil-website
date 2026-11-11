@@ -8,25 +8,397 @@ const { code, title } = Astro.props;
 const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
 ---
 
-<figure class="mermaid-container my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] overflow-hidden shadow-xs">
+<figure class="mermaid-container relative my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] shadow-xs">
   {title && (
-    <div class="px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between text-xs font-mono text-[var(--text-dim)]">
+    <div class="px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[var(--text-dim)]">
       <span class="flex items-center gap-2 font-medium text-[var(--text)]">
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
         <span>{title}</span>
       </span>
-      <span class="text-[10px] uppercase tracking-wider text-[var(--text-dim)]">Mimari Şema</span>
+      <span class="text-[10px] text-[var(--text-dim)] border border-[var(--border)] px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] animate-pulse" aria-hidden="true"></span>
+        <span>Bileşen detayları için tıkla / üzerine gel</span>
+      </span>
     </div>
   )}
-  <div class="p-4 sm:p-6 overflow-x-auto flex justify-center items-center min-h-[140px] bg-[var(--bg)]/50">
+  
+  <div class="p-4 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[140px] bg-[var(--bg)]/40">
     <div class="mermaid-diagram opacity-0 transition-opacity duration-300 w-full flex justify-center" id={uniqueId} data-code={code}>
       <pre class="font-mono text-xs text-[var(--text-muted)] p-2 overflow-x-auto">{code.trim()}</pre>
     </div>
   </div>
+
+  <!-- Interactive Component Details Dialog / Popover -->
+  <div 
+    class="mermaid-node-dialog pointer-events-none opacity-0 fixed z-50 transition-all duration-200 w-80 max-w-[calc(100vw-2rem)] p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-card)] shadow-xl text-left backdrop-blur-sm"
+    role="dialog"
+    aria-hidden="true"
+  >
+    <div class="flex items-start justify-between gap-2 border-b border-[var(--border)] pb-2 mb-2">
+      <div>
+        <span class="node-dialog-role font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block"></span>
+        <h4 class="node-dialog-title font-serif text-sm font-semibold text-[var(--text)] leading-tight"></h4>
+      </div>
+      <button type="button" class="node-dialog-close text-[var(--text-dim)] hover:text-[var(--text)] p-1 -mr-1 -mt-1 cursor-pointer transition-colors text-xs font-mono" aria-label="Kapat">✕</button>
+    </div>
+    <p class="node-dialog-desc text-xs text-[var(--text-muted)] leading-relaxed mb-2 font-sans"></p>
+    <div class="node-dialog-detail text-[11px] font-mono text-[var(--text-dim)] bg-[var(--bg-subtle)] p-2 rounded-[2px] border border-[var(--border)] hidden"></div>
+  </div>
 </figure>
+
+<style is:global>
+  .mermaid-diagram svg .node.has-tooltip {
+    cursor: pointer;
+  }
+  .mermaid-diagram svg .node.has-tooltip:hover {
+    filter: brightness(1.05) drop-shadow(0 2px 6px rgba(232, 89, 12, 0.2));
+  }
+  .mermaid-diagram svg .node.active-tooltip rect,
+  .mermaid-diagram svg .node.active-tooltip polygon,
+  .mermaid-diagram svg .node.active-tooltip circle,
+  .mermaid-diagram svg .node.active-tooltip path {
+    stroke: var(--accent) !important;
+    stroke-width: 2px !important;
+  }
+</style>
 
 <script>
   import mermaid from 'mermaid';
+
+  const EXPLANATIONS: Record<string, { title: string; role: string; desc: string; detail?: string }> = {
+    // PostgreSQL
+    'postmaster': {
+      title: 'Postmaster (Ana Süreç)',
+      role: 'PostgreSQL Çekirdek Süreci',
+      desc: 'PostgreSQL servisinin ana yöneticisidir (PID 1). 5432 portunu dinler, gelen yeni TCP bağlantılarını karşılar, kimlik doğrulamasını yapar ve her oturum için işletim sisteminde bağımsız bir Backend Process çatallar (fork).',
+      detail: 'Kritik Parametre: max_connections. Gereksiz OS süreç yükünü önlemek için önünde PgBouncer önerilir.'
+    },
+    'client': {
+      title: 'İstemci Uygulamaları',
+      role: 'Ağ İstemcisi',
+      desc: 'Veritabanına TCP/IP soketi üzerinden bağlanan web uygulamaları, ORM servisleri, mikroservisler veya psql CLI oturumları.',
+      detail: 'Her istemci PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
+    },
+    'istemci': {
+      title: 'İstemci Uygulamaları',
+      role: 'Ağ İstemcisi',
+      desc: 'Veritabanına TCP/IP soketi üzerinden bağlanan web uygulamaları, ORM servisleri, mikroservisler veya psql CLI oturumları.',
+      detail: 'Her istemci PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
+    },
+    'backend process': {
+      title: 'Backend Process (postgres)',
+      role: 'Oturum Süreci (Dedicated Process)',
+      desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
+      detail: 'Her backend kendi yerel belleğini (work_mem) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+    },
+    'backend': {
+      title: 'Backend Process (postgres)',
+      role: 'Oturum Süreci (Dedicated Process)',
+      desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
+      detail: 'Her backend kendi yerel belleğini (work_mem) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+    },
+    'shared_buffers': {
+      title: 'shared_buffers',
+      role: 'Paylaşılan Veri Havuzu (RAM)',
+      desc: 'Tablolardan ve indekslerden diskten okunan 8KB boyutundaki veri sayfalarının tüm backend\'ler tarafından ortak paylaşıldığı ana bellek önbelleğidir.',
+      detail: 'Boyutlandırma: Sunucu RAM\'inin %25\'i. Kalan RAM işletim sistemi disk tamponuna (OS Page Cache) bırakılır.'
+    },
+    'wal_buffers': {
+      title: 'wal_buffers',
+      role: 'İşlem Günlüğü Tamponu (RAM)',
+      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske yazılmadan önce geçici olarak tutulduğu dairesel bellek alanıdır.',
+      detail: 'Boyut: Genellikle 16MB–64MB. COMMIT anında WAL Writer veya backend tarafından diske senkronize edilir.'
+    },
+    'procarray': {
+      title: 'Kilit Tabloları & ProcArray',
+      role: 'Eşzamanlılık & MVCC Koordinasyonu',
+      desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
+      detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
+    },
+    'kilit': {
+      title: 'Kilit Tabloları & ProcArray',
+      role: 'Eşzamanlılık & MVCC Koordinasyonu',
+      desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
+      detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
+    },
+    'checkpointer': {
+      title: 'Checkpointer / BGWriter',
+      role: 'Arka Plan Disk Yazıcısı',
+      desc: 'shared_buffers içerisindeki kirli (değiştirilmiş) 8KB veri sayfalarını belirli aralıklarla diske kalıcı olarak yazar ve kontrol noktası (checkpoint) oluşturur.',
+      detail: 'Kaza anında kurtarma süresini (MTTR) sınırlar. checkpoint_timeout ve max_wal_size ile yönetilir.'
+    },
+    'wal writer': {
+      title: 'WAL Writer',
+      role: 'İşlem Günlüğü Yazıcısı',
+      desc: 'wal_buffers tamponunda biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sıralı (sequential) olarak yazar.',
+      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını sıfırlamak için fsync ile diske basar.'
+    },
+    'heap': {
+      title: 'Fiziksel Disk: Heap',
+      role: 'Kalıcı Veri Depolaması',
+      desc: 'Tabloların ve indekslerin 8KB\'lık bloklar halinde saklandığı kalıcı dosyalardır ($PGDATA/base dizini).',
+      detail: 'Rastgele (random) I/O karakteristiğine sahiptir; NVMe SSD ve optimize edilmiş RAID havuzları gerektirir.'
+    },
+    'pg_wal': {
+      title: 'Fiziksel Disk: pg_wal',
+      role: 'Kalıcı WAL Segmentleri',
+      desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
+      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+    },
+
+    // Oracle
+    'buffer cache': {
+      title: 'Database Buffer Cache',
+      role: 'Oracle SGA Belleği',
+      desc: 'Veri dosyalarından okunan veri bloklarının (genelde 8KB) tutulduğu ve tüm sunucu süreçlerinin paylaştığı ana önbellektir.',
+      detail: 'LRU (Least Recently Used) algoritması ile yönetilir; DBWn kirli blokları buradan diske yazar.'
+    },
+    'shared pool': {
+      title: 'Shared Pool',
+      role: 'Oracle SGA Belleği',
+      desc: 'Parse edilmiş SQL ifadelerini, yürütme planlarını (Library Cache) ve veri sözlüğü (Data Dictionary Cache) bilgilerini saklar.',
+      detail: 'Hard parse maliyetini önler; bind variable kullanımı buradaki planların yeniden kullanılmasını sağlar.'
+    },
+    'redo log buffer': {
+      title: 'Redo Log Buffer',
+      role: 'Oracle SGA Belleği',
+      desc: 'Veritabanında yapılan tüm DML ve DDL değişikliklerinin disk öncesi tutulduğu dairesel bellek tamponudur.',
+      detail: 'LGWR süreci COMMIT anında bu tamponu diske Online Redo Log dosyalarına boşaltır.'
+    },
+    'dbwn': {
+      title: 'DBWn (Database Writer)',
+      role: 'Oracle Arka Plan Süreci',
+      desc: 'Buffer Cache\'teki kirli (dirty) blokları diskteki Datafile (*.dbf) dosyalarına topluca ve asenkron yazar.',
+      detail: 'COMMIT anında diske yazmak zorunda değildir; bu sayede I/O darboğazı oluşmasını engeller.'
+    },
+    'lgwr': {
+      title: 'LGWR (Log Writer)',
+      role: 'Oracle Arka Plan Süreci',
+      desc: 'Redo Log Buffer içeriğini diskteki Online Redo Log (*.rdo) dosyalarına yazar.',
+      detail: 'Sistemin en kritik sürecidir; COMMIT işlemi LGWR diske yazana kadar tamamlanmaz.'
+    },
+    'ckpt': {
+      title: 'CKPT (Checkpoint)',
+      role: 'Oracle Arka Plan Süreci',
+      desc: 'Belirli aralıklarla DBWn\'e kirli blokları yazdırır ve veri dosyalarının başlıklarına checkpoint bilgisini (SCN) işler.',
+      detail: 'Kurtarma süresini (MTTR) sınırlar.'
+    },
+    'smon': {
+      title: 'SMON / PMON',
+      role: 'Oracle Kurtarma & İzleme Süreçleri',
+      desc: 'SMON kaza sonrası açılışta instance recovery yürütür; PMON ise çöken istemci oturumlarının kaynaklarını ve kilitlerini temizler.',
+      detail: 'Sistem kararlılığı için vazgeçilmez iki temel süreçtir.'
+    },
+    'datafiles': {
+      title: 'Datafiles (*.dbf)',
+      role: 'Oracle Kalıcı Veri Dosyaları',
+      desc: 'Tablolar, indeksler ve sistem katalog verilerinin 8KB bloklar halinde saklandığı fiziksel dosyalardır.',
+      detail: 'Tablespace yapıları bu dosyalar üzerine kurulur.'
+    },
+    'online redo': {
+      title: 'Online Redo Logs (*.rdo)',
+      role: 'Oracle İşlem Günlükleri',
+      desc: 'Tüm veritabanı değişikliklerinin acil kurtarma için dairesel olarak yazıldığı log dosyalarıdır.',
+      detail: 'En az 3 grup halinde aynalanmış (multiplexed) olarak tutulması önerilir.'
+    },
+    'control files': {
+      title: 'Control Files (*.ctl)',
+      role: 'Oracle Veritabanı Üstverisi',
+      desc: 'Veritabanının fiziksel yapısını, datafile konumlarını ve güncel SCN (System Change Number) değerini tutan ikili dosyalardır.',
+      detail: 'Bozulması durumunda veritabanı mount edilemez; mutlaka çoklu disklerde aynalanmalıdır.'
+    },
+
+    // Patroni & etcd
+    'patroni': {
+      title: 'Patroni Daemon',
+      role: 'HA & Konsensüs Yöneticisi',
+      desc: 'PostgreSQL düğümünü yerel olarak denetleyen, etcd ile konuşarak liderlik kilidini (leader lease) tutan servistir.',
+      detail: 'REST API (Port 8008) üzerinden sağlık durumunu HAProxy\'e raporlar; Primary düğüm 200, Standby 503 döner.'
+    },
+    'etcd': {
+      title: 'etcd Kümesi (DCS)',
+      role: 'Dağıtık Konsensüs Deposu',
+      desc: 'Raft algoritmasıyla çalışan, küme topolojisini ve lider kilit anahtarını (leader lock) tutan güvenilir dağıtık depodur.',
+      detail: 'Split-brain durumunu imkansız kılar; lider düğüm her TTL periyodunda (ör. 10s) lease yenilemek zorundadır.'
+    },
+    'haproxy': {
+      title: 'HAProxy / Keepalived',
+      role: 'Trafik Yönlendirici & Yük Dengeleyici',
+      desc: 'İstemcilerin port 5000 (yazma) ve port 5001 (okuma) isteklerini doğru PostgreSQL düğümüne şeffaf yönlendirir.',
+      detail: 'Patroni\'nin 8008 sağlık portunu yoklayarak kesintisiz failover yönlendirmesi sağlar.'
+    },
+
+    // PostgREST
+    'postgrest': {
+      title: 'PostgREST (Haskell Daemon)',
+      role: 'Anında REST API Motoru',
+      desc: 'PostgreSQL şemasını okuyarak RESTful HTTP API uç noktalarına dönüştüren, durumsuz (stateless) ve ultra hafif servistir.',
+      detail: 'İstekleri C düzeyinde JSON üreten tekil SQL ifadelerine derler; sıfır ORM gecikmesi sağlar.'
+    },
+
+    // ZFS
+    'recordsize': {
+      title: 'ZFS recordsize',
+      role: 'Blok Boyutu Ayarı',
+      desc: 'ZFS dosya sisteminin dosya bloklarını bölme boyutudur. Varsayılan 128KB, veritabanı için 8KB olarak ayarlanmalıdır.',
+      detail: '8KB ayarlanmazsa her 8KB güncelleme için 128KB yazılır; 16 kat yazma şişmesi (write amplification) oluşur.'
+    },
+    'arc': {
+      title: 'ZFS ARC (Adaptive Replacement Cache)',
+      role: 'Dosya Sistemi RAM Önbelleği',
+      desc: 'ZFS\'in en sık ve en son kullanılan disk bloklarını bellekte tuttuğu gelişmiş RAM önbelleğidir.',
+      detail: 'Veritabanı sunucularında arc_max parametresiyle sınırlandırılmalıdır; aksi halde PostgreSQL shared_buffers ile çatışır.'
+    },
+
+    // Apache Arrow
+    'arrow': {
+      title: 'Apache Arrow RecordBatch',
+      role: 'Sütunsal İkili Veri Formatı',
+      desc: 'Verileri bellekte sütun bazlı (columnar) ve CPU SIMD işlemlerine hazır ikili diziler halinde tutan açık kaynak standarttır.',
+      detail: 'JSON serileştirme yükünü ortadan kaldırır; ArrayBuffer üzerinden doğrudan WebGL Canvas belleğine sıfır kopyalama eşlenir.'
+    }
+  };
+
+  function findExplanation(nodeId: string, nodeText: string) {
+    const cleanId = nodeId.toLowerCase();
+    const cleanText = nodeText.toLowerCase();
+
+    for (const [key, value] of Object.entries(EXPLANATIONS)) {
+      if (cleanId.includes(key) || cleanText.includes(key)) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  function setupInteractiveTooltips(figure: HTMLElement) {
+    const dialog = figure.querySelector('.mermaid-node-dialog') as HTMLElement | null;
+    if (!dialog) return;
+
+    const titleEl = dialog.querySelector('.node-dialog-title') as HTMLElement;
+    const roleEl = dialog.querySelector('.node-dialog-role') as HTMLElement;
+    const descEl = dialog.querySelector('.node-dialog-desc') as HTMLElement;
+    const detailEl = dialog.querySelector('.node-dialog-detail') as HTMLElement;
+    const closeBtn = dialog.querySelector('.node-dialog-close') as HTMLElement;
+
+    let isPinned = false;
+    let activeNode: Element | null = null;
+
+    function showDialog(exp: typeof EXPLANATIONS[string], targetRect: DOMRect, pin = false) {
+      titleEl.textContent = exp.title;
+      roleEl.textContent = exp.role;
+      descEl.textContent = exp.desc;
+      if (exp.detail) {
+        detailEl.textContent = exp.detail;
+        detailEl.classList.remove('hidden');
+      } else {
+        detailEl.classList.add('hidden');
+      }
+
+      const isMobile = window.innerWidth < 640;
+
+      if (isMobile) {
+        dialog.style.left = '16px';
+        dialog.style.right = '16px';
+        dialog.style.top = 'auto';
+        dialog.style.bottom = '20px';
+        dialog.style.width = 'auto';
+      } else {
+        const dialogWidth = 320;
+        let left = targetRect.left + targetRect.width / 2 - dialogWidth / 2;
+        if (left < 16) left = 16;
+        if (left + dialogWidth > window.innerWidth - 16) {
+          left = window.innerWidth - dialogWidth - 16;
+        }
+
+        const spaceBelow = window.innerHeight - targetRect.bottom;
+        const spaceAbove = targetRect.top;
+
+        let top = targetRect.bottom + 8;
+        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+          top = Math.max(16, targetRect.top - 240);
+        }
+
+        dialog.style.left = `${left}px`;
+        dialog.style.top = `${top}px`;
+        dialog.style.right = 'auto';
+        dialog.style.bottom = 'auto';
+        dialog.style.width = `${dialogWidth}px`;
+      }
+
+      dialog.classList.remove('opacity-0', 'pointer-events-none');
+      dialog.classList.add('opacity-100', 'pointer-events-auto');
+      isPinned = pin;
+    }
+
+    function hideDialog() {
+      if (isPinned) return;
+      dialog.classList.remove('opacity-100', 'pointer-events-auto');
+      dialog.classList.add('opacity-0', 'pointer-events-none');
+      if (activeNode) {
+        activeNode.classList.remove('active-tooltip');
+        activeNode = null;
+      }
+    }
+
+    function forceCloseDialog() {
+      isPinned = false;
+      dialog.classList.remove('opacity-100', 'pointer-events-auto');
+      dialog.classList.add('opacity-0', 'pointer-events-none');
+      if (activeNode) {
+        activeNode.classList.remove('active-tooltip');
+        activeNode = null;
+      }
+    }
+
+    closeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      forceCloseDialog();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') forceCloseDialog();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (isPinned && !dialog.contains(e.target as Node) && !activeNode?.contains(e.target as Node)) {
+        forceCloseDialog();
+      }
+    });
+
+    const nodes = figure.querySelectorAll('.mermaid-diagram svg .node');
+    nodes.forEach((node) => {
+      const text = node.textContent || '';
+      const exp = findExplanation(node.id, text);
+      if (!exp) return;
+
+      node.classList.add('has-tooltip');
+
+      node.addEventListener('mouseenter', () => {
+        if (isPinned) return;
+        if (activeNode) activeNode.classList.remove('active-tooltip');
+        activeNode = node;
+        node.classList.add('active-tooltip');
+        showDialog(exp, node.getBoundingClientRect(), false);
+      });
+
+      node.addEventListener('mouseleave', () => {
+        if (!isPinned) hideDialog();
+      });
+
+      node.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isPinned && activeNode === node) {
+          forceCloseDialog();
+          return;
+        }
+        if (activeNode) activeNode.classList.remove('active-tooltip');
+        activeNode = node;
+        node.classList.add('active-tooltip');
+        showDialog(exp, node.getBoundingClientRect(), true);
+      });
+    });
+  }
 
   function renderAllMermaid() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -75,6 +447,11 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
         const { svg } = await mermaid.render(id, code.trim());
         el.innerHTML = svg;
         el.classList.remove('opacity-0');
+
+        const figure = el.closest('.mermaid-container') as HTMLElement;
+        if (figure) {
+          setupInteractiveTooltips(figure);
+        }
       } catch (err) {
         console.error('Mermaid render error:', err);
         el.classList.remove('opacity-0');

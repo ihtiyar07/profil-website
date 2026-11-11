@@ -166,10 +166,22 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
     },
     'localcache': {
-      title: 'Plan & Katalog Önbelleği',
-      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      title: 'Catalog & Plan Cache (syscache / relcache)',
+      role: 'Backend Özel Önbelleği',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
       detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
+    },
+    'catalog': {
+      title: 'Catalog & Plan Cache (syscache / relcache)',
+      role: 'Backend Özel Önbelleği',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+    },
+    'plan cache': {
+      title: 'Catalog & Plan Cache (syscache / relcache)',
+      role: 'Backend Özel Önbelleği',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
     },
     'plan & katalog': {
       title: 'Plan & Katalog Önbelleği',

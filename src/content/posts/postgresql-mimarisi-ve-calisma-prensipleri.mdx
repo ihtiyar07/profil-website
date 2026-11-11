@@ -15,80 +15,65 @@ Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm
   title="PostgreSQL Süreç ve Bellek Mimarisi (Çekirdek Düzeyi)" 
   code={`
 flowchart TB
-    subgraph ClientLayer ["1. İstemci & Bağlantı Katmanı"]
+    subgraph Clients ["Connection & Process"]
         direction LR
-        Client["İstemci Uygulamaları"]
-        Postmaster["Postmaster (Ana Süreç)"]
-        Client -->|TCP: 5432| Postmaster
+        Client["Client"] -->|TCP: 5432| Postmaster["Postmaster"]
+        Postmaster -->|fork| BackendProc["Backend Process"]
     end
 
-    subgraph BackendLayer ["2. Backend Process & Oturuma Özel Yerel Bellek"]
-        direction TB
-        BackendProc["postgres Backend Process"]
-        
-        subgraph LocalMem ["Oturuma Özel Bellek Alanları (Local Memory)"]
-            direction LR
+    subgraph Memory ["Memory Architecture (RAM)"]
+        direction LR
+
+        subgraph LocalMem ["Local Memory (Backend-Private)"]
+            direction TB
             WorkMem["work_mem"]
             MaintMem["maintenance_work_mem"]
             TempBuf["temp_buffers"]
-            LocalCache["Plan & Katalog Önbelleği"]
+            LocalCache["Catalog & Plan Cache"]
         end
 
-        BackendProc --- LocalMem
-    end
-
-    subgraph SharedMemLayer ["3. Paylaşılan Bellek Alanı (Shared Memory)"]
-        direction TB
-
-        subgraph SharedBuffers ["shared_buffers (Tampon Havuzu)"]
-            direction LR
-            BufHash["Buffer Mapping Hash Table"]
-            DescHead["Buffer Descriptors"]
-            PoolFrames["Buffer Pool (8KB Sayfalar)"]
-            ClockSweep["Clock Sweep Algoritması"]
-
-            BufHash -->|Buffer ID| DescHead
-            DescHead -->|Pin & İşaretçi| PoolFrames
-            ClockSweep -.->|Dairesel Tarama| DescHead
-        end
-
-        subgraph SharedOther ["Diğer Paylaşılan Bellek Alanları"]
-            direction LR
-            WALBuf["wal_buffers"]
-            ProcArray["Kilit Havuzu & ProcArray"]
+        subgraph SharedMem ["Shared Memory (Global / IPC)"]
+            direction TB
+            subgraph SB ["shared_buffers"]
+                direction LR
+                BufHash["Buffer Mapping Hash Table"] --> DescHead["Buffer Descriptors"] --> PoolFrames["Buffer Pool (8KB Frames)"]
+                ClockSweep["Clock Sweep"] -.-> DescHead
+            end
+            subgraph OtherShared ["Other Shared Areas"]
+                direction LR
+                WALBuf["wal_buffers"]
+                ProcArray["Lock & ProcArray"]
+            end
         end
     end
 
-    subgraph BGWorkers ["4. Arka Plan Süreçleri (Background Workers)"]
+    subgraph Workers ["Background Workers"]
         direction LR
-        BGWriter["Background Writer (BGWriter)"]
         Checkpointer["Checkpointer"]
+        BGWriter["BGWriter"]
         WALWriter["WAL Writer"]
         Autovacuum["Autovacuum"]
     end
 
-    subgraph StorageLayer ["5. Fiziksel Kalıcı Depolama (Disk)"]
+    subgraph Storage ["Storage (Disk)"]
         direction LR
-        DiskHeap[("Heap & İndeks Dosyaları")]
-        DiskWAL[("WAL Segmentleri")]
-        DiskTemp[("Geçici Disk Dosyaları")]
+        DiskHeap[("Data Files (Heap & Index)")]
+        DiskWAL[("WAL Files (pg_wal)")]
+        DiskTemp[("Temp Files (pgsql_tmp)")]
     end
 
     %% Bağlantılar
-    Postmaster -->|fork per connection| BackendProc
-    BackendProc ==>|IPC / Ortak Bellek Erişimi| SharedBuffers
-    BackendProc -->|Transaction Kayıtları| WALBuf
-    BackendProc -->|Kilit & MVCC Snapshot| ProcArray
-    WorkMem -.->|Spill to Disk| DiskTemp
+    BackendProc --- LocalMem
+    BackendProc ==>|IPC Shared Access| SharedMem
 
-    SharedBuffers ==>|Dirty Page Flush| Checkpointer
-    SharedBuffers ==>|Proaktif Yazma| BGWriter
+    SharedMem ==>|Dirty Page Flush| Checkpointer
+    SharedMem ==>|Proactive Flush| BGWriter
     WALBuf ==>|Log Flush| WALWriter
 
-    Checkpointer -->|8KB Sayfalar| DiskHeap
-    BGWriter -->|8KB Sayfalar| DiskHeap
-    WALWriter -->|16MB WAL| DiskWAL
-    Autovacuum -.->|Bloat Temizliği| SharedBuffers
+    Checkpointer --> DiskHeap
+    BGWriter --> DiskHeap
+    WALWriter --> DiskWAL
+    Autovacuum -.->|Cleanup| SharedMem
 `} />
 
 ## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?

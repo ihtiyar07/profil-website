@@ -2,35 +2,61 @@
 import { SITE_META } from '../data/siteMeta';
 ---
 
-<section class="py-8 sm:py-10 border-b border-[var(--border)]">
-  <div class="max-w-3xl space-y-5">
-    <!-- Main Headline -->
-    <h1 class="text-3xl sm:text-4xl lg:text-[2.65rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
-      Veritabanı mimarisi, depolama motorları ve veri altyapıları.
-    </h1>
+<section class="py-8 sm:py-12 border-b border-[var(--border)]">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 lg:gap-12">
+    <!-- Main Text Content -->
+    <div class="max-w-2xl xl:max-w-3xl space-y-5">
+      <!-- Main Headline -->
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.65rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
+        Veritabanı mimarisi, depolama motorları ve veri altyapıları.
+      </h1>
 
-    <!-- Requested Copy -->
-    <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
-      Gereksinimlere göre en uygun mimariyi keşfetmeye ve uygulamaya çalışıyorum; edindiğim deneyimleri, karşılaştığım problemleri ve öğrendiklerimi de burada paylaşıyorum.
-    </p>
+      <!-- Requested Copy -->
+      <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
+        Gereksinimlere göre en uygun mimariyi keşfetmeye ve uygulamaya çalışıyorum; edindiğim deneyimleri, karşılaştığım problemleri ve öğrendiklerimi de burada paylaşıyorum.
+      </p>
 
-    <!-- Action Links -->
-    <div class="flex flex-wrap items-center gap-3 pt-1">
-      <a
-        href="#articles"
-        class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px] shadow-xs"
-      >
-        <span>Yazıları ve Rehberleri İncele</span>
-        <span aria-hidden="true">↓</span>
-      </a>
+      <!-- Action Links -->
+      <div class="flex flex-wrap items-center gap-3 pt-1">
+        <a
+          href="#articles"
+          class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px] shadow-xs"
+        >
+          <span>Yazıları ve Rehberleri İncele</span>
+          <span aria-hidden="true">↓</span>
+        </a>
 
-      <a
-        href={`mailto:${SITE_META.email}`}
-        class="px-4 py-2.5 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px] tactile-btn"
-      >
-        <span>İletişime Geç</span>
-        <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
-      </a>
+        <a
+          href={`mailto:${SITE_META.email}`}
+          class="px-4 py-2.5 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px] tactile-btn"
+        >
+          <span>İletişime Geç</span>
+          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Editorial Framed Portrait -->
+    <div class="shrink-0 self-start md:self-center">
+      <div class="p-1.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-[2px] shadow-xs hover:border-[var(--text-muted)] transition-colors duration-200">
+        <picture>
+          <source srcset="/profile.webp" type="image/webp" />
+          <img
+            src="/profile.png"
+            alt="Ahmet İhtiyar"
+            width="144"
+            height="172"
+            class="w-32 sm:w-36 lg:w-40 xl:w-44 rounded-[1px] object-cover aspect-[5/6] block"
+            loading="eager"
+          />
+        </picture>
+        <div class="mt-2 text-center pb-0.5">
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-dim)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
+            <span>Ahmet İhtiyar</span>
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </section>

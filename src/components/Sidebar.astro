@@ -112,29 +112,17 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
   <div class="p-5 flex flex-col justify-between min-h-full">
     <!-- Top: Identity & Collapsible Topic Tree -->
     <div class="space-y-6">
-      <!-- Identity & Brand Header -->
-      <a href="/" class="flex items-center gap-3 group focus:outline-none" aria-label="Ahmet İhtiyar — Ana Sayfa">
-        <picture class="shrink-0">
-          <source srcset="/profile.webp" type="image/webp" />
-          <img
-            src="/profile.png"
-            alt="Ahmet İhtiyar"
-            width="40"
-            height="40"
-            class="w-10 h-10 rounded-[2px] object-cover border border-[var(--border)] group-hover:border-[var(--text)] transition-all duration-200"
-          />
-        </picture>
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0"></span>
-            <span class="font-sans text-xs font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors truncate">
-              Ahmet İhtiyar
-            </span>
-          </div>
-          <p class="font-mono text-[11px] text-[var(--text-dim)] truncate">
-            Veritabanı & Depolama
-          </p>
+      <!-- Identity & Brand Header (Clean Typographic Signature) -->
+      <a href="/" class="flex flex-col group focus:outline-none pb-3 border-b border-[var(--border)]/50" aria-label="Ahmet İhtiyar — Ana Sayfa">
+        <div class="flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)] shrink-0" aria-hidden="true"></span>
+          <span class="font-sans text-[13px] font-semibold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+            Ahmet İhtiyar
+          </span>
         </div>
+        <p class="font-mono text-[11px] text-[var(--text-dim)] mt-0.5 pl-3.5">
+          Veritabanı & Depolama
+        </p>
       </a>
 
       <!-- Collapsible Topic Tree Navigation -->

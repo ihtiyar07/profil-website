@@ -1,22 +1,15 @@
 ---
 const systems = [
   {
-    slug: 'metadb',
-    id: '01',
-    title: 'MetaDB: Dağıtık Veri Kataloğu ve Şema Soykütüğü',
-    description: 'Canlı veritabanı tablolarına tam tarama yapmadan yerel katalog istatistiklerini (pg_class, ALL_TABLES) okuyan ve şema soykütüğünü Memgraph üzerinde modelleyen kurumsal metadata servisi.',
-    stack: ['PostgreSQL', 'Oracle DB', 'MSSQL', 'Memgraph', 'Spring Boot', 'Temporal']
-  },
-  {
     slug: 'timescaledb',
-    id: '02',
+    id: '01',
     title: 'TimescaleDB: Zaman Serisi Depolama ve Hypertables',
     description: 'Yüksek hacimli telemetri ve metrik verisi için chunk boyutlandırmanın RAM buffer cache kapasitesine göre ayarlanması, continuous aggregates ve sütunsal sıkıştırma.',
     stack: ['PostgreSQL', 'TimescaleDB', 'Zstd Sıkıştırma', 'Linux']
   },
   {
     slug: 'apache-arrow',
-    id: '03',
+    id: '02',
     title: 'Apache Arrow: Sıfır Kopyalama (Zero-Copy) Veri Akışı',
     description: 'Büyük analitik sorgu sonuçlarının JSON serileştirme darboğazına girmeden doğrudan Arrow RecordBatch IPC akışıyla istemci belleğine eşlenmesi.',
     stack: ['Apache Arrow', '.NET 10', 'TypeScript', 'HTTP/2']

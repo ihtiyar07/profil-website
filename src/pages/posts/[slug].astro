@@ -40,25 +40,43 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   title={`${entry.data.title} — Ahmet İhtiyar`} 
   description={entry.data.summary}
   articleMeta={{ publishDate: entry.data.date, tags: entry.data.tags }}
+  fullWidth={true}
 >
-  <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-start py-4 sm:py-8">
-    <!-- Main Article Body (8 cols on XL, leaving 4 cols for adjacent sticky sidebar) -->
-    <article class="xl:col-span-8 min-w-0 space-y-8">
-      <!-- Header -->
-      <div class="space-y-4 pb-6 border-b border-[var(--border)]">
-        <div class="flex items-center justify-between">
-          <a
-            href="/#articles"
-            class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-            aria-label="Yazılar ve notlar listesine dön"
-          >
-            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-            <span>Yazılara Dön</span>
-          </a>
-          <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]">
-            {entry.data.date}
-          </time>
-        </div>
+  <div class="flex-1 w-full flex flex-col xl:flex-row items-stretch relative min-h-screen">
+    <!-- Main Article Column (Expands to fill available space) -->
+    <div id="article-main-col" class="flex-1 min-w-0 px-6 sm:px-10 lg:px-12 xl:px-14 py-6 sm:py-10 transition-all duration-300">
+      <article class="max-w-[820px] 2xl:max-w-[860px] mx-auto xl:mx-0 space-y-8">
+        <!-- Header -->
+        <div class="space-y-4 pb-6 border-b border-[var(--border)]">
+          <div class="flex items-center justify-between">
+            <a
+              href="/#articles"
+              class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
+              aria-label="Yazılar ve notlar listesine dön"
+            >
+              <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+              <span>Yazılara Dön</span>
+            </a>
+
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                id="toggle-right-panel-btn"
+                class="hidden xl:inline-flex items-center gap-1.5 font-mono text-xs text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-2.5 py-1 rounded-[2px] bg-[var(--bg-subtle)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
+                title="Sağ Paneli Göster veya Gizle"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M15 3v18"/>
+                </svg>
+                <span id="right-panel-btn-label">Paneli Gizle</span>
+              </button>
+
+              <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]">
+                {entry.data.date}
+              </time>
+            </div>
+          </div>
 
         <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]">
           {entry.data.title}
@@ -164,9 +182,29 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </nav>
       </div>
     </article>
+    </div>
 
-    <!-- Sticky Right Sidebar: Adjacent to content with zero artificial gap -->
-    <aside class="hidden xl:block xl:col-span-4 sticky top-6 space-y-5">
+    <!-- Sticky Right Sidebar: Docked flush right with border-l, zero gap on the right, collapsible -->
+    <aside 
+      id="article-right-panel"
+      class="hidden xl:block w-72 2xl:w-80 shrink-0 border-l border-[var(--border)] bg-[var(--bg)] px-5 py-8 space-y-5 self-start sticky top-0 max-h-screen overflow-y-auto transition-all duration-300 select-none"
+    >
+      <!-- Panel Header with Close Button -->
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+        <span>Gezinti & Notlar</span>
+        <button
+          type="button"
+          id="close-right-panel-btn"
+          class="text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] p-1 rounded-[2px] cursor-pointer transition-colors"
+          title="Sağ Paneli Gizle"
+          aria-label="Sağ Paneli Gizle"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
       <!-- TOC Card -->
       {tocHeadings.length > 0 && (
         <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4 rounded-[2px] space-y-3">
@@ -232,9 +270,51 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
     </aside>
   </div>
 
-  <!-- Scrollspy script for Table of Contents -->
+  <!-- Collapsible Right Panel & Scrollspy Script -->
   <script is:inline>
     (function() {
+      // 1. Collapsible Right Panel Logic
+      const rightPanel = document.getElementById('article-right-panel');
+      const togglePanelBtn = document.getElementById('toggle-right-panel-btn');
+      const closePanelBtn = document.getElementById('close-right-panel-btn');
+      const panelBtnLabel = document.getElementById('right-panel-btn-label');
+
+      function setPanelCollapsed(collapsed) {
+        if (!rightPanel) return;
+        if (collapsed) {
+          rightPanel.classList.add('!hidden');
+          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Göster';
+          togglePanelBtn?.classList.add('border-[var(--accent)]', 'text-[var(--accent)]');
+          try { localStorage.setItem('article_panel_collapsed', 'true'); } catch (_) {}
+        } else {
+          rightPanel.classList.remove('!hidden');
+          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Gizle';
+          togglePanelBtn?.classList.remove('border-[var(--accent)]', 'text-[var(--accent)]');
+          try { localStorage.setItem('article_panel_collapsed', 'false'); } catch (_) {}
+        }
+      }
+
+      if (togglePanelBtn) {
+        togglePanelBtn.addEventListener('click', () => {
+          const isCollapsed = rightPanel?.classList.contains('!hidden');
+          setPanelCollapsed(!isCollapsed);
+        });
+      }
+
+      if (closePanelBtn) {
+        closePanelBtn.addEventListener('click', () => {
+          setPanelCollapsed(true);
+        });
+      }
+
+      // Restore user preference
+      try {
+        if (localStorage.getItem('article_panel_collapsed') === 'true') {
+          setPanelCollapsed(true);
+        }
+      } catch (_) {}
+
+      // 2. Scrollspy for Table of Contents
       const tocLinks = document.querySelectorAll('.toc-anchor-link');
       if (!tocLinks.length) return;
 

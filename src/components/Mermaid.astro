@@ -215,33 +215,69 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       title: 'work_mem',
       role: 'Oturuma Özel Sıralama & Hash Belleği (RAM)',
       desc: 'ORDER BY, DISTINCT, HASH JOIN ve MERGE JOIN gibi operasyonlar için ayrılan özel bellektir. Kritik kural: Bağlantı başına değil, sorgu ağacındaki HER BİR OPERATÖR (node) başına dinamik tahsis edilir.',
-      detail: 'Limit aşılırsa sorgu diske geçici dosya yazar (spill-to-disk / external merge sort), bu da I/O darboğazına yol açar.'
+      detail: 'Limit aşılırsa sorgu diske geçici dosya yazar (spill-to-disk / external merge sort), bu da I/O darboğazına yol açar. Varsayılan: 4MB.'
+    },
+    'workmem': {
+      title: 'work_mem',
+      role: 'Oturuma Özel Sıralama & Hash Belleği (RAM)',
+      desc: 'ORDER BY, DISTINCT, HASH JOIN ve MERGE JOIN gibi operasyonlar için ayrılan özel bellektir. Kritik kural: Bağlantı başına değil, sorgu ağacındaki HER BİR OPERATÖR (node) başına dinamik tahsis edilir.',
+      detail: 'Limit aşılırsa sorgu diske geçici dosya yazar (spill-to-disk / external merge sort), bu da I/O darboğazına yol açar. Varsayılan: 4MB.'
     },
     'maintenance_work_mem': {
       title: 'maintenance_work_mem',
       role: 'Bakım ve DDL Belleği (RAM)',
-      desc: 'VACUUM, CREATE INDEX, ALTER TABLE ADD FOREIGN KEY gibi yoğun bakım ve indeks inşa operasyonları tarafından kullanılan ayrık çalışma alanıdır.',
-      detail: 'Oturum başına değil tekil bakım işlemlerinde harcandığından, work_mem\'e kıyasla çok daha yüksek (örn. 1GB–2GB) verilebilir.'
+      desc: 'VACUUM, ANALYZE, CREATE INDEX, REINDEX ve ALTER TABLE ADD FOREIGN KEY gibi yoğun bakım ve indeks inşa operasyonları tarafından kullanılan ayrık çalışma alanıdır.',
+      detail: 'Oturum başına değil tekil bakım işlemlerinde harcandığından, work_mem\'e kıyasla çok daha yüksek (örn. 1GB–2GB) verilebilir. Varsayılan: 64MB.'
+    },
+    'maintmem': {
+      title: 'maintenance_work_mem',
+      role: 'Bakım ve DDL Belleği (RAM)',
+      desc: 'VACUUM, ANALYZE, CREATE INDEX, REINDEX ve ALTER TABLE ADD FOREIGN KEY gibi yoğun bakım ve indeks inşa operasyonları tarafından kullanılan ayrık çalışma alanıdır.',
+      detail: 'Oturum başına değil tekil bakım işlemlerinde harcandığından, work_mem\'e kıyasla çok daha yüksek (örn. 1GB–2GB) verilebilir. Varsayılan: 64MB.'
     },
     'temp_buffers': {
       title: 'temp_buffers',
       role: 'Geçici Tablo Tamponu (RAM)',
       desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık veri sayfalarını tutar.',
-      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır.'
+      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
+    },
+    'tempbuf': {
+      title: 'temp_buffers',
+      role: 'Geçici Tablo Tamponu (RAM)',
+      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık veri sayfalarını tutar.',
+      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
+    },
+    'localcache': {
+      title: 'Plan & Katalog Önbelleği',
+      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
+    },
+    'plan & katalog': {
+      title: 'Plan & Katalog Önbelleği',
+      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
     },
     'local plan': {
-      title: 'Yerel Plan & Katalog Önbelleği',
+      title: 'Plan & Katalog Önbelleği',
       role: 'Backend Özel Önbelleği (syscache / relcache)',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
       detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
     },
     'syscache': {
-      title: 'Yerel Plan & Katalog Önbelleği',
+      title: 'Plan & Katalog Önbelleği',
       role: 'Backend Özel Önbelleği (syscache / relcache)',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
       detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
     },
     'bufhash': {
+      title: 'Buffer Mapping Hash Table',
+      role: 'Paylaşımlı O(1) Adresleme Tablosu',
+      desc: 'shared_buffers içindeki 8KB veri sayfalarını BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
+      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
+    },
+    'buffer mapping': {
       title: 'Buffer Mapping Hash Table',
       role: 'Paylaşımlı O(1) Adresleme Tablosu',
       desc: 'shared_buffers içindeki 8KB veri sayfalarını BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
@@ -253,13 +289,31 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'Her bir 8KB sayfa çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
       detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
     },
+    'buffer descriptors': {
+      title: 'Buffer Descriptors (Başlık Dizisi)',
+      role: 'Tampon Metadata & Durum Yönetimi (Array)',
+      desc: 'Her bir 8KB sayfa çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
+      detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
+    },
     'poolframes': {
       title: 'Buffer Pool (8KB Sayfa Çerçeveleri)',
       role: 'Paylaşılan Veri Havuzu (RAM)',
       desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel bellek slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks sayfaları birebir bu bloklara yerleşir.',
       detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
     },
+    'buffer pool': {
+      title: 'Buffer Pool (8KB Sayfa Çerçeveleri)',
+      role: 'Paylaşılan Veri Havuzu (RAM)',
+      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel bellek slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks sayfaları birebir bu bloklara yerleşir.',
+      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
+    },
     'clocksweep': {
+      title: 'Clock Sweep Algoritması',
+      role: 'Dairesel Sayfa Tahliye Mekanizması',
+      desc: 'Boş tampon kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni sayfa için kurban (victim) seçer.',
+      detail: 'LRU kuyruklarının lock contention sorununu ortadan kaldırarak yüksek eşzamanlılıkta üstün ölçeklenme sunar.'
+    },
+    'clock sweep': {
       title: 'Clock Sweep Algoritması',
       role: 'Dairesel Sayfa Tahliye Mekanizması',
       desc: 'Boş tampon kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni sayfa için kurban (victim) seçer.',
@@ -277,14 +331,20 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske yazılmadan önce geçici olarak tutulduğu dairesel bellek alanıdır.',
       detail: 'Boyut: Genellikle 16MB–64MB. COMMIT anında WAL Writer veya backend tarafından diske senkronize edilir.'
     },
+    'walbuf': {
+      title: 'wal_buffers',
+      role: 'İşlem Günlüğü Tamponu (RAM)',
+      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske yazılmadan önce geçici olarak tutulduğu dairesel bellek alanıdır.',
+      detail: 'Boyut: Genellikle 16MB–64MB. COMMIT anında WAL Writer veya backend tarafından diske senkronize edilir.'
+    },
     'procarray': {
-      title: 'Kilit Tabloları & ProcArray',
+      title: 'Kilit Havuzu & ProcArray',
       role: 'Eşzamanlılık & MVCC Koordinasyonu',
       desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
       detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
     },
     'kilit': {
-      title: 'Kilit Tabloları & ProcArray',
+      title: 'Kilit Havuzu & ProcArray',
       role: 'Eşzamanlılık & MVCC Koordinasyonu',
       desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
       detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
@@ -301,6 +361,12 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'shared_buffers içerisindeki kirli (değiştirilmiş) 8KB veri sayfalarını belirli aralıklarla diske kalıcı olarak yazar ve kontrol noktası (checkpoint) oluşturur.',
       detail: 'Kaza anında kurtarma süresini (MTTR) sınırlar. checkpoint_timeout ve max_wal_size ile yönetilir.'
     },
+    'walwriter': {
+      title: 'WAL Writer',
+      role: 'İşlem Günlüğü Yazıcısı',
+      desc: 'wal_buffers tamponunda biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sıralı (sequential) olarak yazar.',
+      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını sıfırlamak için fsync ile diske basar.'
+    },
     'wal writer': {
       title: 'WAL Writer',
       role: 'İşlem Günlüğü Yazıcısı',
@@ -313,23 +379,41 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'UPDATE ve DELETE işlemlerinin geride bıraktığı ölü satırları (dead tuples) temizler, sayfa boşluklarını yeni satırlara açar ve işlem kimliği devir (TXID wraparound) riskine karşı freeze yapar.',
       detail: 'Tablo bloat\'unu önler, katalog istatistiklerini (ANALYZE) güncel tutarak sorgu planlayıcının (planner) doğru çalışmasını sağlar.'
     },
+    'diskheap': {
+      title: 'Heap & İndeks Dosyaları ($PGDATA/base)',
+      role: 'Kalıcı Veri Depolaması',
+      desc: 'Tabloların ve indekslerin 8KB\'lık bloklar halinde saklandığı kalıcı dosyalardır ($PGDATA/base dizini).',
+      detail: 'Rastgele (random) 8KB I/O karakteristiğine sahiptir; NVMe SSD ve optimize edilmiş dosya sistemleri (ZFS recordsize=8k) gerektirir.'
+    },
+    'heap': {
+      title: 'Heap & İndeks Dosyaları ($PGDATA/base)',
+      role: 'Kalıcı Veri Depolaması',
+      desc: 'Tabloların ve indekslerin 8KB\'lık bloklar halinde saklandığı kalıcı dosyalardır ($PGDATA/base dizini).',
+      detail: 'Rastgele (random) 8KB I/O karakteristiğine sahiptir; NVMe SSD ve optimize edilmiş dosya sistemleri (ZFS recordsize=8k) gerektirir.'
+    },
+    'diskwal': {
+      title: 'WAL Segmentleri ($PGDATA/pg_wal)',
+      role: 'Kalıcı Ön-Yazma Günlükleri',
+      desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
+      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+    },
+    'wal segment': {
+      title: 'WAL Segmentleri ($PGDATA/pg_wal)',
+      role: 'Kalıcı Ön-Yazma Günlükleri',
+      desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
+      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+    },
+    'pg_wal': {
+      title: 'WAL Segmentleri ($PGDATA/pg_wal)',
+      role: 'Kalıcı Ön-Yazma Günlükleri',
+      desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
+      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+    },
     'disktemp': {
-      title: 'Geçici Disk Depolaması (pgsql_tmp)',
+      title: 'Geçici Disk Depolaması ($PGDATA/base/pgsql_tmp)',
       role: 'work_mem Taşma Alanı (Disk Spill)',
       desc: 'Karmaşık sıralama veya hash join operasyonları kendilerine ayrılan work_mem sınırını aştığında, veriler diske geçici dosya olarak yazılır ($PGDATA/base/pgsql_tmp).',
       detail: 'EXPLAIN ANALYZE çıktısında "Sort Method: external merge Disk" görünüyorsa sorgu buraya taşmıştır; work_mem gözden geçirilmelidir.'
-    },
-    'heap': {
-      title: 'Fiziksel Disk: Heap',
-      role: 'Kalıcı Veri Depolaması',
-      desc: 'Tabloların ve indekslerin 8KB\'lık bloklar halinde saklandığı kalıcı dosyalardır ($PGDATA/base dizini).',
-      detail: 'Rastgele (random) I/O karakteristiğine sahiptir; NVMe SSD ve optimize edilmiş RAID havuzları gerektirir.'
-    },
-    'pg_wal': {
-      title: 'Fiziksel Disk: pg_wal',
-      role: 'Kalıcı WAL Segmentleri',
-      desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
-      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
     },
 
     // Oracle
@@ -458,7 +542,9 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
   }
 
   function setupInteractiveTooltips(figure: HTMLElement) {
-    const dialog = figure.querySelector('.mermaid-node-dialog') as HTMLElement | null;
+    const dialog = (figure.querySelector('.mermaid-node-dialog') ||
+      figure.closest('.mermaid-container')?.querySelector('.mermaid-node-dialog') ||
+      document.querySelector('.mermaid-node-dialog')) as HTMLElement | null;
     if (!dialog) return;
 
     const titleEl = dialog.querySelector('.node-dialog-title') as HTMLElement;

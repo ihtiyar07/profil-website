@@ -93,7 +93,7 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
           class="mermaid-zoom-reset px-2.5 py-1 rounded-[2px] border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] text-[var(--text)] transition-colors cursor-pointer text-xs font-mono font-medium"
           title="Ölçeği Sıfırla"
         >
-          <span class="zoom-level-text">%125</span>
+          <span class="zoom-level-text">%100</span>
         </button>
 
         <!-- Zoom In -->
@@ -121,8 +121,8 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     </div>
 
     <!-- Fullscreen SVG Viewport Canvas -->
-    <div class="mermaid-fullscreen-canvas flex-1 w-full overflow-auto flex items-center justify-center p-6 bg-[var(--bg-card)] border-x border-b border-[var(--border)] rounded-b-[3px] relative cursor-grab active:cursor-grabbing">
-      <div class="mermaid-fullscreen-stage transition-transform duration-100 ease-out origin-center flex items-center justify-center min-w-full min-h-full">
+    <div class="mermaid-fullscreen-canvas flex-1 w-full overflow-auto flex items-start justify-center p-4 sm:p-6 bg-[var(--bg-card)] border-x border-b border-[var(--border)] rounded-b-[3px] relative">
+      <div class="mermaid-fullscreen-stage transition-transform duration-100 ease-out origin-top flex items-center justify-center min-w-full my-2">
         <!-- SVG will be injected here -->
       </div>
     </div>
@@ -173,17 +173,83 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'Veritabanına TCP/IP soketi üzerinden bağlanan web uygulamaları, ORM servisleri, mikroservisler veya psql CLI oturumları.',
       detail: 'Her istemci PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
     },
+    'pooler': {
+      title: 'PgBouncer (Bağlantı Havuzlayıcı)',
+      role: 'Yüksek Performanslı Connection Pooler',
+      desc: 'Binlerce istemci bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
+      detail: 'PostgreSQL\'in her bağlantı için OS süreci çatallama (fork) maliyetini ve bellek yükünü ortadan kaldırır.'
+    },
+    'pgbouncer': {
+      title: 'PgBouncer (Bağlantı Havuzlayıcı)',
+      role: 'Yüksek Performanslı Connection Pooler',
+      desc: 'Binlerce istemci bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
+      detail: 'PostgreSQL\'in her bağlantı için OS süreci çatallama (fork) maliyetini ve bellek yükünü ortadan kaldırır.'
+    },
     'backend process': {
       title: 'Backend Process (postgres)',
       role: 'Oturum Süreci (Dedicated Process)',
       desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
-      detail: 'Her backend kendi yerel belleğini (work_mem) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+      detail: 'Her backend kendi yerel belleğini (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
     },
     'backend': {
       title: 'Backend Process (postgres)',
       role: 'Oturum Süreci (Dedicated Process)',
       desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
-      detail: 'Her backend kendi yerel belleğini (work_mem) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+      detail: 'Her backend kendi yerel belleğini (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+    },
+    'work_mem': {
+      title: 'work_mem',
+      role: 'Oturuma Özel Sıralama & Hash Belleği (RAM)',
+      desc: 'ORDER BY, DISTINCT, HASH JOIN ve MERGE JOIN gibi operasyonlar için ayrılan özel bellektir. Kritik kural: Bağlantı başına değil, sorgu ağacındaki HER BİR OPERATÖR (node) başına dinamik tahsis edilir.',
+      detail: 'Limit aşılırsa sorgu diske geçici dosya yazar (spill-to-disk / external merge sort), bu da I/O darboğazına yol açar.'
+    },
+    'maintenance_work_mem': {
+      title: 'maintenance_work_mem',
+      role: 'Bakım ve DDL Belleği (RAM)',
+      desc: 'VACUUM, CREATE INDEX, ALTER TABLE ADD FOREIGN KEY gibi yoğun bakım ve indeks inşa operasyonları tarafından kullanılan ayrık çalışma alanıdır.',
+      detail: 'Oturum başına değil tekil bakım işlemlerinde harcandığından, work_mem\'e kıyasla çok daha yüksek (örn. 1GB–2GB) verilebilir.'
+    },
+    'temp_buffers': {
+      title: 'temp_buffers',
+      role: 'Geçici Tablo Tamponu (RAM)',
+      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık veri sayfalarını tutar.',
+      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır.'
+    },
+    'local plan': {
+      title: 'Yerel Plan & Katalog Önbelleği',
+      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
+    },
+    'syscache': {
+      title: 'Yerel Plan & Katalog Önbelleği',
+      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
+      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+    },
+    'bufhash': {
+      title: 'Buffer Mapping Hash Table',
+      role: 'Paylaşımlı O(1) Adresleme Tablosu',
+      desc: 'shared_buffers içindeki 8KB veri sayfalarını BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
+      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
+    },
+    'deschead': {
+      title: 'Buffer Descriptors (Başlık Dizisi)',
+      role: 'Tampon Metadata & Durum Yönetimi (Array)',
+      desc: 'Her bir 8KB sayfa çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
+      detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
+    },
+    'poolframes': {
+      title: 'Buffer Pool (8KB Sayfa Çerçeveleri)',
+      role: 'Paylaşılan Veri Havuzu (RAM)',
+      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel bellek slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks sayfaları birebir bu bloklara yerleşir.',
+      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
+    },
+    'clocksweep': {
+      title: 'Clock Sweep Algoritması',
+      role: 'Dairesel Sayfa Tahliye Mekanizması',
+      desc: 'Boş tampon kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni sayfa için kurban (victim) seçer.',
+      detail: 'LRU kuyruklarının lock contention sorununu ortadan kaldırarak yüksek eşzamanlılıkta üstün ölçeklenme sunar.'
     },
     'shared_buffers': {
       title: 'shared_buffers',
@@ -209,8 +275,14 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
       detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
     },
+    'bgwriter': {
+      title: 'Background Writer (BGWriter)',
+      role: 'Proaktif Kirli Sayfa Yazıcısı',
+      desc: 'shared_buffers havuzunu sürekli tarar ve kirli sayfaları proaktif olarak diske yazar. Amacı, istemci backend süreçleri yeni veri okurken boş/temiz sayfa bulamayıp disk yazımı beklemek zorunda kalmasını önlemektir.',
+      detail: 'bgwriter_delay, bgwriter_lru_maxpages ve bgwriter_lru_multiplier parametreleriyle optimize edilir.'
+    },
     'checkpointer': {
-      title: 'Checkpointer / BGWriter',
+      title: 'Checkpointer Süreci',
       role: 'Arka Plan Disk Yazıcısı',
       desc: 'shared_buffers içerisindeki kirli (değiştirilmiş) 8KB veri sayfalarını belirli aralıklarla diske kalıcı olarak yazar ve kontrol noktası (checkpoint) oluşturur.',
       detail: 'Kaza anında kurtarma süresini (MTTR) sınırlar. checkpoint_timeout ve max_wal_size ile yönetilir.'
@@ -220,6 +292,18 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       role: 'İşlem Günlüğü Yazıcısı',
       desc: 'wal_buffers tamponunda biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sıralı (sequential) olarak yazar.',
       detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını sıfırlamak için fsync ile diske basar.'
+    },
+    'autovacuum': {
+      title: 'Autovacuum Launcher & Workers',
+      role: 'Ölü Tuple Temizliği & Freeze Bakımı',
+      desc: 'UPDATE ve DELETE işlemlerinin geride bıraktığı ölü satırları (dead tuples) temizler, sayfa boşluklarını yeni satırlara açar ve işlem kimliği devir (TXID wraparound) riskine karşı freeze yapar.',
+      detail: 'Tablo bloat\'unu önler, katalog istatistiklerini (ANALYZE) güncel tutarak sorgu planlayıcının (planner) doğru çalışmasını sağlar.'
+    },
+    'disktemp': {
+      title: 'Geçici Disk Depolaması (pgsql_tmp)',
+      role: 'work_mem Taşma Alanı (Disk Spill)',
+      desc: 'Karmaşık sıralama veya hash join operasyonları kendilerine ayrılan work_mem sınırını aştığında, veriler diske geçici dosya olarak yazılır ($PGDATA/base/pgsql_tmp).',
+      detail: 'EXPLAIN ANALYZE çıktısında "Sort Method: external merge Disk" görünüyorsa sorgu buraya taşmıştır; work_mem gözden geçirilmelidir.'
     },
     'heap': {
       title: 'Fiziksel Disk: Heap',
@@ -501,7 +585,7 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     const stage = modal.querySelector('.mermaid-fullscreen-stage') as HTMLElement;
     const diagramContainer = figure.querySelector('.mermaid-diagram');
 
-    let currentZoom = 1.35;
+    let currentZoom = 1.0;
 
     function applyZoom(z: number) {
       currentZoom = Math.min(3.0, Math.max(0.6, z));
@@ -532,7 +616,7 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       stage.innerHTML = '';
       stage.appendChild(clonedSvg);
 
-      applyZoom(1.35);
+      applyZoom(1.0);
       modal.classList.remove('hidden');
       modal.classList.add('flex');
       document.body.style.overflow = 'hidden';
@@ -548,7 +632,7 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
 
     zoomInBtn?.addEventListener('click', () => applyZoom(currentZoom + 0.25));
     zoomOutBtn?.addEventListener('click', () => applyZoom(currentZoom - 0.25));
-    zoomResetBtn?.addEventListener('click', () => applyZoom(1.35));
+    zoomResetBtn?.addEventListener('click', () => applyZoom(1.0));
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {

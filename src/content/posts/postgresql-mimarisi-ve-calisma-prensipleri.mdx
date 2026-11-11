@@ -12,31 +12,92 @@ import Mermaid from '../../components/Mermaid.astro';
 Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
 <Mermaid 
-  title="PostgreSQL Süreç ve Bellek Mimarisi" 
+  title="PostgreSQL Süreç ve Bellek Mimarisi (Çekirdek Düzeyi)" 
   code={`
-flowchart LR
-    subgraph ClientSect ["1. İstemci & Süreçler"]
-        direction TB
-        Client["İstemci Uygulamaları"] -->|TCP :5432| Postmaster["Postmaster (Ana Süreç)"]
-        Postmaster -->|fork| BP["Backend Süreçleri (postgres)"]
+flowchart TB
+    subgraph ClientLayer ["1. İstemci & Bağlantı Katmanı"]
+        Client["İstemci Uygulamaları<br/>(Web, API, psql CLI)"]
+        Pooler["Bağlantı Havuzlayıcı<br/>(PgBouncer - TCP:6432)"]
+        Postmaster["Postmaster (Ana Süreç - TCP:5432)<br/>Bağlantı Dinleme & Kimlik Doğrulama"]
+        Client -->|İstek| Pooler
+        Pooler -->|Yönetilen TCP| Postmaster
     end
 
-    subgraph SharedMem ["2. PAYLAŞILAN BELLEK (Shared Memory)"]
+    subgraph BackendLayer ["2. Backend Process & Oturuma Özel Yerel Bellek (Local Memory)"]
         direction TB
-        SB["shared_buffers<br/>(8KB Veri Sayfaları)"]
-        WB["wal_buffers<br/>(WAL Günlükleri)"]
-        Locks["Kilit Tabloları & ProcArray"]
+        Postmaster -->|fork per connection| BackendProc["postgres Backend Process<br/>(Dedicated OS Süreci / PID)"]
+        
+        subgraph LocalMem ["Oturuma Özel Bellek Alanları (Local Memory)"]
+            direction LR
+            WorkMem["work_mem<br/>• ORDER BY, DISTINCT<br/>• Hash & Merge Join<br/>(Operatör başına dinamik!)"]
+            MaintMem["maintenance_work_mem<br/>• VACUUM & ANALYZE<br/>• CREATE INDEX & DDL"]
+            TempBuf["temp_buffers<br/>• Geçici Tablo Sayfaları<br/>(İzole 8KB Bloklar)"]
+            LocalCache["Yerel Plan & Katalog Önbelleği<br/>• syscache & relcache<br/>• Hazırlanmış Planlar"]
+        end
+
+        BackendProc --- LocalMem
     end
 
-    subgraph StorageSect ["3. Yazıcılar & Kalıcı Disk"]
+    subgraph SharedMemLayer ["3. Paylaşılan Bellek Alanı (Shared Memory / RAM %25)"]
         direction TB
-        CP["Checkpointer / BGWriter"] -->|8KB Sayfa| HeapDisk[("Fiziksel Disk: Heap")]
-        WW["WAL Writer"] -->|16MB Segment| WALDisk[("Fiziksel Disk: pg_wal")]
+
+        subgraph SharedBuffers ["shared_buffers (Detaylı İç Mimari)"]
+            direction LR
+            BufHash["1. Buffer Mapping Hash Table<br/>• O(1) BufferTag Eşleme<br/>• (relNode, fork, block) → Buffer ID"]
+            
+            subgraph BufDescArr ["2. Buffer Descriptors (Array)"]
+                direction TB
+                DescHead["Buffer Descriptors (Başlık Dizisi)<br/>• tag: RelFileNode + Blok No<br/>• state: Atomic (Dirty/Valid)<br/>• refcount & usage_count (0-5)<br/>• content_lock (LWLock)"]
+            end
+            
+            subgraph BufPoolFrames ["3. Buffer Pool (RAM Frames)"]
+                direction TB
+                PoolFrames["8KB Veri Sayfa Çerçeveleri<br/>[Frame 0] [Frame 1] ... [Frame N]<br/>(Heap & B-Tree Disk Blok Kopyaları)"]
+            end
+
+            ClockSweep["4. Clock Sweep Algoritması<br/>• Freelist & Kurban Tampon Arama<br/>• Pin ve usage_count azaltma ibresi"]
+            
+            BufHash -->|Buffer ID| DescHead
+            DescHead -->|İşaretçi & Pin Kilidi| PoolFrames
+            ClockSweep -.->|Dairesel Tarama| DescHead
+        end
+
+        subgraph SharedOther ["Diğer Paylaşılan Bellek Alanları"]
+            direction LR
+            WALBuf["wal_buffers<br/>(16MB Dairesel Log Tamponu)"]
+            ProcArray["Kilit Havuzu & ProcArray<br/>(Lock Manager, XID Snapshot, MVCC)"]
+        end
     end
 
-    BP -->|IPC / Bellek Eşleme| SharedMem
-    SharedMem --> CP
-    SharedMem --> WW
+    subgraph BGWorkers ["4. Arka Plan Süreçleri (Background Workers)"]
+        direction LR
+        BGWriter["BGWriter<br/>(Proaktif Temiz Sayfa Hazırlar)"]
+        Checkpointer["Checkpointer<br/>(Periyodik Checkpoint Flush)"]
+        WALWriter["WAL Writer<br/>(wal_buffers → Diske fsync)"]
+        Autovacuum["Autovacuum Launcher & Workers<br/>(Ölü Tuple & Freeze Temizliği)"]
+    end
+
+    subgraph StorageLayer ["5. Fiziksel Kalıcı Depolama (NVMe / ZFS)"]
+        direction LR
+        DiskHeap[("Fiziksel Disk: Heap & İndeksler<br/>$PGDATA/base (Rastgele 8KB I/O)")]
+        DiskWAL[("Fiziksel Disk: WAL Segmentleri<br/>$PGDATA/pg_wal (Sıralı 16MB Log)")]
+        DiskTemp[("Geçici Disk Depolaması<br/>$PGDATA/base/pgsql_tmp (Disk Spill)")]
+    end
+
+    %% Bağlantılar
+    BackendProc ==>|IPC / Ortak Bellek Erişimi| SharedBuffers
+    BackendProc -->|Transaction Kayıtları| WALBuf
+    BackendProc -->|Kilit & MVCC Snapshot| ProcArray
+    WorkMem -.->|work_mem yetmezse Disk Spill| DiskTemp
+
+    SharedBuffers ==>|Dirty Page Flush| Checkpointer
+    SharedBuffers ==>|Proaktif Yazma| BGWriter
+    WALBuf ==>|Log Flush| WALWriter
+
+    Checkpointer -->|8KB Sayfalar| DiskHeap
+    BGWriter -->|8KB Sayfalar| DiskHeap
+    WALWriter -->|16MB WAL| DiskWAL
+    Autovacuum -.->|Bloat Temizleme| SharedBuffers
 `} />
 
 ## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?
@@ -49,17 +110,97 @@ PostgreSQL sunucusu ayağa kalktığında **`postmaster`** ana süreci çalış�
 
 ## 2. Bellek Mimarisi: Paylaşılan ve Oturuma Özel Alanlar
 
-PostgreSQL belleği iki ana kategoriye ayrılır:
+PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Paylaşılan Bellek (Shared Memory)** ve **Her istemci sürecine özel tahsis edilen Yerel Bellek (Local Memory)**.
 
-### A. Ortak Bellek (Shared Memory)
-Tüm backend süreçlerinin ortak eriştiği bellek bloklarıdır:
-- **`shared_buffers`:** Diskten okunan 8KB'lık veri sayfalarının tutulduğu ana önbellektir. Tipik bir üretim sunucusunda toplam RAM'in **%25'i** olarak atanması önerilir (kalan kısım işletim sisteminin disk tamponu / page cache için bırakılır).
-- **`wal_buffers`:** Değişiklik kayıtlarının (WAL) diske yazılmadan önce tutulduğu küçük geçici alandır (genellikle 16MB).
+### A. Oturuma Özel Bellek (Local Memory / Backend Private Memory)
 
-### B. Oturuma Özel Bellek (Local Memory)
-Her bir backend sürecinin kendi sorgusu için ayırdığı dinamik alandır:
-- **`work_mem`:** `ORDER BY`, `DISTINCT`, `HASH JOIN` ve `MERGE JOIN` gibi sıralama ve birleştirme işlemleri için kullanılır.
-- **Kritik Hata:** `work_mem` bağlantı başına değil, **sorgu içindeki işlemci (operator) başına** harcanır. Karmaşık bir sorgu 4 sıralama yapıyorsa ve 50 bağlantı varsa, anlık tüketim `4 × 50 × work_mem` seviyesine çıkar. Bu yüzden `work_mem` sunucu genelinde körü körüne 512MB gibi yüksek değerlere çekilmemelidir.
+Her `postgres` backend süreci, kendisine gelen sorguları işlerken ortak bellekten tamamen izole kendi özel bellek alanlarını kullanır. Bu alanlar sorgu bittiğinde işletim sistemine geri verilir:
+
+1. **`work_mem` (Sıralama ve Hash Tabloları):**
+   - `ORDER BY`, `DISTINCT`, `HASH JOIN`, `MERGE JOIN` ve hash aggregation işlemleri için ayrılır.
+   - **Kritik Mimari Kural:** `work_mem` bağlantı başına değil, **sorgu yürütme planındaki HER BİR İŞLEMCİ (node/operator) başına** dinamik olarak harcanır. 
+   - Örneğin; içinde 2 adet hash join ve 1 adet sort bulunan karmaşık bir sorgu, tek bir oturumda `3 × work_mem` kadar RAM tüketebilir. Eğer sunucuda 100 eşzamanlı aktif bağlantı varsa, anlık tüketim `100 × 3 × work_mem` seviyesine fırlar.
+   - **Disk Spill:** Eğer bir operatörün ihtiyaç duyduğu veri `work_mem` sınırını aşarsa, PostgreSQL işlemi bellekten diske taşır (**Spill to Disk**). `$PGDATA/base/pgsql_tmp` dizini altında geçici dosyalar oluşturulur ve harici sıralama (external merge sort) yapılır. `EXPLAIN ANALYZE` çıktısında `"Sort Method: external merge Disk"` ifadesi bu darboğazı belgeler.
+
+2. **`maintenance_work_mem` (Bakım ve DDL Operasyonları):**
+   - `VACUUM`, `ANALYZE`, `CREATE INDEX`, `REINDEX` ve `ALTER TABLE ADD FOREIGN KEY` gibi yoğun I/O ve işlemci gerektiren bakım operasyonları tarafından kullanılır.
+   - Sıradan sorgular tarafından tüketilmediğinden ve genelde aynı anda tek bir bakım işlemi çalıştığından, `work_mem`'e kıyasla çok daha cömert (örn. 1GB–2GB) yapılandırılabilir.
+
+3. **`temp_buffers` (Geçici Tablo Tamponu):**
+   - Oturuma özel `CREATE TEMP TABLE` ile oluşturulan geçici tabloların 8KB'lık sayfalarını tutmak için ayrılır.
+   - Bu sayfalar ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı kilit çekişmesi (lock contention) yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
+
+4. **Yerel Plan & Sistem Kataloğu Önbelleği (syscache & relcache):**
+   - Her backend süreci, sık kullandığı tablo metaverilerini (`relcache`), katalog satırlarını (`syscache`) ve `PREPARE` ile hazırlanmış sorgu planlarını (prepared statement plan cache) kendi yerel belleğinde saklar. Böylece her sorguda katalog tablolarına kilit atıp disk okuması yapmaktan kurtulur.
+
+---
+
+### B. Paylaşılan Bellek (Shared Memory) ve `shared_buffers` İç Mimarisi
+
+Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşzamanlı eriştiği ortak RAM alanıdır. `shared_buffers`, PostgreSQL'in kalbidir ve tek bir monolitik blok değil, birbirine sıkı sıkıya bağlı **4 alt katmandan** oluşur:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   shared_buffers ÇEKİRDEK İÇ MİMARİSİ                  │
+│                                                                        │
+│ 1. Buffer Mapping Hash Table (O(1))                                    │
+│    BufferTag (relNode + forkNum + blockNum) ──► Buffer ID [0..N-1]     │
+│                                                      │                 │
+│ 2. Buffer Descriptors Array                          ▼                 │
+│    ┌──────────────┬────────────────────────┬─────────────────────┐     │
+│    │ Tag Metadata │ 32-bit Atomic State    │ content_lock LWLock │ ... │
+│    │ (Blok No)    │ (Dirty, Refcount, Pin) │ (Eşzamanlı Erişim)  │     │
+│    └──────────────┴────────────────────────┴─────────────────────┘     │
+│                            │                                           │
+│ 3. Buffer Pool Frames      ▼                                           │
+│    ┌─────────────────┬─────────────────┬─────────────────┐             │
+│    │ Frame 0: [ 8KB ]│ Frame 1: [ 8KB ]│ Frame N: [ 8KB ]│             │
+│    └─────────────────┴─────────────────┴─────────────────┘             │
+│                            ▲                                           │
+│ 4. Clock Sweep Algoritması ┘ (Dairesel ibre: Pin=0 & usage_count=0)    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Buffer Mapping Table (Paylaşımlı Hash Tablosu):**
+   - Bir backend, diskteki bir tablonun belirli bir bloğuna ihtiyaç duyduğunda önce bu hash tablosuna bakar.
+   - `BufferTag` yapısı: `(spcNode, dbNode, relNode)` (tablo kimliği), `forkNum` (veri mi, visibility map mi, FSM mi?) ve `blockNum` (8KB blok sırası) bilgilerini içerir.
+   - Bu anahtar $O(1)$ sürede taranarak bloğun hangi tampon slotunda (`Buffer ID`) bulunduğu tespit edilir. Eğer blok buradaysa **Buffer Hit** oluşur ve diske gitmeden nanosecond seviyesinde okunur.
+
+2. **Buffer Descriptors (Başlık Metadata Dizisi):**
+   - Her bir 8KB veri çerçevesine karşılık gelen bir `BufferDesc` başlığı bulunur. Bellekte bitişik bir dizi olarak saklanır.
+   - **32-Bit Atomic State:** Sayfanın durumu atomic bayraklarla yönetilir:
+     - `BM_DIRTY`: Sayfa bellekte değiştirildi mi? (Diske yazılması gerekiyor).
+     - `BM_VALID`: Sayfa geçerli veri içeriyor mu?
+     - `BM_TAG_VALID`: BufferTag geçerli mi?
+     - `BM_IO_IN_PROGRESS`: Sayfa şu an diskten okunuyor mu?
+     - `refcount` (Pin Sayısı): O an kaç backend bu sayfayı aktif olarak okuyor veya yazıyor? `refcount > 0` olan sayfa "pinli" kabul edilir ve bellekten kesinlikle atılamaz.
+     - `usage_count` (0–5 arası sayaç): Sayfaya her erişildiğinde artırılır; sayfanın ne kadar "popüler" olduğunu gösterir.
+   - **`content_lock` (Hafif Kilit / LWLock):** Sayfa verisi okunurken paylaşımlı (`shared`), değiştirilirken ise özel (`exclusive`) modda kilitlenir.
+
+3. **Buffer Pool (8KB Veri Sayfa Çerçeveleri):**
+   - İşletim sisteminden ayrılmış devasa bitişik sanal bellek alanıdır. Tipik üretim sunucularında toplam fiziksel RAM'in **%25'i** buraya tahsis edilir.
+   - Diskten okunan heap tabloları ve B-Tree/GIN indeks sayfaları birebir bu 8KB çerçevelere yüklenir.
+   - Geri kalan RAM (%75), işletim sisteminin disk tamponuna (**OS Page Cache**) bırakılır. PostgreSQL çift tamponlama (double buffering) mantığıyla çalışır: Diskten okunan blok önce OS page cache'e, oradan `shared_buffers` çerçevesine gelir.
+
+4. **Clock Sweep Algoritması (Sayfa Tahliye Mekanizması):**
+   - Yeni bir blok okunacakken havuzda boş tampon kalmamışsa, eski bir sayfanın tahliye edilmesi (eviction / victim selection) gerekir.
+   - PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü devasa eşzamanlı sistemlerde tek bir global LRU kilidi devasa bir çekişme (lock contention) darboğazı yaratır.
+   - Bunun yerine **Lock-Free Clock Sweep** algoritması kullanılır:
+     - Bir saat ibresi (`StrategyControl->nextVictimBuffer`) dairesel olarak `Buffer Descriptors` dizisini tarar.
+     - Eğer taranan slot pinli ise (`refcount > 0`), atlar.
+     - Slot pinli değil ama `usage_count > 0` ise, sayacını 1 azaltır (`usage_count--`) ve bir sonrakine geçer.
+     - Pinli olmayan ve `usage_count == 0` olan ilk slot **kurban tampon (victim buffer)** olarak seçilir.
+     - Eğer seçilen kurban kirli (`BM_DIRTY`) ise, önce diske yazılır, ardından yeni sayfa için tahsis edilir.
+
+5. **`BGWriter` ile `Checkpointer` Süreçlerinin Görev Ayrımı:**
+   - **`Checkpointer`:** Periyodik kontrol noktalarında (`checkpoint_timeout` veya `max_wal_size` dolduğunda) `shared_buffers` içindeki tüm kirli sayfaları topluca diske yazar ve `fsync` eder. Görevi çökme anında kurtarma süresini (MTTR) kısaltmaktır.
+   - **`BGWriter` (Background Writer):** Sürekli olarak `shared_buffers`'ı sessizce tarar ve kirli sayfaları diske önceden basar. Görevi, sorgu çalıştıran backend süreçlerinin yeni sayfa okurken "kirli kurban tamponu diske yazmak için I/O beklemek" zorunda kalmasını engellemektir.
+
+6. **`wal_buffers`:**
+   - Veritabanındaki değişikliklerin (WAL kayıtları) diske yazılmadan önce toplandığı 16MB–64MB dairesel bellek alanıdır. İşlem `COMMIT` ettiğinde `WAL Writer` süreci bu kayıtları diske (`pg_wal`) sıralı (sequential) olarak basar.
+
+7. **Kilit Tabloları & `ProcArray`:**
+   - MVCC görünürlüğünü sağlayan aktif işlem kimlikleri (`XID`), satır/tablo kilitleri (`Lock Manager`) ve snapshot metaverileri bu ortak alanda saklanır. Okuyucuların yazıcıları kilitlememesi bu yapı sayesinde garanti edilir.
 
 ## 3. MVCC ve Sayfa Düzeni: Güncelleme Neden Masraflıdır?
 

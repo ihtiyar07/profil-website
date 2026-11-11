@@ -22,28 +22,43 @@ Birçok ekip işe yerel `Streaming Replication` kurarak başlar: Bir `Primary` s
 
 ## 1. Patroni'nin Temel Mantığı: Dağıtık Konsensüs (etcd & Raft)
 
+import Mermaid from '../../components/Mermaid.astro';
+
 Patroni, PostgreSQL düğümlerinin durumunu izlemek ve liderlik seçimini yönetmek için bir **DCS (Distributed Consensus Store)** kullanır. En yaygın ve kararlı DCS çözümü **etcd**'dir.
 
-```
-       [ İstemci Uygulamaları ]
-                  │
-        (Port 5000: Yazma / Port 5001: Okuma)
-                  ▼
-         [ HAProxy / Keepalived ]
-           │                 │
-    (200 OK)             (503 Service Unavailable)
-           ▼                 ▼
-   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
-   │   pg-node-1   │ │   pg-node-2   │ │   pg-node-3   │
-   │   [PRIMARY]   │ │ [SYNC STANDBY]│ │[ASYNC STANDBY]│
-   │  Patroni 8008 │ │  Patroni 8008 │ │  Patroni 8008 │
-   └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
-           │                 │                 │
-           └─────────┬───────┴─────────┬───────┘
-                     ▼                 ▼
-             [ etcd Kümesi (3 Düğümlü Quorum) ]
-              /service/postgres-ha/leader (TTL: 30s)
-```
+<Mermaid 
+  title="Patroni, PostgreSQL ve etcd Dağıtık Konsensüs Mimarisi" 
+  code={`
+flowchart TD
+    Client["İstemci Uygulamaları"] -->|Port 5000 / 5001| LB["HAProxy / Keepalived"]
+    
+    LB -->|200 OK: Primary| Node1
+    LB -.->|503: Standby| Node2
+    LB -.->|503: Standby| Node3
+
+    subgraph Cluster ["3 Düğümlü Patroni & PostgreSQL Kümesi"]
+        direction LR
+        subgraph Node1 ["pg-node-1"]
+            P1["PostgreSQL (PRIMARY)"]
+            Pat1["Patroni Daemon (8008)"]
+        end
+        subgraph Node2 ["pg-node-2"]
+            P2["PostgreSQL (SYNC STANDBY)"]
+            Pat2["Patroni Daemon (8008)"]
+        end
+        subgraph Node3 ["pg-node-3"]
+            P3["PostgreSQL (ASYNC STANDBY)"]
+            Pat3["Patroni Daemon (8008)"]
+        end
+    end
+
+    P1 ==>|Streaming Replication| P2
+    P1 -.->|Asenkron Replikasyon| P3
+
+    Pat1 <==>|Lider Lease TTL: 30s| ETCD[("etcd Kümesi (3 Düğümlü Quorum)")]
+    Pat2 <==>|Heartbeat / Watch| ETCD
+    Pat3 <==>|Heartbeat / Watch| ETCD
+`} />
 
 Patroni mimarisinde liderlik rastgele bir oylama ile değil, etcd üzerindeki geçici bir anahtarın (lease) sahipliği ile belirlenir:
 

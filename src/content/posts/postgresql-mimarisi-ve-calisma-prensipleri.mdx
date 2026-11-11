@@ -5,40 +5,36 @@ date: "2025-10-25"
 lang: "tr"
 summary: "İstemci bağlantı modelinden Shared Buffers yönetimine, WAL döngüsünden MVCC ve autovacuum mekanizmasına PostgreSQL'in çekirdek mimari ilkeleri."
 tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
----
+---PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
-PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
+import Mermaid from '../../components/Mermaid.astro';
 
 Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
-```
-[İstemci Uygulamaları]
-       │ (TCP Bağlantısı)
-       ▼
- [Postmaster (Ana Süreç)]
-       │ (fork)
- ┌─────┴────────────────────────┐
- ▼                              ▼
-[Backend Process 1]       [Backend Process 2]
- └─────┬────────────────────────┘
-       │ (IPC / Shared Memory)
-       ▼
-┌────────────────────────────────────────────────────────┐
-│                   PAYLAŞILAN BELLEK                   │
-│  ┌─────────────────────────┐  ┌─────────────────────┐  │
-│  │ shared_buffers (Veri)   │  │ wal_buffers (Log)   │  │
-│  └─────────────────────────┘  └─────────────────────┘  │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ Kilit Tabloları & İşlem Durumları (ProcArray)    │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
-       │                              │
-       ▼                              ▼
-[Checkpointer / BGWriter]          [WAL Writer]
-       │                              │
-       ▼ (8KB Sayfa)                  ▼ (16MB Segment)
- [Fiziksel Disk: Heap]          [Fiziksel Disk: pg_wal]
-```
+<Mermaid 
+  title="PostgreSQL Süreç ve Bellek Mimarisi" 
+  code={`
+flowchart TD
+    Client["İstemci Uygulamaları"] -->|TCP Bağlantısı| Postmaster["Postmaster (Ana Süreç)"]
+    Postmaster -->|fork| BP1["Backend Process 1"]
+    Postmaster -->|fork| BP2["Backend Process 2"]
+    
+    BP1 -->|IPC / Bellek Eşleme| SharedMem
+    BP2 -->|IPC / Bellek Eşleme| SharedMem
+
+    subgraph SharedMem ["PAYLAŞILAN BELLEK (Shared Memory)"]
+        direction TB
+        SB["shared_buffers (Veri Sayfaları)"]
+        WB["wal_buffers (WAL Günlükleri)"]
+        Locks["Kilit Tabloları & ProcArray"]
+    end
+
+    SharedMem --> Checkpointer["Checkpointer / BGWriter"]
+    SharedMem --> WALWriter["WAL Writer"]
+
+    Checkpointer -->|8KB Veri Sayfaları| HeapDisk[("Fiziksel Disk: Heap")]
+    WALWriter -->|16MB Segmentler| WALDisk[("Fiziksel Disk: pg_wal")]
+`} />
 
 ## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?
 

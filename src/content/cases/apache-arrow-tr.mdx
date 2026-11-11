@@ -33,17 +33,18 @@ Geleneksel web mimarilerinde veritabanı sorgu sonucu API katmanında JSON forma
 
 ## 3. Mimari ve Sıfır Kopyalama (Zero-Copy) İkili Akış
 
+import Mermaid from '../../components/Mermaid.astro';
+
 Çözüm, veriyi sunucudan istemciye sütunsal (columnar) **Apache Arrow IPC Stream** formatında taşımak oldu:
 
-```
-Veritabanı (TimescaleDB) 
-    ↓ ADO.NET / Npgsql DataReader
-C# .NET Backend (Arrow RecordBatch Builder) 
-    ↓ HTTP/2 Stream (application/vnd.apache.arrow.stream)
-Tarayıcı JavaScript Belleği (ArrayBuffer) 
-    ↓ Zero-Copy View
-Float64Array / WebGL Canvas (<15ms Render)
-```
+<Mermaid 
+  title="Apache Arrow Sıfır Kopyalama (Zero-Copy) Veri Akış Hattı" 
+  code={`
+flowchart TD
+    DB[("Veritabanı: TimescaleDB")] -->|ADO.NET Npgsql DataReader| BE["C# .NET Backend: Arrow RecordBatch Builder"]
+    BE -->|HTTP/2 Stream: application/vnd.apache.arrow.stream| Browser["Tarayıcı JavaScript Belleği: ArrayBuffer"]
+    Browser -->|Zero-Copy Bellek Eşleme| Canvas["Float64Array / WebGL Canvas (< 15ms Kesintisiz 60 FPS)"]
+`} />
 
 ### A. Veritabanından Doğrudan Sütunsal RecordBatch Üretimi
 Backend servisi, veritabanından satır satır nesne oluşturmak yerine PostgreSQL akışını doğrudan ikili sütunsal bellek tamponlarına (contiguous memory buffers) doldurur. Değerler satır satır değil; sütun dizileri (Timestamp Array, Float64 Array) halinde organize edilir.

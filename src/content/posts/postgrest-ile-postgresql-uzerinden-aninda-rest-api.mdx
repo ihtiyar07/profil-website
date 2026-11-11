@@ -29,27 +29,37 @@ Aşağıdaki canlı simülatörde, istemciden gönderilen bir HTTP REST isteğin
 
 PostgREST uygulamanın iş mantığını veya nesne modellerini bilmez; yalnızca PostgreSQL katalog tablolarını (`pg_class`, `pg_attribute`, `pg_constraint`, `pg_proc`) okuyarak veritabanının güncel bir AST (Soyut Sözdizimi Ağacı) haritasını çıkarır.
 
+import Mermaid from '../../components/Mermaid.astro';
+
 İstemciden bir HTTP isteği geldiğinde süreç şu şekilde işler:
 
-```
-[İstemci HTTP İsteği]
-         │
-         ▼
-[PostgREST (Haskell Web Daemon)]
-   • JWT Token doğrulaması (HMAC/RSA)
-   • HTTP URL parametrelerinin AST sözdizimine çözümlenmesi
-         │
-         ▼ (Tekil SQL İfadesi)
-[PostgreSQL Veritabanı Çekirdeği]
-   • SET LOCAL "request.jwt.claims" = '...'
-   • SET LOCAL ROLE web_anon / api_user
-   • Kernel Seviyesinde RLS (Row-Level Security) Filtresi
-   • CTE + LEFT JOIN LATERAL (İlişkili Veriler)
-   • json_agg() ile bellekte tekil JSON string üretimi
-         │
-         ▼ (Doğrudan Soket Akışı)
-[HTTP Yanıtı (JSON)]
-```
+<Mermaid 
+  title="PostgREST ve PostgreSQL İstek Yaşam Döngüsü" 
+  code={`
+flowchart TD
+    Client["İstemci HTTP İsteği (GET / POST)"] -->|JWT Bearer Token| PGR["PostgREST (Haskell Daemon)"]
+    
+    subgraph PGRInternal ["PostgREST Katmanı"]
+        direction TB
+        P1["JWT Doğrulama (HMAC / RSA)"]
+        P2["URL Parametrelerini SQL AST Ağacına Çözümleme"]
+        P1 --> P2
+    end
+    PGR --> PGRInternal
+
+    PGRInternal -->|Tekil Optimize SQL İfadesi| PG["PostgreSQL Çekirdeği"]
+
+    subgraph PGInternal ["PostgreSQL Kernel Katmanı"]
+        direction TB
+        K1["SET LOCAL ROLE & Row-Level Security (RLS) Filtresi"]
+        K2["CTE + LATERAL JOIN (Şema İlişkileri)"]
+        K3["json_agg ile C Düzeyinde Doğrudan JSON Üretimi"]
+        K1 --> K2 --> K3
+    end
+    PG --> PGInternal
+
+    PGInternal -->|Ham JSON Bayt Akışı (Doğrudan Sokete Borulama)| Response["İstemci HTTP Yanıtı (JSON, < 15ms)"]
+`} />
 
 Bu mimarinin en çarpıcı yanı, **PostgREST'in gelen JSON verisini parse etmemesi veya veritabanından dönen satırları nesneye dönüştürmemesidir**. PostgreSQL, `row_to_json()` ve `json_agg()` sayesinde JSON yanıtını doğrudan C düzeyinde oluşturur. PostgREST yalnızca bu baytları HTTP soketine borular (pipe).
 

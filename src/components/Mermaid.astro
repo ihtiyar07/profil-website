@@ -1,0 +1,102 @@
+---
+interface Props {
+  code: string;
+  title?: string;
+}
+
+const { code, title } = Astro.props;
+const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+---
+
+<figure class="mermaid-container my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] overflow-hidden shadow-xs">
+  {title && (
+    <div class="px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between text-xs font-mono text-[var(--text-dim)]">
+      <span class="flex items-center gap-2 font-medium text-[var(--text)]">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+        <span>{title}</span>
+      </span>
+      <span class="text-[10px] uppercase tracking-wider text-[var(--text-dim)]">Mimari Şema</span>
+    </div>
+  )}
+  <div class="p-4 sm:p-6 overflow-x-auto flex justify-center items-center min-h-[140px] bg-[var(--bg)]/50">
+    <div class="mermaid-diagram opacity-0 transition-opacity duration-300 w-full flex justify-center" id={uniqueId} data-code={code}>
+      <pre class="font-mono text-xs text-[var(--text-muted)] p-2 overflow-x-auto">{code.trim()}</pre>
+    </div>
+  </div>
+</figure>
+
+<script>
+  import mermaid from 'mermaid';
+
+  function renderAllMermaid() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+      securityLevel: 'loose',
+      themeVariables: isDark ? {
+        primaryColor: '#1A202C',
+        primaryTextColor: '#E2E8F0',
+        primaryBorderColor: '#3A4250',
+        lineColor: '#94A3B8',
+        secondaryColor: '#141820',
+        tertiaryColor: '#1A202C',
+        mainBkg: '#1A202C',
+        nodeBorder: '#3A4250',
+        clusterBkg: '#141820',
+        clusterBorder: '#3A4250',
+        edgeLabelBackground: '#141820',
+        fontSize: '12px'
+      } : {
+        primaryColor: '#F1F5F9',
+        primaryTextColor: '#0F172A',
+        primaryBorderColor: '#CBD5E1',
+        lineColor: '#64748B',
+        secondaryColor: '#FFFFFF',
+        tertiaryColor: '#F8FAFC',
+        mainBkg: '#FFFFFF',
+        nodeBorder: '#CBD5E1',
+        clusterBkg: '#F8FAFC',
+        clusterBorder: '#CBD5E1',
+        edgeLabelBackground: '#FFFFFF',
+        fontSize: '12px'
+      }
+    });
+
+    const diagrams = document.querySelectorAll('.mermaid-diagram:not([data-processed="true"])');
+    diagrams.forEach(async (el) => {
+      const code = el.getAttribute('data-code');
+      if (!code) return;
+      el.setAttribute('data-processed', 'true');
+      try {
+        const id = 'svg-' + el.id + '-' + Math.random().toString(36).substring(2, 6);
+        const { svg } = await mermaid.render(id, code.trim());
+        el.innerHTML = svg;
+        el.classList.remove('opacity-0');
+      } catch (err) {
+        console.error('Mermaid render error:', err);
+        el.classList.remove('opacity-0');
+      }
+    });
+  }
+
+  // Run on initial load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderAllMermaid);
+  } else {
+    renderAllMermaid();
+  }
+
+  // Re-render when theme changes
+  const themeObserver = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.attributeName === 'data-theme') {
+        document.querySelectorAll('.mermaid-diagram').forEach(el => el.removeAttribute('data-processed'));
+        renderAllMermaid();
+      }
+    }
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>

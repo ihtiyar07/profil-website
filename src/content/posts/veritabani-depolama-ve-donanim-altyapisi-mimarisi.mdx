@@ -9,38 +9,35 @@ tags: ["Altyapı", "ZFS", "Depolama", "Performans"]
 
 Veritabanı mimarisini sorgu ve SQL seviyesinden ayıran en kritik eşik; verinin RAM'den ayrılıp işletim sistemi çekirdeğine, dosya sistemine ve fiziksel NVMe/SSD depolama denetleyicisine ulaştığı son mil çizgisidir.
 
+import Mermaid from '../../components/Mermaid.astro';
+
 Bir veritabanı motoru ne kadar kusursuz indekslenmiş olursa olsun; altındaki depolama düzeni doğru blok boyutlarıyla yapılandırılmamışsa, sistem kaçınılmaz olarak **Write Amplification (Yazma Şişmesi)** ve **Çift Önbellekleme (Double Buffering)** darboğazlarına kurban gider.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│              VERİTABANI KATMANI (PostgreSQL / Oracle)       │
-│                                                             │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │ Buffer Cache / Shared Buffers (8KB Sayfa Boyutu)    │   │
-│   └──────────────────────────┬──────────────────────────┘   │
-└──────────────────────────────┼──────────────────────────────┘
-                               │ fsync / Direct I/O (8KB)
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 DOSYA SİSTEMİ / ZFS KATMANI                 │
-│                                                             │
-│   ┌──────────────────────────┴──────────────────────────┐   │
-│   │ ZFS Recordsize Uyumsuzluğu:                         │   │
-│   │ Varsayılan 128KB Recordsize ──► 8KB için 128KB Yazma│   │
-│   │ Doğru Ayar: recordsize=8K   ──► 8KB için 8KB Yazma  │   │
-│   └──────────────────────────┬──────────────────────────┘   │
-│                              │ CoW & Checksum (Fletcher4)   │
-│                              ▼                              │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │ ZFS ARC (Adaptive Replacement Cache) RAM Sınırı     │   │
-│   └──────────────────────────┬──────────────────────────┘   │
-└──────────────────────────────┼──────────────────────────────┘
-                               │ NVMe PCIe Gen4 / ZIL / SLOG
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 FİZİKSEL BLOK DEPOLAMA (Disk)               │
-└─────────────────────────────────────────────────────────────┘
-```
+<Mermaid 
+  title="Veritabanı, ZFS Dosya Sistemi ve Blok Depolama Hiyerarşisi" 
+  code={`
+flowchart TD
+    subgraph DB ["VERİTABANI KATMANI (PostgreSQL / Oracle)"]
+        direction TB
+        BC["Shared Buffers / Buffer Cache (8KB Sayfa Boyutu)"]
+    end
+
+    BC -->|Direct I/O & fsync: 8KB Bloklar| ZFS
+
+    subgraph ZFS ["DOSYA SİSTEMİ / ZFS KATMANI"]
+        direction TB
+        subgraph Sizing ["ZFS Blok Hizalama & Recordsize"]
+            direction LR
+            Bad["Varsayılan 128KB ➔ 16x Yazma Şişmesi (Kötü)"]
+            Good["recordsize=8K ➔ 1:1 Blok Eşleşmesi (Doğru)"]
+        end
+        CoW["CoW (Copy-on-Write) & Fletcher4 Checksum"]
+        ARC["ZFS ARC (Bellek Tavanı Sınırı: arc_max)"]
+        Sizing --> CoW --> ARC
+    end
+
+    ARC -->|NVMe PCIe Gen4 / ZIL / SLOG| Physical[("FİZİKSEL BLOK DEPOLAMA (NVMe SSD Pool)")]
+`} />
 
 ## 1. Veritabanı Motoru Dosya Sisteminden Ne Bekler?
 

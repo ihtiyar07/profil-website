@@ -9,38 +9,48 @@ tags: ["Oracle", "DBA", "Mimari", "Performans"]
 
 Kurumsal dünyada telekom, bankacılık ve kritik kamu altyapılarında Oracle Database'in yerini korumasının arkasında tesadüf yoktur. Oracle, onlarca yıllık mühendislikle optimize edilmiş çok katmanlı bir bellek hiyerarşisine ve disk I/O yükünü en aza indiren katı bir mimariye sahiptir.
 
+import Mermaid from '../../components/Mermaid.astro';
+
 Oracle mimarisini anlamak, iki temel kavram arasındaki sınır çizgisini kavramakla başlar: **Instance** ve **Database**.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 ORACLE INSTANCE (Geçici / RAM)              │
-│                                                             │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │                 SGA (System Global Area)            │   │
-│   │  ┌───────────────────────┐ ┌──────────────────────┐ │   │
-│   │  │ Database Buffer Cache │ │ Shared Pool (SQL/Plan│ │   │
-│   │  └───────────────────────┘ └──────────────────────┘ │   │
-│   │  ┌───────────────────────┐ ┌──────────────────────┐ │   │
-│   │  │ Redo Log Buffer       │ │ Large / Java Pool    │ │   │
-│   │  └───────────────────────┘ └──────────────────────┘ │   │
-│   └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│   [DBWn]        [LGWR]        [CKPT]        [SMON]    [PMON]│
-└─────┬─────────────┬─────────────┬───────────────────────────┘
-      │             │             │
-══════╪═════════════╪═════════════╪════════════════════════════
-      ▼             ▼             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                ORACLE DATABASE (Kalıcı / DİSK)              │
-│                                                             │
-│  ┌───────────────────────┐   ┌───────────────────────────┐  │
-│  │ Datafiles (*.dbf)     │   │ Online Redo Logs (*.rdo)  │  │
-│  └───────────────────────┘   └───────────────────────────┘  │
-│  ┌───────────────────────┐   ┌───────────────────────────┐  │
-│  │ Control Files (*.ctl) │   │ Archived Redo (*.arc)     │  │
-│  └───────────────────────┘   └───────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+<Mermaid 
+  title="Oracle Instance (RAM) ve Database (Disk) Mimarisi" 
+  code={`
+flowchart TD
+    subgraph Instance ["ORACLE INSTANCE (RAM / Geçici)"]
+        direction TB
+        subgraph SGA ["SGA (System Global Area)"]
+            direction LR
+            DBC["Database Buffer Cache"]
+            SP["Shared Pool (SQL / Plan)"]
+            RLB["Redo Log Buffer"]
+            LJP["Large / Java Pool"]
+        end
+        
+        subgraph BGProc ["Arka Plan Süreçleri"]
+            direction LR
+            DBWn["DBWn (Database Writer)"]
+            LGWR["LGWR (Log Writer)"]
+            CKPT["CKPT (Checkpoint)"]
+            SMON["SMON / PMON"]
+        end
+        
+        SGA --> BGProc
+    end
+
+    subgraph Database ["ORACLE DATABASE (Disk / Kalıcı)"]
+        direction LR
+        DF[("Datafiles (*.dbf)")]
+        ORL[("Online Redo Logs (*.rdo)")]
+        CF[("Control Files (*.ctl)")]
+        ARC[("Archived Redo (*.arc)")]
+    end
+
+    DBWn -->|Kirli Bloklar| DF
+    LGWR -->|Redo Kayıtları| ORL
+    CKPT -->|Kontrol Güncelleme| CF
+    ORL -.->|Arşivleme| ARC
+`} />
 
 ## 1. Temel Ayrım: Instance vs Database
 

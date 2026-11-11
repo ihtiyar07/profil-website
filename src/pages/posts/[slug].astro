@@ -30,12 +30,10 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   title={`${entry.data.title} — Ahmet İhtiyar`} 
   description={entry.data.summary}
   articleMeta={{ publishDate: entry.data.date, tags: entry.data.tags }}
-  fullWidth={true}
 >
-  <div class="flex-1 w-full flex flex-col xl:flex-row items-stretch">
-    <!-- Main Article Column (Expands to fill available space) -->
-    <div class="flex-1 min-w-0 px-6 sm:px-10 lg:px-12 xl:px-14 py-6 sm:py-10">
-      <article class="max-w-[780px] space-y-8">
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-start py-4 sm:py-8">
+    <!-- Main Article Body (8 cols on XL, leaving 4 cols for adjacent sticky sidebar) -->
+    <article class="xl:col-span-8 min-w-0 space-y-8">
       <!-- Header -->
       <div class="space-y-4 pb-6 border-b border-[var(--border)]">
         <div class="flex items-center justify-between">
@@ -118,10 +116,9 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </a>
       </div>
     </article>
-    </div>
 
-    <!-- Sticky Right Sidebar: Docked flush right with border-l, no gap on the right -->
-    <aside class="hidden xl:block w-72 2xl:w-80 shrink-0 border-l border-[var(--border)] bg-[var(--bg)] px-5 py-8 space-y-5 self-start sticky top-0 max-h-screen overflow-y-auto">
+    <!-- Sticky Right Sidebar: Adjacent to content with zero artificial gap -->
+    <aside class="hidden xl:block xl:col-span-4 sticky top-6 space-y-5">
       <!-- TOC Card -->
       {tocHeadings.length > 0 && (
         <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4 rounded-[2px] space-y-3">

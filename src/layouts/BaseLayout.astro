@@ -12,13 +12,15 @@ export interface Props {
     publishDate: string;
     tags: string[];
   };
+  fullWidth?: boolean;
 }
 
 const {
   title = SITE_META.title,
   description = SITE_META.bioShort,
   canonicalPath = '',
-  articleMeta
+  articleMeta,
+  fullWidth = false
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, SITE_META.siteUrl).toString();
@@ -123,7 +125,10 @@ const jsonLd = {
 
       <!-- Main Column: Fills the remaining screen with generous width, eliminating empty space -->
       <div class="flex-1 min-w-0 flex flex-col min-h-screen">
-        <main id="main-content" class="flex-1 w-full px-6 sm:px-10 lg:px-12 xl:px-16 py-6 sm:py-10">
+        <main id="main-content" class:list={[
+          "flex-1 w-full",
+          fullWidth ? "flex flex-col" : "px-6 sm:px-10 lg:px-12 xl:px-16 py-6 sm:py-10"
+        ]}>
           <slot />
         </main>
 

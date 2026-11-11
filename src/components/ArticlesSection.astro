@@ -28,6 +28,13 @@ const filterTags = coreTopicTags.map(topic => ({
   label: topic.label,
   count: tagCounts.get(topic.name) || 0
 }));
+
+function calculateReadingTime(content: string): number {
+  if (!content) return 5;
+  const cleanText = content.replace(/<[^>]*>/g, '').replace(/[#*`_~[\]()]/g, '');
+  const words = cleanText.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
 ---
 
 <section id="articles" class="py-10 sm:py-14 border-b border-[var(--border)] scroll-mt-16">
@@ -50,8 +57,8 @@ const filterTags = coreTopicTags.map(topic => ({
     </div>
   </div>
 
-  <!-- Interactive Tag Filtering Bar -->
-  <div class="mb-6 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Yazı etiket filtreleri">
+  <!-- Interactive Tag Filtering Bar (Horizontal scroll on mobile without wrapping) -->
+  <div class="mb-6 flex items-center gap-2 overflow-x-auto flex-nowrap whitespace-nowrap pb-2 scrollbar-none select-none" role="toolbar" aria-label="Yazı etiket filtreleri">
     <span class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider mr-1 shrink-0">
       Filtre:
     </span>
@@ -60,7 +67,7 @@ const filterTags = coreTopicTags.map(topic => ({
     <button
       type="button"
       data-tag-filter="all"
-      class="article-filter-btn px-2.5 py-1 text-xs font-mono rounded-[2px] transition-all cursor-pointer tactile-btn bg-[var(--text)] text-[var(--bg)] font-medium border border-[var(--text)] is-active"
+      class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--accent)] text-white font-medium border border-[var(--accent)] shadow-2xs is-active shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       aria-pressed="true"
     >
       Tümü ({posts.length})
@@ -71,7 +78,7 @@ const filterTags = coreTopicTags.map(topic => ({
       <button
         type="button"
         data-tag-filter={tag.name}
-        class="article-filter-btn px-2.5 py-1 text-xs font-mono rounded-[2px] transition-all cursor-pointer tactile-btn bg-[var(--bg-subtle)] text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text)]"
+        class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text-dim)] shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         aria-pressed="false"
       >
         #{tag.label} <span class="text-[10px] opacity-75">({tag.count})</span>
@@ -87,48 +94,60 @@ const filterTags = coreTopicTags.map(topic => ({
     <button
       type="button"
       id="reset-filter-btn"
-      class="px-3 py-1.5 text-xs font-mono bg-[var(--text)] text-[var(--bg)] rounded-[2px] transition-colors cursor-pointer tactile-btn inline-flex items-center gap-1.5"
+      class="px-3 py-1.5 text-xs font-mono bg-[var(--accent)] text-white font-medium rounded-[2px] transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
     >
       <span>Tüm Yazıları Göster</span>
       <span aria-hidden="true">↺</span>
     </button>
   </div>
 
-  <!-- Editorial Articles Directory (2-Column Balanced Grid) -->
+  <!-- Editorial Articles Directory (Equal Height Cards with Sticky Footer) -->
   <div id="articles-list" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
     {posts.map((post) => {
       const slug = getPostSlug(post);
       const postUrl = `/posts/${slug}`;
       const postTagsAttr = post.data.tags.join(',');
+      const readingMinutes = calculateReadingTime(post.body || '');
       return (
         <article
-          class="article-item group border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] transition-all p-5 sm:p-6 rounded-[2px] flex flex-col justify-between"
+          class="article-item group relative border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--accent)] transition-all duration-150 p-5 sm:p-6 rounded-[2px] flex flex-col justify-between h-full hover:-translate-y-0.5 shadow-2xs focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:border-transparent"
           data-tags={postTagsAttr}
         >
-          <div class="space-y-3">
-            <div class="font-mono text-xs text-[var(--text-dim)]">
+          <div class="flex-1 space-y-3 mb-4">
+            <!-- Date & Reading Time -->
+            <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
               <time datetime={post.data.date}>{post.data.date}</time>
+              <span class="text-[var(--border-strong)]" aria-hidden="true">·</span>
+              <span>{readingMinutes} dk okuma</span>
             </div>
 
-            <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
-              <a href={postUrl} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
+            <!-- Title with full-card clickable ::after link -->
+            <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug">
+              <a href={postUrl} class="focus:outline-none after:absolute after:inset-0 after:z-0">
                 {post.data.title}
               </a>
             </h3>
 
+            <!-- Summary -->
             <p class="text-xs sm:text-sm text-[var(--text-muted)] font-sans leading-relaxed line-clamp-3">
               {post.data.summary}
             </p>
           </div>
 
-          <div class="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-[var(--border)]/70">
-            <!-- Tags -->
-            <div class="flex flex-wrap items-center gap-1.5">
-              {post.data.tags.slice(0, 3).map((tag) => (
+          <!-- Bottom Footer Row: Tags + Read Link (mt-auto) -->
+          <div class="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-[var(--border)]/70">
+            <!-- Tags (Primary category prominent, others calm) -->
+            <div class="flex flex-wrap items-center gap-1.5 relative z-10">
+              {post.data.tags.slice(0, 3).map((tag, idx) => (
                 <button
                   type="button"
                   data-tag-click={tag}
-                  class="article-tag-badge font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors cursor-pointer"
+                  class:list={[
+                    "article-tag-badge font-mono text-[10px] px-2 py-0.5 rounded-[2px] transition-colors cursor-pointer",
+                    idx === 0
+                      ? "bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] font-medium hover:bg-[var(--accent)] hover:text-white"
+                      : "bg-[var(--bg-subtle)] text-[var(--text-dim)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  ]}
                   title={`#${tag} etiketine göre filtrele`}
                 >
                   #{tag}
@@ -136,11 +155,11 @@ const filterTags = coreTopicTags.map(topic => ({
               ))}
             </div>
 
-            <!-- Read Link -->
-            <a href={postUrl} class="font-mono text-xs text-[var(--text-accent)] inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform shrink-0" aria-label={`${post.data.title}`}>
+            <!-- Read Link Indicator -->
+            <div class="font-mono text-xs text-[var(--accent)] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform shrink-0 font-medium select-none" aria-hidden="true">
               <span>Yazıyı Oku</span>
-              <span aria-hidden="true">→</span>
-            </a>
+              <span>→</span>
+            </div>
           </div>
         </article>
       );
@@ -197,12 +216,12 @@ const filterTags = coreTopicTags.map(topic => ({
           const isBtnActive = (isAll && btnTag === 'all') || (!isAll && matchTag(normalizeTag(btnTag), cleanTarget));
 
           if (isBtnActive) {
-            btn.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
-            btn.classList.add('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium', 'border-[var(--text)]', 'is-active');
+            btn.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-muted)]', 'border-[var(--border)]');
+            btn.classList.add('bg-[var(--accent)]', 'text-white', 'font-medium', 'border-[var(--accent)]', 'shadow-2xs', 'is-active');
             btn.setAttribute('aria-pressed', 'true');
           } else {
-            btn.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]', 'font-medium', 'border-[var(--text)]', 'is-active');
-            btn.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
+            btn.classList.remove('bg-[var(--accent)]', 'text-white', 'font-medium', 'border-[var(--accent)]', 'shadow-2xs', 'is-active');
+            btn.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text-muted)]', 'border-[var(--border)]');
             btn.setAttribute('aria-pressed', 'false');
           }
         });
@@ -214,9 +233,9 @@ const filterTags = coreTopicTags.map(topic => ({
           const isMatch = !isAll && matchTag(normalizeTag(rawTag), cleanTarget);
           if (isMatch) {
             stTag.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
-            stTag.classList.add('bg-[var(--text)]', 'text-[var(--bg)]', 'border-[var(--text)]', 'font-medium');
+            stTag.classList.add('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]', 'font-medium');
           } else {
-            stTag.classList.remove('bg-[var(--text)]', 'text-[var(--bg)]', 'border-[var(--text)]', 'font-medium');
+            stTag.classList.remove('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]', 'font-medium');
             stTag.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
           }
         });

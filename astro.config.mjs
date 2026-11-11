@@ -7,6 +7,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://ahmetihtiyar.com',
   trailingSlash: 'never',
+  devToolbar: {
+    enabled: false,
+  },
   integrations: [
     mdx({
       syntaxHighlight: 'shiki',

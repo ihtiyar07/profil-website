@@ -10,6 +10,7 @@ tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
 PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
 import Mermaid from '../../components/Mermaid.astro';
+import DataPageAnatomy from '../../components/DataPageAnatomy.astro';
 
 Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
@@ -266,63 +267,7 @@ PostgreSQL disk üzerinde verileri hiçbir zaman tekil satırlar halinde saklama
 
 Bir data page'in fiziksel düzeni, yüksek eşzamanlılıkta kilit çekişmelerini önlemek ve parçalanmayı (fragmentation) engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır:
 
-<Mermaid 
-  title="PostgreSQL 8KB Data Page ve HeapTuple İç Düzeni" 
-  code={`
-flowchart TB
-    subgraph DataPage["8KB Data Page Mimarisi"]
-        direction TB
-
-        subgraph PageHeader["PageHeaderData (24 Bayt)"]
-            direction LR
-            LSN["pd_lsn (8B: Son WAL LSN)"]
-            Checksum["pd_checksum (2B: Blok Kontrolü)"]
-            Flags["pd_flags (2B: Görünürlük Bayrakları)"]
-            Pointers["pd_lower ve pd_upper (4B: Dinamik Ofsetler)"]
-            Special["pd_special (2B: Sayfa Sonu Ofseti)"]
-        end
-
-        subgraph LinePointers["Line Pointer Dizisi (ItemIdData - 4 Bayt / Tuple)"]
-            direction LR
-            LP1["Line Pointer 1 (lp_off, lp_flags, lp_len)"]
-            LP2["Line Pointer 2 (lp_off, lp_flags, lp_len)"]
-            LP3["Line Pointer 3 (lp_off, lp_flags, lp_len)"]
-        end
-
-        FreeSpace["pd_lower ────► Serbest Bellek Alanı (Free Space) ◄──── pd_upper"]
-
-        subgraph TupleStorage["Tuple Depolama Alanı (8192 Ofsetinden Geriye Doğru Büyür)"]
-            direction LR
-            Tuple3["Tuple 3 (En Son Eklenen)"]
-            Tuple2["Tuple 2"]
-            Tuple1["Tuple 1 (Sayfa Tabanına Yazılan İlk Satır)"]
-        end
-
-        PageHeader --> LinePointers
-        LinePointers --> FreeSpace
-        FreeSpace --> TupleStorage
-    end
-
-    subgraph TupleAnatomy["HeapTuple Fiziksel İç Yapısı"]
-        direction LR
-        subgraph TupleHeader["HeapTupleHeaderData (23 Bayt Başlık)"]
-            direction TB
-            XMIN["t_xmin (4B: Ekleyen XID)"]
-            XMAX["t_xmax (4B: Silen veya Güncelleyen XID)"]
-            CTID["t_ctid (6B: Fiziksel Konum ve Güncelleme Zinciri)"]
-            INFOMASK["t_infomask (4B: Durum Bayrakları ve Kolon Sayısı)"]
-        end
-        NullBitmap["Null Bitmap (Sütun Boşluk Haritası)"]
-        UserData["User Data Payload (Tablo Kolon Değerleri / TOAST)"]
-
-        TupleHeader --> NullBitmap
-        NullBitmap --> UserData
-    end
-
-    IndexSearch["İndeks Araması: TID (BlockNo, OffsetNo)"] -.->|Dolaylı Adresleme| LP1
-    LP1 ==>|lp_off Bayt Ofseti| Tuple1
-    Tuple1 -.->|Fiziksel Ayrıştırma| TupleAnatomy
-`} />
+<DataPageAnatomy />
 
 ### A. 8KB Data Page Mimarisi
 

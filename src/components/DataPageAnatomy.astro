@@ -1,0 +1,182 @@
+---
+// DataPageAnatomy.astro
+// Compact, explanatory systems architecture component for PostgreSQL 8KB Data Page & HeapTuple
+---
+
+<figure class="data-page-container not-prose my-6 border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] overflow-hidden shadow-xs select-none" aria-label="PostgreSQL 8KB Data Page ve HeapTuple Fiziksel Bellek Düzeni">
+  <!-- Top Bar -->
+  <div class="px-3.5 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between gap-2 text-xs font-mono text-[var(--text-dim)]">
+    <span class="flex items-center gap-2 font-medium text-[var(--text)]">
+      <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+      <span>8KB Data Page & Tuple Anatomisi</span>
+    </span>
+    <span class="text-[11px] text-[var(--text-dim)] hidden sm:inline-block">8192 Bayt Sabit Blok</span>
+  </div>
+
+  <div class="p-3.5 sm:p-5 space-y-5 text-[var(--text)]">
+    
+    <!-- 1. 8KB DATA PAGE MEMORY LAYOUT -->
+    <div>
+      <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] mb-1.5">
+        <span class="font-semibold uppercase tracking-wider text-[var(--text)]">1. 8KB Data Page Bellek Düzeni</span>
+        <span>0B ──► 8192B</span>
+      </div>
+
+      <!-- Memory Tape Container -->
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] p-2 overflow-x-auto">
+        <div class="min-w-[500px] sm:min-w-full">
+          <!-- Byte Offset Markers -->
+          <div class="grid grid-cols-12 text-[10px] font-mono text-[var(--text-dim)] pb-1 px-1">
+            <div class="col-span-2 text-left">0B</div>
+            <div class="col-span-3 text-left">24B</div>
+            <div class="col-span-2 text-center">pd_lower</div>
+            <div class="col-span-2 text-center">pd_upper</div>
+            <div class="col-span-3 text-right">8192B</div>
+          </div>
+
+          <!-- The Physical Slices -->
+          <div class="grid grid-cols-12 gap-1 text-[11px] font-mono text-center min-h-[46px]">
+            <!-- PageHeaderData -->
+            <div class="col-span-2 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-1.5 flex flex-col justify-center" title="PageHeaderData (24 Bayt): LSN, Checksum, Bayraklar, pd_lower, pd_upper">
+              <span class="font-semibold text-[var(--text)] truncate">PageHeader</span>
+              <span class="text-[10px] text-[var(--text-dim)]">24 Bayt</span>
+            </div>
+
+            <!-- Line Pointer Array -->
+            <div class="col-span-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-1.5 flex flex-col justify-center" title="Line Pointer Array (ItemIdData): 4 Bayt / satır. Aşağı doğru büyür.">
+              <span class="font-semibold text-[var(--text)] truncate">Line Pointers</span>
+              <span class="text-[10px] text-[var(--text-dim)]">ItemIdData (4B)</span>
+            </div>
+
+            <!-- Free Space -->
+            <div class="col-span-4 bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-[2px] p-1.5 flex flex-col justify-center items-center" title="Free Space: pd_lower ve pd_upper arasındaki serbest bellek alanı.">
+              <span class="font-medium text-[var(--text-muted)] text-[10.5px]">Free Space</span>
+              <span class="text-[9.5px] text-[var(--text-dim)] flex items-center gap-1">
+                <span>pd_lower ➔</span>
+                <span>•</span>
+                <span>⬅ pd_upper</span>
+              </span>
+            </div>
+
+            <!-- Tuple Storage -->
+            <div class="col-span-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-1.5 flex flex-col justify-center" title="Tuple Depolama Alanı: 8192 ofsetinden geriye (yukarı) doğru büyür.">
+              <span class="font-semibold text-[var(--text)] truncate">Heap Tuples</span>
+              <span class="text-[10px] text-[var(--text-dim)]">Satır Gövdeleri</span>
+            </div>
+          </div>
+
+          <!-- Growth Vectors Caption -->
+          <div class="grid grid-cols-12 text-[10px] font-mono text-[var(--text-dim)] pt-1.5 px-1 border-t border-[var(--border)] mt-2">
+            <div class="col-span-5 text-left text-[var(--accent)] font-medium">
+              ▲ Aşağı Doğru Büyür (pd_lower)
+            </div>
+            <div class="col-span-2 text-center text-[var(--text-dim)] hidden sm:block">
+              Dinamik Boşluk
+            </div>
+            <div class="col-span-5 sm:col-span-5 text-right text-[var(--accent)] font-medium">
+              Yukarı Doğru Büyür (pd_upper) ▲
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. TWO-STAGE INDIRECTION (TID -> LINE POINTER -> TUPLE) -->
+    <div class="border-t border-[var(--border)] pt-4">
+      <div class="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text)] mb-2">
+        2. İki Aşamalı Dolaylı Adresleme (TID İndirection)
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono">
+        <!-- TID -->
+        <div class="border border-[var(--border)] rounded-[2px] p-2 bg-[var(--bg)] flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--accent)] font-semibold flex items-center justify-center shrink-0 text-[11px]">
+            1
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-[var(--text)] text-[11.5px] truncate">TID: (Blok 0, Ofset 1)</div>
+            <div class="text-[10px] text-[var(--text-dim)]">İndekslerin sakladığı işaretçi</div>
+          </div>
+        </div>
+
+        <!-- Line Pointer -->
+        <div class="border border-[var(--border)] rounded-[2px] p-2 bg-[var(--bg)] flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--accent)] font-semibold flex items-center justify-center shrink-0 text-[11px]">
+            2
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-[var(--text)] text-[11.5px] truncate">LinePointer[1] (4 Bayt)</div>
+            <div class="text-[10px] text-[var(--text-dim)]">lp_off (bayt ofseti) + lp_len</div>
+          </div>
+        </div>
+
+        <!-- Tuple -->
+        <div class="border border-[var(--border)] rounded-[2px] p-2 bg-[var(--bg)] flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--accent)] font-semibold flex items-center justify-center shrink-0 text-[11px]">
+            3
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-[var(--text)] text-[11.5px] truncate">HeapTuple (Diskteki Satır)</div>
+            <div class="text-[10px] text-[var(--text-dim)]">Fiziksel satır verisi ve başlığı</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-[11.5px] text-[var(--text-muted)] mt-2 leading-relaxed">
+        <strong class="text-[var(--text)] font-medium">Neden Dolaylı Adresleme?</strong> B-Tree indeksler satırın bayt adresini değil, Line Pointer indeksini saklar. VACUUM veya HOT güncellemesi satırı sayfa içinde kaydırdığında yalnızca 4 baytlık <code class="text-[11px] px-1 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]">lp_off</code> güncellenir; indekslere dokunulmaz.
+      </p>
+    </div>
+
+    <!-- 3. HEAPTUPLE ANATOMY -->
+    <div class="border-t border-[var(--border)] pt-4">
+      <div class="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text)] mb-2">
+        3. HeapTuple (Satır) İç Anatomisi
+      </div>
+
+      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] p-2 space-y-2">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-1.5 text-[11px] font-mono">
+          <!-- Tuple Header -->
+          <div class="md:col-span-7 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-2">
+            <div class="flex items-center justify-between text-[10px] text-[var(--text-dim)] border-b border-[var(--border)] pb-1 mb-1.5">
+              <span class="font-semibold text-[var(--text)]">HeapTupleHeaderData</span>
+              <span>23 Bayt Sabit Başlık</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 text-[10px] text-center">
+              <div class="bg-[var(--bg)] border border-[var(--border)] p-1 rounded-[2px]" title="t_xmin (4B): Ekleyen Transaction ID">
+                <div class="text-[var(--text)] font-semibold">t_xmin</div>
+                <div class="text-[9px] text-[var(--text-dim)]">4B (Ekleme)</div>
+              </div>
+              <div class="bg-[var(--bg)] border border-[var(--border)] p-1 rounded-[2px]" title="t_xmax (4B): Silen / Güncelleyen XID">
+                <div class="text-[var(--text)] font-semibold">t_xmax</div>
+                <div class="text-[9px] text-[var(--text-dim)]">4B (Silme)</div>
+              </div>
+              <div class="bg-[var(--bg)] border border-[var(--border)] p-1 rounded-[2px]" title="t_cid (4B): Transaction İçi Komut Sırası">
+                <div class="text-[var(--text)] font-semibold">t_cid</div>
+                <div class="text-[9px] text-[var(--text-dim)]">4B (Komut)</div>
+              </div>
+              <div class="bg-[var(--bg)] border border-[var(--border)] p-1 rounded-[2px]" title="t_ctid (6B): Fiziksel TID ve Güncelleme Zinciri">
+                <div class="text-[var(--text)] font-semibold">t_ctid</div>
+                <div class="text-[9px] text-[var(--text-dim)]">6B (Zincir)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Null Bitmap -->
+          <div class="md:col-span-2 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-2 flex flex-col justify-center text-center" title="Null Bitmap: Tabloda NULL olabilecek kolonlar varsa 1 bit/kolon harita tutulur.">
+            <span class="font-semibold text-[var(--text)] text-[10.5px]">Null Bitmap</span>
+            <span class="text-[10px] text-[var(--text-dim)]">1 bit / kolon</span>
+            <span class="text-[9px] text-[var(--text-dim)] mt-0.5">Opsiyonel</span>
+          </div>
+
+          <!-- User Data Payload -->
+          <div class="md:col-span-3 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] p-2 flex flex-col justify-center text-center" title="User Data: Tablo kolonlarının ikili (binary) değerleri. 2KB üstü TOAST tablolarına taşınır.">
+            <span class="font-semibold text-[var(--text)] text-[10.5px]">User Data</span>
+            <span class="text-[10px] text-[var(--text-dim)]">Kolon Değerleri</span>
+            <span class="text-[9px] text-[var(--text-dim)] mt-0.5">TOAST (&gt;2KB)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</figure>

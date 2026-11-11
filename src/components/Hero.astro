@@ -2,105 +2,35 @@
 import { SITE_META } from '../data/siteMeta';
 ---
 
-<section class="py-8 sm:py-12 border-b border-[var(--border)]">
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-    <!-- Left 7-8 Columns: Narrative, Core Pillars & Actions -->
-    <div class="lg:col-span-7 xl:col-span-8 space-y-6">
-      <!-- Main Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.65rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
-        Veritabanı mimarisi, depolama motorları ve veri altyapıları.
-      </h1>
+<section class="py-8 sm:py-10 border-b border-[var(--border)]">
+  <div class="max-w-3xl space-y-5">
+    <!-- Main Headline -->
+    <h1 class="text-3xl sm:text-4xl lg:text-[2.65rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
+      Veritabanı mimarisi, depolama motorları ve veri altyapıları.
+    </h1>
 
-      <!-- Editorial Lead & Mission Note -->
-      <div class="space-y-3.5 max-w-[66ch]">
-        <p class="text-base sm:text-lg text-[var(--text)] font-sans leading-relaxed">
-          PostgreSQL ve Oracle çekirdek süreçleri, bellek havuzları (Shared Buffers / SGA), WAL/Redo döngüleri ve ZFS depolama blok düzeni üzerine çalışıyorum.
-        </p>
+    <!-- Requested Copy -->
+    <p class="text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
+      Gereksinimlere göre en uygun mimariyi keşfetmeye ve uygulamaya çalışıyorum; edindiğim deneyimleri, karşılaştığım problemleri ve öğrendiklerimi de burada paylaşıyorum.
+    </p>
 
-        <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
-          Bu site; canlı üretim sistemlerinde karşılaştığım darboğazları, sorgu planlarını, sıfır etkili (zero-impact) mimari kararlarını ve depolama katmanındaki optimizasyonları adım adım aktardığım kişisel teknik rehber niteliğindedir.
-        </p>
-      </div>
+    <!-- Action Links -->
+    <div class="flex flex-wrap items-center gap-3 pt-1">
+      <a
+        href="#articles"
+        class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px] shadow-xs"
+      >
+        <span>Yazıları ve Rehberleri İncele</span>
+        <span aria-hidden="true">↓</span>
+      </a>
 
-      <!-- Action Links -->
-      <div class="flex flex-wrap items-center gap-3 pt-1">
-        <a
-          href="#articles"
-          class="px-4 py-2.5 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 tactile-btn rounded-[2px] shadow-xs"
-        >
-          <span>Yazıları ve Rehberleri İncele</span>
-          <span aria-hidden="true">↓</span>
-        </a>
-
-        <a
-          href={`mailto:${SITE_META.email}`}
-          class="px-4 py-2.5 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px] tactile-btn"
-        >
-          <span>İletişime Geç</span>
-          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
-        </a>
-      </div>
-    </div>
-
-    <!-- Right 5-4 Columns: Architectural Identity Card -->
-    <div class="lg:col-span-5 xl:col-span-4 flex flex-col items-center lg:items-end pt-2 lg:pt-0">
-      <div class="w-full max-w-[260px] border border-[var(--border)] bg-[var(--bg-card)] p-3.5 rounded-[2px] space-y-3 shadow-xs">
-        <!-- Card Header -->
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 font-mono text-xs">
-          <span class="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">Mimar Dosyası</span>
-          <span class="inline-flex items-center gap-1 text-[11px] text-[var(--accent)]">
-            <span class="w-1.5 h-1.5 rounded-full bg-[var(--status-green)]" aria-hidden="true"></span>
-            Aktif Sistemler
-          </span>
-        </div>
-
-        <!-- Framed Portrait -->
-        <div class="aspect-[4/4.2] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px] relative group">
-          <picture>
-            <source srcset="/profile.webp" type="image/webp" />
-            <img
-              src="/profile.png"
-              alt="Ahmet İhtiyar — Veritabanı ve Depolama Mimarı"
-              width="260"
-              height="273"
-              loading="eager"
-              fetchpriority="high"
-              class="w-full h-full object-cover object-center transition-all duration-300 filter contrast-[1.02] group-hover:contrast-105"
-            />
-          </picture>
-        </div>
-
-        <!-- Identity & Status Specs -->
-        <div class="space-y-1.5 font-mono text-xs">
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-[var(--text-dim)]">Mühendis:</span>
-            <span class="font-semibold text-[var(--text)]">Ahmet İhtiyar</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-[var(--text-dim)]">Uzmanlık:</span>
-            <span class="text-[var(--text-muted)]">Veritabanı & Depolama</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-[var(--text-dim)]">Konum:</span>
-            <span class="text-[var(--text-muted)]">İstanbul, Türkiye</span>
-          </div>
-        </div>
-
-        <!-- Direct Social / Contact Links -->
-        <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)]">
-          <a href={SITE_META.github} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text)] transition-colors">
-            GitHub ↗
-          </a>
-          <span class="text-[var(--border)]">·</span>
-          <a href={SITE_META.linkedin} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text)] transition-colors">
-            LinkedIn ↗
-          </a>
-          <span class="text-[var(--border)]">·</span>
-          <a href={`mailto:${SITE_META.email}`} class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] transition-colors">
-            E-posta ↗
-          </a>
-        </div>
-      </div>
+      <a
+        href={`mailto:${SITE_META.email}`}
+        class="px-4 py-2.5 border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-1.5 rounded-[2px] tactile-btn"
+      >
+        <span>İletişime Geç</span>
+        <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+      </a>
     </div>
   </div>
 </section>

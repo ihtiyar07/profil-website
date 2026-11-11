@@ -1,0 +1,94 @@
+---
+title: "Veritabanı Altyapısı: ZFS Blok Düzeni, Disk I/O ve Sıfır Kopyalama İlkeleri"
+slug: "veritabani-depolama-ve-donanim-altyapisi-mimarisi"
+date: "2026-03-28"
+lang: "tr"
+summary: "Veritabanı motorlarının dosya sisteminden beklentileri, ZFS recordsize ve ARC önbellek optimizasyonu, direct I/O dengesi ve sıfır kopyalama mimarisi."
+tags: ["Altyapı", "ZFS", "Depolama", "Performans"]
+readingTime: "5 dk"
+---
+
+Veritabanı mimarisini sorgu ve SQL seviyesinden ayıran en kritik eşik; verinin RAM'den ayrılıp işletim sistemi çekirdeğine, dosya sistemine ve fiziksel NVMe/SSD depolama denetleyicisine ulaştığı son mil çizgisidir.
+
+Bir veritabanı motoru ne kadar kusursuz indekslenmiş olursa olsun; altındaki depolama düzeni doğru blok boyutlarıyla yapılandırılmamışsa, sistem kaçınılmaz olarak **Write Amplification (Yazma Şişmesi)** ve **Çift Önbellekleme (Double Buffering)** darboğazlarına kurban gider.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              VERİTABANI KATMANI (PostgreSQL / Oracle)       │
+│                                                             │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │ Buffer Cache / Shared Buffers (8KB Sayfa Boyutu)    │   │
+│   └──────────────────────────┬──────────────────────────┘   │
+└──────────────────────────────┼──────────────────────────────┘
+                               │ fsync / Direct I/O (8KB)
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 DOSYA SİSTEMİ / ZFS KATMANI                 │
+│                                                             │
+│   ┌──────────────────────────┴──────────────────────────┐   │
+│   │ ZFS Recordsize Uyumsuzluğu:                         │   │
+│   │ Varsayılan 128KB Recordsize ──► 8KB için 128KB Yazma│   │
+│   │ Doğru Ayar: recordsize=8K   ──► 8KB için 8KB Yazma  │   │
+│   └──────────────────────────┬──────────────────────────┘   │
+│                              │ CoW & Checksum (Fletcher4)   │
+│                              ▼                              │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │ ZFS ARC (Adaptive Replacement Cache) RAM Sınırı     │   │
+│   └──────────────────────────┬──────────────────────────┘   │
+└──────────────────────────────┼──────────────────────────────┘
+                               │ NVMe PCIe Gen4 / ZIL / SLOG
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 FİZİKSEL BLOK DEPOLAMA (Disk)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 1. Veritabanı Motoru Dosya Sisteminden Ne Bekler?
+
+PostgreSQL ve Oracle gibi ilişkisel veritabanları, kendi bellek tamponlarını (Buffer Cache / Shared Buffers) kendileri yönetir. Bu motorların bir dosya sisteminden üç katı beklentisi vardır:
+
+1. **Katı Flush (`fsync` / `fdatasync`) Doğruluğu:** Motor diske "bu WAL veya Redo bloğunu yaz" dediğinde, denetleyici işletim sistemine "yazdım" yalanı söylememelidir. Veri kalıcı uçucu olmayan belleğe (non-volatile) inmelidir.
+2. **Öngörülebilir 8KB Rastgele I/O:** Çoğu ilişkisel veritabanının temel I/O birimi 8KB'dır (Oracle'da bazen 16KB). Dosya sistemi bu küçük blokları gecikme (latency) dalgalanması olmadan karşılamalıdır.
+3. **Sessiz Veri Bozulmasına (Bit Rot) Karşı Koruma:** Disk üzerindeki manyetik veya elektriksel bozulmalar sessizce veri sayfalarını bozabilir. Standart bir ext4 dosya sistemi veriyi okurken bozulduğunu anlayamaz; ZFS her bloğu Fletcher4 veya SHA-256 ile checksum'lar ve aynalanmış diskten anında kendi kendini onarır.
+
+## 2. ZFS Recordsize Tuzağı: 16 Kat Write Amplification
+
+ZFS dosya sistemi varsayılan olarak **`recordsize=128K`** ile gelir. Bu, video akışı veya büyük dosyalar için harikadır; ancak bir veritabanı için felakettir:
+
+- PostgreSQL 8KB'lık bir veri sayfasında tek bir satırı güncellediğinde, ZFS o 8KB'ı yazmak için 128KB'lık bloğun tamamını diskten okur, içine 8KB'ı yamalar ve yeni bir 128KB olarak diske yazar (Copy-on-Write).
+- **Sonuç:** 8KB yazmak için diske 128KB yazılır! Bu durum SSD'lerin ömrünü hızla tüketir ve diskin I/O kanalını kilitler.
+
+```bash
+# Doğru Mühendislik Yapılandırması:
+# Veritabanı veri dizini için 8KB blok boyutu:
+zfs create -o recordsize=8k -o logbias=latency -o atime=off rpool/data/postgres
+
+# WAL / Redo Log dizini için ardışık 64KB blok boyutu:
+zfs create -o recordsize=64k -o logbias=throughput -o atime=off rpool/data/postgres-wal
+```
+
+Veri dizininde `recordsize=8k` kullanıldığında, veritabanının 8KB'lık sayfası ile ZFS'in blok boyutu birebir örtüşür; yazma şişmesi (write amplification) 1:1 seviyesine iner.
+
+## 3. Çift Önbellekleme (Double Buffering) ve RAM Yönetimi
+
+Linux çekirdeği diskten okunan blokları kendi sayfa önbelleğinde (Page Cache / Buffer Cache) tutar. ZFS ise bunu **ARC (Adaptive Replacement Cache)** havuzunda tutar.
+
+Eğer PostgreSQL'e 32GB RAM'in 8GB'ını `shared_buffers` olarak verirseniz ve ZFS ARC havuzunu sınırlamazsanız:
+- Aynı 8KB'lık veri bloğu hem `shared_buffers` içinde hem de `ZFS ARC` içinde kopyalanır.
+- 32GB RAM'in yarısı mükerrer veri bloklarıyla dolar ve işletim sistemi bellek baskısı altında swap yapmaya başlar.
+
+**Çözüm:** ZFS ARC maksimum boyutu işletim sistemi seviyesinde sınırlandırılmalı (`/etc/modprobe.d/zfs.conf` içinde `zfs_arc_max`), veritabanı önbelleği ile dosya sistemi önbelleği arasında net bir sınır çekilmelidir.
+
+## 4. Sıfır Kopyalama (Zero-Copy) Prensibi
+
+Veritabanından çekilen büyük hacimli bir analitik veri (milyonlarca telemetri veya finans satırı), geleneksel yollarla istemciye gönderildiğinde üç ayrı bellek kopyalamasından geçer:
+
+1. Diskten çekirdek alanına (Kernel Buffer).
+2. Çekirdek alanından veritabanı sürecine (User Space).
+3. Veritabanından JSON serileştirme döngüsüne ve oradan ağ soketine.
+
+**Sıfır Kopyalama (Zero-Copy)** mimarisinde, veriler JSON yerine **Apache Arrow RecordBatch** formatında bellekte kolon bazlı olarak dizilir ve `sendfile` / bellek eşleme (`mmap`) sistem çağrılarıyla doğrudan ağ soketine aktarılır. CPU tek bir satırı bile bellekte nesneye (object) dönüştürmez; yüz binlerce satırlık veri mikro saniyeler içinde istemcinin tarayıcısına ulaşır.
+
+## Mimari Özet
+
+Veritabanı optimizasyonu sadece SQL cümlelerine indeks eklemekten ibaret değildir. ZFS blok boyutu (recordsize), `fsync` güvencesi, ARC bellek sınırları ve sıfır kopyalama boru hatları; donanımın her bir saat çevriminden ve her bir NVMe veri yolundan maksimum verimi almanın temelidir.

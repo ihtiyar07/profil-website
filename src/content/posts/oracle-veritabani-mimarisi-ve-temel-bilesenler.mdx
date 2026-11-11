@@ -1,0 +1,104 @@
+---
+title: "Oracle Veritabanı Mimarisi: Instance, SGA/PGA ve Depolama Temelleri"
+slug: "oracle-veritabani-mimarisi-ve-temel-bilesenler"
+date: "2026-04-02"
+lang: "tr"
+summary: "Instance ve Database ayrımı, SGA ve PGA bellek havuzları, çekirdek arka plan süreçleri ve Oracle'ın bellek tüketmeyen satır seviyesi kilit (ITL) mekanizması."
+tags: ["Oracle", "DBA", "Mimari", "Performans"]
+readingTime: "5 dk"
+---
+
+Kurumsal dünyada telekom, bankacılık ve kritik kamu altyapılarında Oracle Database'in yerini korumasının arkasında tesadüf yoktur. Oracle, onlarca yıllık mühendislikle optimize edilmiş çok katmanlı bir bellek hiyerarşisine ve disk I/O yükünü en aza indiren katı bir mimariye sahiptir.
+
+Oracle mimarisini anlamak, iki temel kavram arasındaki sınır çizgisini kavramakla başlar: **Instance** ve **Database**.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 ORACLE INSTANCE (Geçici / RAM)              │
+│                                                             │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │                 SGA (System Global Area)            │   │
+│   │  ┌───────────────────────┐ ┌──────────────────────┐ │   │
+│   │  │ Database Buffer Cache │ │ Shared Pool (SQL/Plan│ │   │
+│   │  └───────────────────────┘ └──────────────────────┘ │   │
+│   │  ┌───────────────────────┐ ┌──────────────────────┐ │   │
+│   │  │ Redo Log Buffer       │ │ Large / Java Pool    │ │   │
+│   │  └───────────────────────┘ └──────────────────────┘ │   │
+│   └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│   [DBWn]        [LGWR]        [CKPT]        [SMON]    [PMON]│
+└─────┬─────────────┬─────────────┬───────────────────────────┘
+      │             │             │
+══════╪═════════════╪═════════════╪════════════════════════════
+      ▼             ▼             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                ORACLE DATABASE (Kalıcı / DİSK)              │
+│                                                             │
+│  ┌───────────────────────┐   ┌───────────────────────────┐  │
+│  │ Datafiles (*.dbf)     │   │ Online Redo Logs (*.rdo)  │  │
+│  └───────────────────────┘   └───────────────────────────┘  │
+│  ┌───────────────────────┐   ┌───────────────────────────┐  │
+│  │ Control Files (*.ctl) │   │ Archived Redo (*.arc)     │  │
+│  └───────────────────────┘   └───────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 1. Temel Ayrım: Instance vs Database
+
+- **Oracle Instance:** Sunucunun RAM belleğinde yaşayan ve işletim sistemi süreçlerinden oluşan **geçici (volatile)** yapıdır. Instance; `SGA (System Global Area)` bellek alanını ve arka planda koşan `DBWn`, `LGWR`, `CKPT` gibi süreçleri içerir. Sunucu yeniden başladığında Instance yok olur.
+- **Oracle Database:** Disk üzerinde bulunan **kalıcı (non-volatile)** işletim sistemi dosyalarıdır:
+  1. **Datafiles:** Tablo ve indeks verilerinin fiziksel blokları.
+  2. **Redo Log Files:** Yapılan her DML işleminin acil durum kaydı (WAL karşılığı).
+  3. **Control Files:** Veritabanının fiziksel yapısını, dosya yollarını ve son SCN (System Change Number) numarasını tutan beynidir.
+
+RAC (Real Application Clusters) mimarisinde, tek bir fiziksel Database'e disk seviyesinde erişen **birden fazla bağımsız Instance** (düğüm) eşzamanlı olarak çalışır.
+
+## 2. Bellek Mimarisi: SGA ve PGA
+
+Oracle bellek yönetimi iki ana bölgeden oluşur:
+
+### A. SGA (System Global Area)
+Tüm veritabanı kullanıcılarının ve arka plan süreçlerinin paylaştığı devasa ortak bellek havuzudur:
+- **`Database Buffer Cache`:** Diskten okunan veri bloklarının (genelde 8KB) tutulduğu yerdir. Kirli (dirty) bloklar diske yazılana kadar burada bekler.
+- **`Shared Pool`:** Çalıştırılan SQL sorgularının derlenmiş yürütme planları (`Library Cache`) ve veri sözlüğü tabloları (`Data Dictionary Cache`) burada saklanır. Bind variable (parametre) kullanımı Shared Pool'un CPU yakarak sürekli hard parse yapmasını engeller.
+- **`Redo Log Buffer`:** Veritabanında yapılan her değişikliğin bayt bayt yazıldığı dairesel (circular) tampon bellektir.
+
+### B. PGA (Program Global Area)
+Her bir sunucu sürecine (Server Process) özel olarak ayrılan paylaşımsız bellektir. Oturumun sıralama (`Sort Area`), karma birleştirme (`Hash Area`) ve imleç (cursor) durumları PGA içinde yürütülür. `PGA_AGGREGATE_TARGET` parametresiyle sınırlandırılır.
+
+## 3. Çekirdek Arka Plan Süreçleri
+
+Oracle'ın kararlılığını sağlayan temel süreçler şunlardır:
+
+1. **`LGWR (Log Writer)`:** Redo Log Buffer içeriğini diskteki Online Redo Log dosyalarına yazar. Bir kullanıcı `COMMIT` dediğinde, LGWR o işlemi diske basana kadar oturum kilitlenir. LGWR, sistemin en kritik ve hızlı olması gereken sürecidir.
+2. **`DBWn (Database Writer)`:** Buffer Cache'teki kirli blokları Datafile'lara yazar. Bu işlem asenkrondur; COMMIT anında DBWn diske yazmak zorunda değildir (bunu LGWR üstlenir).
+3. **`CKPT (Checkpoint)`:** Belirli aralıklarla DBWn'e kirli blokları yazdırır ve veri dosyalarının başlıklarına checkpoint bilgisini (SCN) işler.
+4. **`PMON (Process Monitor)`:** Bir istemci bağlantısı aniden koptuğunda (örn. ağ kesintisi), o istemcinin tuttuğu kilitleri çözer ve PGA kaynaklarını sisteme iade eder.
+5. **`SMON (System Monitor)`:** Sunucu aniden kapandığında, açılışta instance recovery (kurtarma) sürecini otomatik yürütür.
+
+## 4. Oracle'ın İmza Özelliği: ITL ve Kilitleme Mekanizması
+
+Diğer birçok veritabanı motoru (örneğin SQL Server), kilitleri merkezi bir "Kilit Yöneticisi Bellek Tablosu"nda tutar. Eğer bir işlem 1 milyon satırı kilitlerse, kilit tablosu şişer ve sistem tablo seviyesinde kilit yükseltmeye (Lock Escalation) zorlanır.
+
+Oracle'da ise **asla Lock Escalation yaşanmaz**:
+
+- Satır kilitleri için merkezi bir kilit tablosu yoktur.
+- Her bir 8KB'lık Oracle veri bloğunun başlığında **ITL (Interested Transaction List)** adı verilen küçük işlem yuvaları bulunur.
+- Bir satırı güncelleyen transaction, kendi ID'sini ve SCN bilgisini doğrudan ilgili **veri bloğunun başlığındaki ITL yuvasına** yazar.
+- İster 1 satır, ister 100 milyon satır güncelleyin; Oracle kilit için tek bir bayt ekstra merkezi RAM belleği harcamaz.
+
+```sql
+-- Anlık kilit beklemelerini ve engelleyen oturumları sorgulama:
+SELECT s1.username || '@' || s1.machine || ' (SID=' || s1.sid || ')' AS bekleyen_oturum,
+       s2.username || '@' || s2.machine || ' (SID=' || s2.sid || ')' AS engelleyen_lider,
+       w.event,
+       w.seconds_in_wait
+FROM v$session s1
+JOIN v$session s2 ON s1.blocking_session = s2.sid
+JOIN v$session_wait w ON s1.sid = w.sid
+WHERE s1.blocking_session IS NOT NULL;
+```
+
+## Mimari Özet
+
+Oracle Veritabanı; instance ile verinin ayrıldığı, bellek yönetiminin (SGA/PGA) ince ayarlandığı ve kilit mekanizmasının blok başlıklarına (ITL) dağıtıldığı devasa bir mühendislik yapısıdır. AWR, ASH ve SCN mekanizmaları doğru okunduğunda, hiçbir darboğaz tahminlere kalmadan matematiksel kesinlikle çözülebilir.

@@ -1,0 +1,105 @@
+---
+title: "PostgreSQL Mimarisi: Süreç Modeli, Bellek Yönetimi ve Temel Prensipler"
+slug: "postgresql-mimarisi-ve-calisma-prensipleri"
+date: "2026-04-05"
+lang: "tr"
+summary: "İstemci bağlantı modelinden Shared Buffers yönetimine, WAL döngüsünden MVCC ve autovacuum mekanizmasına PostgreSQL'in çekirdek mimari ilkeleri."
+tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
+readingTime: "5 dk"
+---
+
+PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
+
+Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
+
+```
+[İstemci Uygulamaları]
+       │ (TCP Bağlantısı)
+       ▼
+ [Postmaster (Ana Süreç)]
+       │ (fork)
+ ┌─────┴────────────────────────┐
+ ▼                              ▼
+[Backend Process 1]       [Backend Process 2]
+ └─────┬────────────────────────┘
+       │ (IPC / Shared Memory)
+       ▼
+┌────────────────────────────────────────────────────────┐
+│                   PAYLAŞILAN BELLEK                   │
+│  ┌─────────────────────────┐  ┌─────────────────────┐  │
+│  │ shared_buffers (Veri)   │  │ wal_buffers (Log)   │  │
+│  └─────────────────────────┘  └─────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Kilit Tabloları & İşlem Durumları (ProcArray)    │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
+       │                              │
+       ▼                              ▼
+[Checkpointer / BGWriter]          [WAL Writer]
+       │                              │
+       ▼ (8KB Sayfa)                  ▼ (16MB Segment)
+ [Fiziksel Disk: Heap]          [Fiziksel Disk: pg_wal]
+```
+
+## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?
+
+PostgreSQL sunucusu ayağa kalktığında **`postmaster`** ana süreci çalışır ve gelen bağlantıları dinler. İstemciden yeni bir TCP isteği geldiğinde, `postmaster` işletim sisteminin `fork()` çağrısıyla bağımsız bir **`postgres` backend süreci** türetir.
+
+- **Güvenlik ve İzolasyon:** Her istemci oturumu kendi izole bellek alanında (PGA benzeri yerel bellek) koşar. Bir backend çökerse, işletim sistemi seviyesinde temizlenir; diğer istemciler etkilenmez.
+- **Maliyet:** Her yeni OS süreci Linux üzerinde ~5–10MB temel bellek tüketir. 1000 aktif bağlantı açmak, veritabanına sorgu gelmese bile 5–10GB RAM'in sırf süreç yönetimine harcanması demektir.
+- **Kural:** PostgreSQL doğrudan binlerce bağlantıya açılmamalıdır; önünde mutlaka bağlantı açma/kapama maliyetini sıfırlayan **PgBouncer** gibi hafif bir bağlantı havuzlayıcı (connection pooler) bulunmalıdır.
+
+## 2. Bellek Mimarisi: Paylaşılan ve Oturuma Özel Alanlar
+
+PostgreSQL belleği iki ana kategoriye ayrılır:
+
+### A. Ortak Bellek (Shared Memory)
+Tüm backend süreçlerinin ortak eriştiği bellek bloklarıdır:
+- **`shared_buffers`:** Diskten okunan 8KB'lık veri sayfalarının tutulduğu ana önbellektir. Tipik bir üretim sunucusunda toplam RAM'in **%25'i** olarak atanması önerilir (kalan kısım işletim sisteminin disk tamponu / page cache için bırakılır).
+- **`wal_buffers`:** Değişiklik kayıtlarının (WAL) diske yazılmadan önce tutulduğu küçük geçici alandır (genellikle 16MB).
+
+### B. Oturuma Özel Bellek (Local Memory)
+Her bir backend sürecinin kendi sorgusu için ayırdığı dinamik alandır:
+- **`work_mem`:** `ORDER BY`, `DISTINCT`, `HASH JOIN` ve `MERGE JOIN` gibi sıralama ve birleştirme işlemleri için kullanılır.
+- **Kritik Hata:** `work_mem` bağlantı başına değil, **sorgu içindeki işlemci (operator) başına** harcanır. Karmaşık bir sorgu 4 sıralama yapıyorsa ve 50 bağlantı varsa, anlık tüketim `4 × 50 × work_mem` seviyesine çıkar. Bu yüzden `work_mem` sunucu genelinde körü körüne 512MB gibi yüksek değerlere çekilmemelidir.
+
+## 3. MVCC ve Sayfa Düzeni: Güncelleme Neden Masraflıdır?
+
+PostgreSQL eşzamanlılığı sağlamak için **MVCC (Multi-Version Concurrency Control)** kullanır. MVCC'nin temel kuralı şudur:
+
+> *"Okuyucular yazıcıları engellemez, yazıcılar da okuyucuları engellemez."*
+
+Bunu sağlamak için PostgreSQL satırları yerinde (in-place) ezerek güncellemez:
+
+1. Bir `UPDATE` çalıştığında, eski satır silinmiş olarak işaretlenir (`t_xmax` alanına işlemi yapan transaction ID yazılır).
+2. Yeni satır, sayfanın içine yeni bir satır (tuple) olarak **fiziksel olarak yeniden yazılır**.
+3. İşlem tamamlandığında eski satır "ölü satır" (dead tuple) haline gelir.
+
+```sql
+-- Bir tablodaki ölü satır oranını izleme:
+SELECT relname,
+       n_live_tup AS canli_satir,
+       n_dead_tup AS olu_satir,
+       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS olu_yuzde,
+       last_autovacuum
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC
+LIMIT 5;
+```
+
+Ölü satırların diskte yer kaplamasına **tablo şişmesi (bloat)** denir. İşte bu ölü alanları geri kazanmak ve işletim sistemi sayfalarını yeniden kullanılabilir işaretlemek için **`autovacuum`** arka plan süreci çalışır. Üretim sisteminde autovacuum asla kapatılmamalı; aksine yüksek yazma alan tablolarda daha agresif çalışacak şekilde ayarlanmalıdır.
+
+## 4. WAL (Write-Ahead Logging) ve Çarpışma Güvenliği
+
+Bir transaction `COMMIT` ettiğinde PostgreSQL, tüm 8KB'lık kirli veri sayfalarını anında data file'lara yazmaz. Çünkü diske rastgele 8KB bloklar yazmak I/O darboğazı yaratır.
+
+Bunun yerine:
+1. Yapılan değişikliğin bayt seviyesindeki özeti **WAL (Write-Ahead Log)** dosyasına ardışık (sequential) olarak yazılır ve diske `fsync` edilir.
+2. Ardışık I/O diskin en hızlı yaptığı iştir; işlem anında güvenceye alınır ve istemciye "COMMIT OK" denir.
+3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (örn. 5-15 dakikada bir) bellekteki kirli veri sayfalarını topluca diske basar (Checkpoint).
+
+Eğer sunucunun fişi çekilirse, PostgreSQL açılışta son checkpoint noktasından başlar, WAL kayıtlarını sırayla yeniden oynatır (Redo) ve veritabanını tutarlı hale getirir.
+
+## Mimari Özet
+
+PostgreSQL; process izolasyonu, öngörülebilir paylaşılan bellek havuzları ve katı ACID garantileriyle kurulmuş sağlam bir kaledir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS cache dengesini kurmak ve `autovacuum` süreçlerini tablonun yazma temposuna göre optimize etmektir.

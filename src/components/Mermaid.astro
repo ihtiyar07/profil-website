@@ -156,13 +156,13 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     'temp_buffers': {
       title: 'temp_buffers',
       role: 'Geçici Tablo Tamponu (RAM)',
-      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık veri sayfalarını tutar.',
+      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık data page\'lerini tutar.',
       detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
     },
     'tempbuf': {
       title: 'temp_buffers',
       role: 'Geçici Tablo Tamponu (RAM)',
-      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık veri sayfalarını tutar.',
+      desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık data page\'lerini tutar.',
       detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
     },
     'localcache': {
@@ -204,37 +204,37 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     'bufhash': {
       title: 'Buffer Mapping Hash Table',
       role: 'Paylaşımlı O(1) Adresleme Tablosu',
-      desc: 'shared_buffers içindeki 8KB veri sayfalarını BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
+      desc: 'shared_buffers içindeki 8KB data page\'lerini BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
       detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
     },
     'buffer mapping': {
       title: 'Buffer Mapping Hash Table',
       role: 'Paylaşımlı O(1) Adresleme Tablosu',
-      desc: 'shared_buffers içindeki 8KB veri sayfalarını BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
+      desc: 'shared_buffers içindeki 8KB data page\'lerini BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
       detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
     },
     'deschead': {
       title: 'Buffer Descriptors (Başlık Dizisi)',
       role: 'Tampon Metadata & Durum Yönetimi (Array)',
-      desc: 'Her bir 8KB sayfa çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
+      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
       detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
     },
     'buffer descriptors': {
       title: 'Buffer Descriptors (Başlık Dizisi)',
       role: 'Tampon Metadata & Durum Yönetimi (Array)',
-      desc: 'Her bir 8KB sayfa çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
+      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
       detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
     },
     'poolframes': {
-      title: 'Buffer Pool (8KB Sayfa Çerçeveleri)',
+      title: 'Buffer Pool (8KB Data Page Slotları)',
       role: 'Paylaşılan Veri Havuzu (RAM)',
-      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel bellek slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks sayfaları birebir bu bloklara yerleşir.',
+      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel data page slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks data page\'leri birebir bu bloklara yerleşir.',
       detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
     },
     'buffer pool': {
-      title: 'Buffer Pool (8KB Sayfa Çerçeveleri)',
+      title: 'Buffer Pool (8KB Data Page Slotları)',
       role: 'Paylaşılan Veri Havuzu (RAM)',
-      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel bellek slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks sayfaları birebir bu bloklara yerleşir.',
+      desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel data page slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks data page\'leri birebir bu bloklara yerleşir.',
       detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
     },
     'clocksweep': {
@@ -252,7 +252,7 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
     'shared_buffers': {
       title: 'shared_buffers',
       role: 'Paylaşılan Veri Havuzu (RAM)',
-      desc: 'Tablolardan ve indekslerden diskten okunan 8KB boyutundaki veri sayfalarının tüm backend\'ler tarafından ortak paylaşıldığı ana bellek önbelleğidir.',
+      desc: 'Tablolardan ve indekslerden diskten okunan 8KB boyutundaki data page\'lerin tüm backend\'ler tarafından ortak paylaşıldığı ana bellek önbelleğidir.',
       detail: 'Boyutlandırma: Sunucu RAM\'inin %25\'i. Kalan RAM işletim sistemi disk tamponuna (OS Page Cache) bırakılır.'
     },
     'wal_buffers': {
@@ -344,6 +344,86 @@ const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
       role: 'work_mem Taşma Alanı (Disk Spill)',
       desc: 'Karmaşık sıralama veya hash join operasyonları kendilerine ayrılan work_mem sınırını aştığında, veriler diske geçici dosya olarak yazılır ($PGDATA/base/pgsql_tmp).',
       detail: 'EXPLAIN ANALYZE çıktısında "Sort Method: external merge Disk" görünüyorsa sorgu buraya taşmıştır; work_mem gözden geçirilmelidir.'
+    },
+
+    // PostgreSQL Data Page & Tuple
+    'pageheader': {
+      title: 'PageHeaderData (24 Bytes)',
+      role: '8KB Data Page Başlığı',
+      desc: 'Her 8KB data page\'in başında bulunan 24 baytlık sabit başlıktır. LSN, checksum ve sayfa içi boş alan sınırlarını (pd_lower, pd_upper) barındırır.',
+      detail: 'pd_lsn alanı sayfa üzerinde işlem yapan en son WAL kaydının sıra numarasını tutar (Crash Recovery için kritiktir).'
+    },
+    'pd_lsn': {
+      title: 'pd_lsn (Log Sequence Number)',
+      role: 'WAL Takip İşaretçisi (8 Bytes)',
+      desc: 'Bu data page üzerinde değişiklik yapan en son WAL kaydının sıra numarasıdır (LSN).',
+      detail: 'Crash recovery anında WAL kaydının sayfaya uygulanıp uygulanmayacağı bu numara karşılaştırılarak (Redo) belirlenir.'
+    },
+    'line pointer': {
+      title: 'ItemIdData (Line Pointer Array)',
+      role: 'Dolaylı Tuple Adresleme (4B / tuple)',
+      desc: 'Sayfanın başından aşağı doğru (pd_lower) büyüyen 32-bit işaretçiler dizisidir. Tuple\'ın fiziksel bayt ofsetini (lp_off), uzunluğunu (lp_len) ve durum bayraklarını (lp_flags) tutar.',
+      detail: 'İndeksler doğrudan tuple fiziksel bayt adresini değil, bu line pointer numarasını (TID: Block + Offset) işaret eder. Sayfa içi vakum indeksleri bozmaz.'
+    },
+    'itempointer': {
+      title: 'ItemIdData (Line Pointer Array)',
+      role: 'Dolaylı Tuple Adresleme (4B / tuple)',
+      desc: 'Sayfanın başından aşağı doğru (pd_lower) büyüyen 32-bit işaretçiler dizisidir. Tuple\'ın fiziksel bayt ofsetini (lp_off), uzunluğunu (lp_len) ve durum bayraklarını (lp_flags) tutar.',
+      detail: 'İndeksler doğrudan tuple fiziksel bayt adresini değil, bu line pointer numarasını (TID: Block + Offset) işaret eder.'
+    },
+    'free space': {
+      title: 'Free Space (Boş Alan)',
+      role: 'Dinamik Sayfa İçi Boşluk',
+      desc: 'pd_lower (aşağı büyüyen line pointer dizisi) ile pd_upper (yukarı büyüyen tuple alanı) arasında kalan kullanılabilir boş alandır.',
+      detail: 'Yeni tuple eklendikçe pd_upper küçülür, pd_lower büyür. İkisi çakıştığında data page dolmuş kabul edilir.'
+    },
+    'heaptuple': {
+      title: 'HeapTuple (Fiziksel Satır)',
+      role: 'Fiziksel Veri Kaydı',
+      desc: 'Tablodaki bir satır versiyonunun fiziksel temsilidir. Sayfanın en sonundan başlanarak yukarıya doğru (pd_upper) bitişik yazılır.',
+      detail: 'HeapTupleHeader (23 bayt), opsiyonel Null Bitmap ve sütunların ikili kullanıcı verilerinden (payload) oluşur.'
+    },
+    'tuple': {
+      title: 'HeapTuple (Fiziksel Satır)',
+      role: 'Fiziksel Veri Kaydı',
+      desc: 'Tablodaki bir satır versiyonunun fiziksel temsilidir. Sayfanın en sonundan başlanarak yukarıya doğru (pd_upper) bitişik yazılır.',
+      detail: 'HeapTupleHeader (23 bayt), opsiyonel Null Bitmap ve sütunların ikili kullanıcı verilerinden (payload) oluşur.'
+    },
+    't_xmin': {
+      title: 't_xmin (4 Bytes)',
+      role: 'Yaratıcı Transaction ID',
+      desc: 'Bu tuple versiyonunu INSERT eden veya UPDATE ile oluşturan transaction\'ın kimlik numarasıdır (XID).',
+      detail: 'MVCC görünürlük kurallarının temelidir; transaction henüz commit etmediyse diğer okuyucular bu satırı göremez.'
+    },
+    't_xmax': {
+      title: 't_xmax (4 Bytes)',
+      role: 'Silici / Güncelleyici Transaction ID',
+      desc: 'Bu tuple versiyonunu silen (DELETE) veya güncelleyen (UPDATE) transaction\'ın kimlik numarasıdır. Satır aktif ve geçerliyse değeri 0\'dır.',
+      detail: 'Satır güncellendiğinde veya silindiğinde t_xmax atanarak satır "ölü tuple" (dead tuple) adayına dönüşür.'
+    },
+    't_ctid': {
+      title: 't_ctid (6 Bytes - ItemPointer)',
+      role: 'Tuple Kimliği / Güncel Versiyon İşaretçisi',
+      desc: 'Bu tuple\'ın fiziksel disk adresidir (Block No + Line Pointer No, örn. (0, 1)). Eğer satır UPDATE edildiyse, t_ctid yeni oluşturulan tuple\'ın adresini işaret eder.',
+      detail: 'PostgreSQL bu sayede güncelleme zincirlerini (tuple update chains) birbirine bağlar.'
+    },
+    't_infomask': {
+      title: 't_infomask & t_infomask2 (4 Bytes)',
+      role: 'MVCC Durum & HOT Bayrakları',
+      desc: 'Tuple\'ın anlık durumunu gösteren bit bayraklarıdır: HEAP_XMIN_COMMITTED, HEAP_XMAX_INVALID, HEAP_HOT_UPDATED ve kolon sayısı (t_natts).',
+      detail: 'Her sorguda commit log (pg_xact) okuma maliyetini ortadan kaldırır (Hint Bits).'
+    },
+    'null bitmap': {
+      title: 'Null Bitmap (Değişken Boyut)',
+      role: 'NULL Değer Haritası',
+      desc: 'Tabloda NULL olabilecek sütunlar varsa, her sütun için 1 bitlik işaretleyici tutan sıkıştırılmış ikili haritadır.',
+      detail: 'Eğer sütun NULL ise verisi payload alanında yer kaplamaz; 0 bayt ile tasarruf sağlanır.'
+    },
+    'user data': {
+      title: 'User Data / Columns Payload',
+      role: 'Kullanıcı Verisi (Sütunlar)',
+      desc: 'Tablo şemasındaki sütun değerlerinin (INTEGER, VARCHAR, TIMESTAMP, TEXT) diskte ikili (binary) formatta sıralandığı ham veri alanıdır.',
+      detail: '2KB üzerindeki büyük metin ve blob sütunları otomatik olarak TOAST tablosuna taşınır.'
     },
 
     // Oracle

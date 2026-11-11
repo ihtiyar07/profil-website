@@ -103,8 +103,8 @@ Her `postgres` backend süreci, kendisine gelen sorguları işlerken ortak belle
    - Sıradan sorgular tarafından tüketilmediğinden ve genelde aynı anda tek bir bakım işlemi çalıştığından, `work_mem`'e kıyasla çok daha cömert (örn. 1GB–2GB) yapılandırılabilir.
 
 3. **`temp_buffers` (Geçici Tablo Tamponu):**
-   - Oturuma özel `CREATE TEMP TABLE` ile oluşturulan geçici tabloların 8KB'lık sayfalarını tutmak için ayrılır.
-   - Bu sayfalar ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı kilit çekişmesi (lock contention) yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
+   - Oturuma özel `CREATE TEMP TABLE` ile oluşturulan geçici tabloların 8KB'lık data page'lerini tutmak için ayrılır.
+   - Bu data page'ler ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı kilit çekişmesi (lock contention) yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
 
 4. **Yerel Plan & Sistem Kataloğu Önbelleği (syscache & relcache):**
    - Her backend süreci, sık kullandığı tablo metaverilerini (`relcache`), katalog satırlarını (`syscache`) ve `PREPARE` ile hazırlanmış sorgu planlarını (prepared statement plan cache) kendi yerel belleğinde saklar. Böylece her sorguda katalog tablolarına kilit atıp disk okuması yapmaktan kurtulur.
@@ -134,6 +134,7 @@ Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşz
 │    └─────────────────┴─────────────────┴─────────────────┘             │
 │                            ▲                                           │
 │ 4. Clock Sweep Algoritması ┘ (Dairesel ibre: Pin=0 & usage_count=0)    │
+│    (usage_count == 0 ve refcount == 0 olan data page kurban seçilir)   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -143,34 +144,34 @@ Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşz
    - Bu anahtar $O(1)$ sürede taranarak bloğun hangi tampon slotunda (`Buffer ID`) bulunduğu tespit edilir. Eğer blok buradaysa **Buffer Hit** oluşur ve diske gitmeden nanosecond seviyesinde okunur.
 
 2. **Buffer Descriptors (Başlık Metadata Dizisi):**
-   - Her bir 8KB veri çerçevesine karşılık gelen bir `BufferDesc` başlığı bulunur. Bellekte bitişik bir dizi olarak saklanır.
-   - **32-Bit Atomic State:** Sayfanın durumu atomic bayraklarla yönetilir:
-     - `BM_DIRTY`: Sayfa bellekte değiştirildi mi? (Diske yazılması gerekiyor).
-     - `BM_VALID`: Sayfa geçerli veri içeriyor mu?
+   - Her bir 8KB data page çerçevesine karşılık gelen bir `BufferDesc` başlığı bulunur. Bellekte bitişik bir dizi olarak saklanır.
+   - **32-Bit Atomic State:** Data page durumları atomic bayraklarla yönetilir:
+     - `BM_DIRTY`: Data page bellekte değiştirildi mi? (Diske yazılması gerekiyor).
+     - `BM_VALID`: Data page geçerli veri içeriyor mu?
      - `BM_TAG_VALID`: BufferTag geçerli mi?
-     - `BM_IO_IN_PROGRESS`: Sayfa şu an diskten okunuyor mu?
-     - `refcount` (Pin Sayısı): O an kaç backend bu sayfayı aktif olarak okuyor veya yazıyor? `refcount > 0` olan sayfa "pinli" kabul edilir ve bellekten kesinlikle atılamaz.
-     - `usage_count` (0–5 arası sayaç): Sayfaya her erişildiğinde artırılır; sayfanın ne kadar "popüler" olduğunu gösterir.
-   - **`content_lock` (Hafif Kilit / LWLock):** Sayfa verisi okunurken paylaşımlı (`shared`), değiştirilirken ise özel (`exclusive`) modda kilitlenir.
+     - `BM_IO_IN_PROGRESS`: Data page şu an diskten okunuyor mu?
+     - `refcount` (Pin Sayısı): O an kaç backend bu data page'i aktif olarak okuyor veya yazıyor? `refcount > 0` olan data page "pinli" kabul edilir ve bellekten kesinlikle atılamaz.
+     - `usage_count` (0–5 arası sayaç): Data page'e her erişildiğinde artırılır; bloğun ne kadar "popüler" olduğunu gösterir.
+   - **`content_lock` (Hafif Kilit / LWLock):** Data page içeriği okunurken paylaşımlı (`shared`), değiştirilirken ise özel (`exclusive`) modda kilitlenir.
 
-3. **Buffer Pool (8KB Veri Sayfa Çerçeveleri):**
+3. **Buffer Pool (8KB Data Page Slotları):**
    - İşletim sisteminden ayrılmış devasa bitişik sanal bellek alanıdır. Tipik üretim sunucularında toplam fiziksel RAM'in **%25'i** buraya tahsis edilir.
-   - Diskten okunan heap tabloları ve B-Tree/GIN indeks sayfaları birebir bu 8KB çerçevelere yüklenir.
+   - Diskten okunan heap tabloları ve B-Tree/GIN indeks data page'leri birebir bu 8KB slotlara yüklenir.
    - Geri kalan RAM (%75), işletim sisteminin disk tamponuna (**OS Page Cache**) bırakılır. PostgreSQL çift tamponlama (double buffering) mantığıyla çalışır: Diskten okunan blok önce OS page cache'e, oradan `shared_buffers` çerçevesine gelir.
 
-4. **Clock Sweep Algoritması (Sayfa Tahliye Mekanizması):**
-   - Yeni bir blok okunacakken havuzda boş tampon kalmamışsa, eski bir sayfanın tahliye edilmesi (eviction / victim selection) gerekir.
+4. **Clock Sweep Algoritması (Data Page Tahliye Mekanizması):**
+   - Yeni bir blok okunacakken havuzda boş tampon kalmamışsa, eski bir data page'in tahliye edilmesi (eviction / victim selection) gerekir.
    - PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü devasa eşzamanlı sistemlerde tek bir global LRU kilidi devasa bir çekişme (lock contention) darboğazı yaratır.
    - Bunun yerine **Lock-Free Clock Sweep** algoritması kullanılır:
      - Bir saat ibresi (`StrategyControl->nextVictimBuffer`) dairesel olarak `Buffer Descriptors` dizisini tarar.
      - Eğer taranan slot pinli ise (`refcount > 0`), atlar.
      - Slot pinli değil ama `usage_count > 0` ise, sayacını 1 azaltır (`usage_count--`) ve bir sonrakine geçer.
      - Pinli olmayan ve `usage_count == 0` olan ilk slot **kurban tampon (victim buffer)** olarak seçilir.
-     - Eğer seçilen kurban kirli (`BM_DIRTY`) ise, önce diske yazılır, ardından yeni sayfa için tahsis edilir.
+     - Eğer seçilen kurban kirli (`BM_DIRTY`) ise, önce diske yazılır, ardından yeni data page için tahsis edilir.
 
 5. **`BGWriter` ile `Checkpointer` Süreçlerinin Görev Ayrımı:**
-   - **`Checkpointer`:** Periyodik kontrol noktalarında (`checkpoint_timeout` veya `max_wal_size` dolduğunda) `shared_buffers` içindeki tüm kirli sayfaları topluca diske yazar ve `fsync` eder. Görevi çökme anında kurtarma süresini (MTTR) kısaltmaktır.
-   - **`BGWriter` (Background Writer):** Sürekli olarak `shared_buffers`'ı sessizce tarar ve kirli sayfaları diske önceden basar. Görevi, sorgu çalıştıran backend süreçlerinin yeni sayfa okurken "kirli kurban tamponu diske yazmak için I/O beklemek" zorunda kalmasını engellemektir.
+   - **`Checkpointer`:** Periyodik kontrol noktalarında (`checkpoint_timeout` veya `max_wal_size` dolduğunda) `shared_buffers` içindeki tüm kirli data page'leri topluca diske yazar ve `fsync` eder. Görevi çökme anında kurtarma süresini (MTTR) kısaltmaktır.
+   - **`BGWriter` (Background Writer):** Sürekli olarak `shared_buffers`'ı sessizce tarar ve kirli data page'leri diske önceden basar. Görevi, sorgu çalıştıran backend süreçlerinin yeni data page okurken "kirli kurban tamponu diske yazmak için I/O beklemek" zorunda kalmasını engellemektir.
 
 6. **`wal_buffers`:**
    - Veritabanındaki değişikliklerin (WAL kayıtları) diske yazılmadan önce toplandığı 16MB–64MB dairesel bellek alanıdır. İşlem `COMMIT` ettiğinde `WAL Writer` süreci bu kayıtları diske (`pg_wal`) sıralı (sequential) olarak basar.
@@ -178,7 +179,115 @@ Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşz
 7. **Kilit Tabloları & `ProcArray`:**
    - MVCC görünürlüğünü sağlayan aktif işlem kimlikleri (`XID`), satır/tablo kilitleri (`Lock Manager`) ve snapshot metaverileri bu ortak alanda saklanır. Okuyucuların yazıcıları kilitlememesi bu yapı sayesinde garanti edilir.
 
-## 3. MVCC ve Sayfa Düzeni: Güncelleme Neden Masraflıdır?
+## 3. Fiziksel Depolama Düzeni: 8KB Data Page ve Tuple Anatomisi
+
+PostgreSQL disk üzerinde verileri hiçbir zaman tekil satırlar halinde saklamaz ya da okumaz. Disk (`$PGDATA/base`) ve bellek (`shared_buffers`) arasındaki tüm I/O transferleri, standart **8192 baytlık (8KB)** sabit bloklar halinde gerçekleşir. Bu temel blok birimine **Data Page** (veya disk bloğu) denir.
+
+Bir data page'in fiziksel düzeni, yüksek eşzamanlılıkta kilit çekişmelerini önlemek ve parçalanmayı (fragmentation) engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır:
+
+<Mermaid 
+  title="PostgreSQL 8KB Data Page ve HeapTuple İç Düzeni" 
+  code={`
+flowchart TB
+    subgraph DataPage["8KB Data Page Mimarisi"]
+        direction TB
+
+        subgraph PageHeader["PageHeaderData (24 Bayt)"]
+            direction LR
+            LSN["pd_lsn (8B: Son WAL LSN)"]
+            Checksum["pd_checksum (2B: Blok Kontrolü)"]
+            Flags["pd_flags (2B: Görünürlük Bayrakları)"]
+            Pointers["pd_lower ve pd_upper (4B: Dinamik Ofsetler)"]
+            Special["pd_special (2B: Sayfa Sonu Ofseti)"]
+        end
+
+        subgraph LinePointers["Line Pointer Dizisi (ItemIdData - 4 Bayt / Tuple)"]
+            direction LR
+            LP1["Line Pointer 1 (lp_off, lp_flags, lp_len)"]
+            LP2["Line Pointer 2 (lp_off, lp_flags, lp_len)"]
+            LP3["Line Pointer 3 (lp_off, lp_flags, lp_len)"]
+        end
+
+        FreeSpace["pd_lower ────► Serbest Bellek Alanı (Free Space) ◄──── pd_upper"]
+
+        subgraph TupleStorage["Tuple Depolama Alanı (8192 Ofsetinden Geriye Doğru Büyür)"]
+            direction LR
+            Tuple3["Tuple 3 (En Son Eklenen)"]
+            Tuple2["Tuple 2"]
+            Tuple1["Tuple 1 (Sayfa Tabanına Yazılan İlk Satır)"]
+        end
+
+        PageHeader --> LinePointers
+        LinePointers --> FreeSpace
+        FreeSpace --> TupleStorage
+    end
+
+    subgraph TupleAnatomy["HeapTuple Fiziksel İç Yapısı"]
+        direction LR
+        subgraph TupleHeader["HeapTupleHeaderData (23 Bayt Başlık)"]
+            direction TB
+            XMIN["t_xmin (4B: Ekleyen XID)"]
+            XMAX["t_xmax (4B: Silen veya Güncelleyen XID)"]
+            CTID["t_ctid (6B: Fiziksel Konum ve Güncelleme Zinciri)"]
+            INFOMASK["t_infomask (4B: Durum Bayrakları ve Kolon Sayısı)"]
+        end
+        NullBitmap["Null Bitmap (Sütun Boşluk Haritası)"]
+        UserData["User Data Payload (Tablo Kolon Değerleri / TOAST)"]
+
+        TupleHeader --> NullBitmap
+        NullBitmap --> UserData
+    end
+
+    IndexSearch["İndeks Araması: TID (BlockNo, OffsetNo)"] -.->|Dolaylı Adresleme| LP1
+    LP1 ==>|lp_off Bayt Ofseti| Tuple1
+    Tuple1 -.->|Fiziksel Ayrıştırma| TupleAnatomy
+`} />
+
+### A. 8KB Data Page Mimarisi
+
+Bir data page baştan sona şu 4 temel katmandan oluşur:
+
+1. **`PageHeaderData` (24 Bayt Sabit Başlık):**
+   - **`pd_lsn` (8 bayt):** Bu data page üzerinde değişiklik yapan en son WAL kaydının Log Sequence Number adresidir. Çökme sonrası kurtarmada (Crash Recovery) WAL kaydının sayfaya tekrar uygulanıp uygulanmayacağına bu numarayla karar verilir.
+   - **`pd_checksum` (2 bayt):** Disk seviyesindeki bit çürümesine (silent bit rot) karşı sayfa sağlama toplamı.
+   - **`pd_flags` (2 bayt):** Sayfa bayrakları (`PD_ALL_VISIBLE` gibi sayfa içi görünürlük durumları).
+   - **`pd_lower` (2 bayt):** Line pointer dizisinin bittiği ofset (sayfa başından aşağıya doğru ilerler).
+   - **`pd_upper` (2 bayt):** En son yazılan tuple'ın başladığı ofset (sayfa sonundan yukarıya doğru ilerler).
+   - **`pd_special` (2 bayt):** İndeks sayfalarında (B-Tree sibling linkleri vb.) sayfa sonundaki özel alanın başlangıç ofseti (Heap data page'lerinde genellikle sayfa sonu olan 8192'dir).
+
+2. **`ItemIdData` (Line Pointer / Item Pointer Dizisi - Tuple Başına 4 Bayt):**
+   - Sayfa başından aşağı doğru (`pd_lower` yönünde) büyür.
+   - Her eleman 32-bitlik bir işaretçidir: `lp_off` (tuple'ın sayfa içindeki bayt ofseti, 15 bit), `lp_flags` (kullanımda, ölü, yönlendirici HOT, 2 bit), `lp_len` (tuple bayt uzunluğu, 15 bit).
+   - **Neden Dolaylı Adresleme (Indirection)?:** İndeksler (B-Tree, GiST) doğrudan satırın fiziksel bayt adresini saklamaz. Bunun yerine **TID (Tuple ID: `(BlockNumber, OffsetNumber)`)** referansını saklar (örneğin `(0, 1)`: 0 numaralı bloğun 1 numaralı line pointer'ı).
+   - Bu mimari tercih sayesinde `VACUUM` veya sayfa defragmentasyonu satırları sayfa içinde kaydırdığında, indeksleri güncellemeye gerek kalmaz; sadece 4 baytlık line pointer'ın `lp_off` değeri güncellenir.
+
+3. **`Free Space` (Dinamik Serbest Alan):**
+   - `pd_lower` ile `pd_upper` arasında kalan boşluktur.
+   - Yeni satırlar eklendikçe line pointer dizisi aşağı doğru (`pd_lower++`), satır gövdeleri ise sayfa sonundan yukarı doğru (`pd_upper--`) genişler. İki sınır birbirine değdiğinde data page dolmuş kabul edilir.
+
+4. **Tuple Depolama Alanı (Aşağıdan Yukarıya Doğru):**
+   - Satırların fiziksel gövdeleri sayfanın en sonundan (8192. bayttan) başlanarak geriye doğru yazılır.
+
+---
+
+### B. Tuple (HeapTuple) İç Anatomisi
+
+Tabloya eklenen her bir satır versiyonu, data page içinde bir **HeapTuple** olarak saklanır. Bir tuple iki ana parçadan oluşur:
+
+1. **`HeapTupleHeaderData` (23 Bayt Başlık):**
+   - **`t_xmin` (4 bayt):** Bu tuple versiyonunu `INSERT` eden veya `UPDATE` ile oluşturan transaction kimliği (XID).
+   - **`t_xmax` (4 bayt):** Bu tuple versiyonunu silen (`DELETE`) veya güncelleyen (`UPDATE`) transaction kimliği. Satır güncel ve aktifse değeri `0`'dır.
+   - **`t_cid` (4 bayt):** Aynı transaction içerisindeki SQL komut sırası (Command ID).
+   - **`t_ctid` (6 bayt - ItemPointer):** Bu tuple'ın kendi fiziksel adresi `(block, offset)`. Eğer satır `UPDATE` edildiyse, `t_ctid` güncellenen **yeni satır versiyonunun fiziksel adresini** işaret eder (Tuple Versiyon Zinciri).
+   - **`t_infomask` & `t_infomask2` (4 bayt):** Satırın MVCC durum bayrakları (`HEAP_XMIN_COMMITTED`, `HEAP_XMAX_INVALID`, `HEAP_HOT_UPDATED`) ve tablodaki sütun sayısı (`t_natts`).
+
+2. **Null Bitmap (Değişken Boyut):**
+   - Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik bir varlık haritası tutulur. Sütun değeri `NULL` ise veri alanında hiç bayt harcanmaz.
+
+3. **User Data (Sütun Değerleri / Payload):**
+   - Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (binary) formatta sıralı saklanır. 2KB'ı aşan büyük sütunlar (büyük JSONB, uzun metinler) otomatik olarak ana data page'den ayrı **TOAST (The Oversized-Attribute Storage Technique)** tablolarına taşınır.
+
+## 4. MVCC ve Data Page Döngüsü: Güncelleme Neden Masraflıdır?
 
 PostgreSQL eşzamanlılığı sağlamak için **MVCC (Multi-Version Concurrency Control)** kullanır. MVCC'nin temel kuralı şudur:
 
@@ -187,11 +296,12 @@ PostgreSQL eşzamanlılığı sağlamak için **MVCC (Multi-Version Concurrency 
 Bunu sağlamak için PostgreSQL satırları yerinde (in-place) ezerek güncellemez:
 
 1. Bir `UPDATE` çalıştığında, eski satır silinmiş olarak işaretlenir (`t_xmax` alanına işlemi yapan transaction ID yazılır).
-2. Yeni satır, sayfanın içine yeni bir satır (tuple) olarak **fiziksel olarak yeniden yazılır**.
-3. İşlem tamamlandığında eski satır "ölü satır" (dead tuple) haline gelir.
+2. Yeni satır, data page içine yeni bir satır (tuple) olarak **fiziksel olarak yeniden yazılır**.
+3. Eski tuple'ın `t_ctid` değeri, yeni tuple'ın data page adresini gösterecek şekilde güncellenir.
+4. İşlem tamamlandığında eski satır "ölü satır" (dead tuple) haline gelir.
 
 ```sql
--- Bir tablodaki ölü satır oranını izleme:
+-- Bir tablodaki ölü satır (dead tuple) oranını izleme:
 SELECT relname,
        n_live_tup AS canli_satir,
        n_dead_tup AS olu_satir,
@@ -202,19 +312,21 @@ ORDER BY n_dead_tup DESC
 LIMIT 5;
 ```
 
-Ölü satırların diskte yer kaplamasına **tablo şişmesi (bloat)** denir. İşte bu ölü alanları geri kazanmak ve işletim sistemi sayfalarını yeniden kullanılabilir işaretlemek için **`autovacuum`** arka plan süreci çalışır. Üretim sisteminde autovacuum asla kapatılmamalı; aksine yüksek yazma alan tablolarda daha agresif çalışacak şekilde ayarlanmalıdır.
+Ölü satırların diskte yer kaplamasına **tablo şişmesi (bloat)** denir. İşte bu ölü alanları geri kazanmak, data page içindeki `Free Space` alanını genişletmek ve işletim sistemi bloklarını yeniden kullanılabilir işaretlemek için **`autovacuum`** arka plan süreci çalışır.
 
-## 4. WAL (Write-Ahead Logging) ve Çarpışma Güvenliği
+> **HOT (Heap-Only Tuple) Optimizasyonu:** Eğer güncellenen sütunlar üzerinde herhangi bir indeks tanımlı değilse ve mevcut data page içinde yeterli `Free Space` varsa, PostgreSQL yeni tuple'ı aynı data page içine yazar. Bu durumda indeks tablolarına hiç dokunulmaz; sadece mevcut line pointer yeni tuple'a zincirlenir. Bu, indeks şişmesini önleyen en kritik çekirdek optimizasyonudur.
 
-Bir transaction `COMMIT` ettiğinde PostgreSQL, tüm 8KB'lık kirli veri sayfalarını anında data file'lara yazmaz. Çünkü diske rastgele 8KB bloklar yazmak I/O darboğazı yaratır.
+## 5. WAL (Write-Ahead Logging) ve Çarpışma Güvenliği
+
+Bir transaction `COMMIT` ettiğinde PostgreSQL, tüm 8KB'lık kirli data page'leri anında data file'lara yazmaz. Çünkü diske rastgele 8KB bloklar yazmak I/O darboğazı yaratır.
 
 Bunun yerine:
 1. Yapılan değişikliğin bayt seviyesindeki özeti **WAL (Write-Ahead Log)** dosyasına ardışık (sequential) olarak yazılır ve diske `fsync` edilir.
 2. Ardışık I/O diskin en hızlı yaptığı iştir; işlem anında güvenceye alınır ve istemciye "COMMIT OK" denir.
-3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (örn. 5-15 dakikada bir) bellekteki kirli veri sayfalarını topluca diske basar (Checkpoint).
+3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (örn. 5-15 dakikada bir) bellekteki kirli data page'leri topluca diske basar (Checkpoint).
 
 Eğer sunucunun fişi çekilirse, PostgreSQL açılışta son checkpoint noktasından başlar, WAL kayıtlarını sırayla yeniden oynatır (Redo) ve veritabanını tutarlı hale getirir.
 
 ## Mimari Özet
 
-PostgreSQL; process izolasyonu, öngörülebilir paylaşılan bellek havuzları ve katı ACID garantileriyle kurulmuş sağlam bir kaledir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS cache dengesini kurmak ve `autovacuum` süreçlerini tablonun yazma temposuna göre optimize etmektir.
+PostgreSQL; process izolasyonu, öngörülebilir paylaşılan bellek havuzları, 8KB data page düzeni ve katı ACID garantileriyle kurulmuş sağlam bir kaledir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS cache dengesini kurmak ve `autovacuum` süreçlerini tablonun yazma temposuna göre optimize etmektir.

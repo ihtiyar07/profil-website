@@ -1,0 +1,147 @@
+---
+title: "PostgreSQL Sorgu İşleme: Parser, Planner ve Executor Yaşam Döngüsü"
+slug: "postgresql-sorgu-yasam-dongusu"
+date: "2025-10-25"
+lang: "tr"
+summary: "Bir SQL sorgusunun Backend Process'e ulaştığı andan sonuç Tuple'larının Client'a dönmesine kadar geçtiği Parser, Analyze, Rewriter, Cost-Based Planner (Optimizer) ve Volcano Executor aşamaları."
+tags: ["PostgreSQL", "Sorgu İşleme", "Optimizer", "EXPLAIN", "Performans"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 4
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'de bir SQL sorgusu çalıştırıldığında motor doğrudan diskteki dosyalara gitmez. Client'tan gelen metin, ilgili `Backend Process` içinde dört aşamalı bir derleme ve yürütme hattından geçerek fiziksel veri erişim adımlarına dönüştürülür: **Parser / Analyze**, **Rewriter**, **Planner (Optimizer)** ve **Executor**.
+
+Bu hattın nasıl karar verdiğini bilmek, yavaş çalışan bir sorgunun sözdiziminde mi, eksik istatistikte mi (`pg_statistic`), yoksa `work_mem` yetersizliğinde mi takıldığını doğrudan teşhis etmenizi sağlar.
+
+<Mermaid
+  title="PostgreSQL Sorgu İşleme Hattı (Query Pipeline)"
+  ariaLabel="PostgreSQL Sorgu İşleme Hattı: Parser, Rewriter, Planner ve Executor"
+  code={`
+flowchart LR
+    Client["Client (SQL)"]
+    Parser["Parser & Analyze"]
+    Rewriter["Rewriter (Views/Rules)"]
+    Planner["Planner / Optimizer"]
+    Executor["Executor (Volcano)"]
+
+    Catalog[("System Catalog & pg_statistic")]
+    WorkMem["Local Memory (work_mem)"]
+    SharedBuf["shared_buffers (8KB Pages)"]
+    Disk[("Data Files (Disk)")]
+
+    Client -->|"1. SQL Metni"| Parser
+    Parser -->|"2. Query Tree"| Rewriter
+    Rewriter -->|"3. Dönüştürülmüş Tree"| Planner
+    Planner -->|"4. Plan Tree"| Executor
+
+    Catalog -.->|"Tablo/Tip Bilgisi"| Parser
+    Catalog -.->|"Histogram & MCV"| Planner
+    WorkMem <-->|"Sort / Hash"| Executor
+    Executor <-->|"Tuple & MVCC Filtre"| SharedBuf
+    SharedBuf <-->|"Cache Miss I/O"| Disk
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+
+    class Client,Parser,Rewriter,Executor process
+    class Planner primary
+    class WorkMem,SharedBuf memory
+    class Catalog,Disk storage
+`}
+  summarySteps={[
+    "1. Client tarafından gönderilen SQL metni Backend Process içindeki Parser & Analyze aşamasına girer.",
+    "2. Parser sözdizimini doğrular; Analyze aşaması System Catalog üzerinden tablo ve sütun tiplerini çözerek Query Tree üretir.",
+    "3. Rewriter, pg_rewrite katalog kurallarını (VIEW tanımları ve RULE'lar) uygulayarak Query Tree'yi genişletir.",
+    "4. Cost-Based Planner (Optimizer), pg_statistic istatistikleriyle alternatif erişim yollarının maliyetini hesaplar ve en düşük maliyetli Plan Tree'yi seçer.",
+    "5. Executor, Plan Tree düğümlerini yukarıdan aşağıya pull-based (Volcano) modeliyle çalıştırır; Sort/Hash için work_mem, veri sayfaları için shared_buffers kullanır."
+  ]}
+/>
+
+---
+
+## 1. Parser ve Semantik Analiz (Parse Tree → Query Tree)
+
+İlk aşama iki alt adımdan oluşur:
+
+- **Syntax Check (Parser):** Flex/Bison tabanlı ayrıştırıcı, SQL metnini token'lara böler ve gramer kurallarına uyup uymadığını kontrol eder. Bu adımda tabloların veya sütunların gerçekten var olup olmadığına henüz bakılmaz; yalnızca ham bir **Parse Tree** üretilir.
+- **Semantic Analysis (Analyze):** Ayrıştırılan düğümler `System Catalog` (`pg_class`, `pg_attribute`, `pg_type`, `pg_proc`) üzerinde doğrulanır. Nesne isimleri OID'lere çözülür, veri tipleri eşleştirilir ve çıktı olarak **Query Tree** oluşturulur.
+
+Tekrar eden sorgularda her seferinde parse ve planlama maliyetini ödememek için **Extended Query Protocol** (`Parse` → `Bind` → `Execute`) veya `PREPARE` ifadeleri kullanılır. PostgreSQL ilk 5 çalıştırmada parametre değerine özel **Custom Plan** üretir; 6. çalıştırmadan itibaren `Generic Plan` daha ucuz görünüyorsa planı önbelleğe alır (bu davranış `plan_cache_mode` ile kontrol edilir).
+
+---
+
+## 2. Rewriter (Kural ve View Genişletme)
+
+**Rewriter**, `Query Tree` üzerinde `pg_rewrite` kataloğunda tanımlı kuralları uygular. En yaygın kullanım alanı `VIEW` genişletmesidir:
+
+- Bir `VIEW` sorgulandığında Rewriter, view adını gerçek tablo alt sorgusuyla (`RangeTblEntry` / Subquery) değiştirir.
+- Bu sayede Planner, view'in içindeki filtreleri ve `WHERE` koşullarını dış sorguyla birleştirip tek bir bütünleşik plan (ör. Predicate Pushdown) olarak optimize edebilir.
+
+---
+
+## 3. Planner / Optimizer (Maliyet Tabanlı Planlama)
+
+PostgreSQL tamamen **maliyet tabanlı (Cost-Based Optimizer)** bir planlayıcı kullanır. Aynı `Query Tree` sonucunu üretebilecek tüm geçerli yürütme yollarını (`Seq Scan`, `Index Scan`, `Bitmap Heap Scan`, `Nested Loop`, `Hash Join`, `Merge Join`) üretir ve her birine soyut bir **Cost** birimi atar.
+
+### İstatistikler ve Maliyet Formülü
+Planner, tahminlerini gerçek tablo verisini okuyarak değil, `ANALYZE` (veya `autovacuum`) tarafından doldurulan `pg_statistic` (`pg_stats` görünümü) üzerinden yapar:
+- **MCV (`most_common_vals` / `most_common_freqs`):** En sık tekrar eden değerler ve yüzdeleri.
+- **Histogram (`histogram_bounds`):** Eşit derinlikli (equi-depth) aralık dağılımı.
+- **`n_distinct` ve `correlation`:** Tekil değer sayısı tahmini ve fiziksel disk sıralamasının mantıksal sıralamayla korelasyonu (`Index Scan` vs `Bitmap Heap Scan` seçiminde kritik).
+
+Maliyet hesaplamasında temel ağırlıklar konfigürasyona bağlıdır:
+
+```text
+Toplam Maliyet = (Disk Sayfası * page_cost)
+               + (İşlenen Tuple * cpu_tuple_cost)
+               + (Operatör * cpu_operator_cost)
+```
+
+Varsayılan `seq_page_cost = 1.0` iken `random_page_cost = 4.0` değerindedir. Modern NVMe/SSD depolamada `random_page_cost` değerinin `1.1`–`1.5` bandına çekilmemesi, Optimizer'ı gereksiz yere `Seq Scan` seçmeye itebilir.
+
+| Operatör / Strateji | Ne Zaman Seçilir? | Temel Maliyet Etkeni |
+| :--- | :--- | :--- |
+| **`Seq Scan`** | Tablonun büyük kısmı (%15+) okunacaksa veya tablo çok küçükse | Ardışık 8KB blok okuma |
+| **`Index Scan`** | Düşük seçicilikte az sayıda satır hedefleniyorsa | B-Tree gezinmesi + rastgele Heap page I/O |
+| **`Index-Only Scan`** | Seçilen tüm sütunlar indeksteyse ve sayfa `Visibility Map`'te görünürse | Heap sayfasına hiç gidilmez |
+| **`Bitmap Heap Scan`** | Orta ölçekli çok sayıda satır eşleşiyorsa | TID listesi sıralanır, sayfalar ardışık okunur |
+| **`Hash Join` / `Merge Join`** | Büyük veri kümeleri birleştiriliyorsa | `work_mem` içinde hash tablosu veya sıralı akış |
+
+*(Not: 12 ve üzeri tablo birleştirildiğinde `geqo_threshold` aşılır ve tüm join permütasyonları yerine Genetik Sorgu Optimizasyonu devreye girer.)*
+
+---
+
+## 4. Executor (Volcano / Pull-Based Yürütme Modeli)
+
+Planner'ın seçtiği **Plan Tree**, düğümler arası bağlantılarla **Executor**'a teslim edilir. PostgreSQL, klasik **Volcano (Iterator / Pull-Based)** modelini uygular:
+
+1. Üstteki kök düğüm (ör. `Sort` veya `Limit`), altındaki düğümden bir satır talep eder (`ExecProcNode`).
+2. Talep yaprak düğümlere (`SeqScan` / `IndexScan`) kadar iner.
+3. Yaprak düğüm `shared_buffers` içindeki ilgili 8KB `Data Page`'e erişir (yoksa diskten okur), MVCC görünürlük kontrolünü (`t_xmin`, `t_xmax` vs aktif `Snapshot`) yapar ve koşulu sağlayan ilk `Tuple`'ı yukarı döndürür.
+4. `Limit 10` gibi düğümler 10 satır aldığında alt düğümlere yeni talep göndermez; tüm taramanın bitmesini beklemeden yürütmeyi sonlandırır (Early Termination).
+5. `Sort` veya `Hash Join` operatörleri oturumun **`work_mem`** alanını kullanır. Veri `work_mem`'i aşarsa ara sonuçlar `base/pgsql_tmp` altına yazılır (**Spill to Disk**).
+
+---
+
+## 5. Pratik Teşhis: `EXPLAIN (ANALYZE, BUFFERS)`
+
+Planlayıcının tahmini (`cost`, `rows`) ile Executor'ın sahadaki gerçek çalışması (`actual time`, `actual rows`, `Buffers`) arasındaki farkı görmek için sorgular mutlaka `BUFFERS` seçeneğiyle incelenmelidir:
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT o.customer_id, count(*) AS siparis_sayisi
+FROM orders o
+WHERE o.created_at >= now() - interval '7 days'
+  AND o.status = 'PAID'
+GROUP BY o.customer_id
+ORDER BY siparis_sayisi DESC
+LIMIT 20;
+```
+
+Çıktıda şu üç sinyale odaklanılır:
+1. **`rows` vs `actual rows` Sapması:** Tahmin ile gerçek satır sayısı arasında 10x+ fark varsa istatistikler güncel değildir (`ANALYZE orders;`) veya iki sütun arasında (`created_at` ile `status`) gizli korelasyon vardır; bu durumda **Extended Statistics** (`CREATE STATISTICS`) tanımlanmalıdır.
+2. **`Buffers: shared hit=... read=...`:** `read` sayısı yüksekse veri `shared_buffers` içinde değil, diskten/OS page cache'ten çekilmiştir.
+3. **`Sort Method: external merge Disk: ...kB`:** `work_mem` yetersiz kalıp diske taşma (`Spill to Disk`) yaşandığını gösterir; oturum bazında `SET LOCAL work_mem = '64MB';` ile iyileştirme test edilebilir.

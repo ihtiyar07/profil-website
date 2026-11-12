@@ -38,6 +38,8 @@ const posts = defineCollection({
     lang: z.literal('tr').default('tr'),
     tags: z.array(z.string()),
     readingTime: z.string().optional(),
+    parent: z.string().optional(),
+    order: z.number().optional(),
   }),
 });
 

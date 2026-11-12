@@ -471,9 +471,10 @@ COMMIT;`,
       }
     };
 
-    let activeScenarioKey = 'filter';
+    function initPgrstExplorer() {
+      let activeScenarioKey = 'filter';
 
-    const scenarioBtns = document.querySelectorAll('.pgrst-scenario-btn');
+      const scenarioBtns = document.querySelectorAll('.pgrst-scenario-btn');
     const descEl = document.getElementById('scenario-description');
     const stepNote1El = document.getElementById('pgrst-step-note-1');
     const stepNote2El = document.getElementById('pgrst-step-note-2');
@@ -578,5 +579,13 @@ COMMIT;`,
         }
       });
     });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPgrstExplorer);
+    } else {
+      initPgrstExplorer();
+    }
+    document.addEventListener('astro:page-load', initPgrstExplorer);
   })();
 </script>

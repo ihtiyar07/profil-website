@@ -116,13 +116,13 @@ function calculateReadingTime(content: string): number {
           <div class="flex-1 space-y-3 mb-4">
             <!-- Date & Reading Time -->
             <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
-              <time datetime={post.data.date}>{post.data.date}</time>
+              <time datetime={post.data.date} style={`view-transition-name: post-date-${slug};`}>{post.data.date}</time>
               <span class="text-[var(--border-strong)]" aria-hidden="true">·</span>
               <span>{readingMinutes} dk okuma</span>
             </div>
 
-            <!-- Title with full-card clickable ::after link -->
-            <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug">
+            <!-- Title with full-card clickable ::after link and shared-element view-transition-name -->
+            <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug" style={`view-transition-name: post-title-${slug};`}>
               <a href={postUrl} class="focus:outline-none after:absolute after:inset-0 after:z-0">
                 {post.data.title}
               </a>
@@ -374,5 +374,6 @@ function calculateReadingTime(content: string): number {
     } else {
       initArticleFiltering();
     }
+    document.addEventListener('astro:page-load', initArticleFiltering);
   })();
 </script>

@@ -37,9 +37,9 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   fullWidth={true}
 >
   <div class="flex-1 w-full flex flex-col xl:flex-row items-stretch relative min-h-screen">
-    <!-- Main Case Study Column (Expands to fill available space) -->
-    <div id="case-main-col" class="flex-1 min-w-0 px-5 sm:px-8 lg:px-10 py-6 sm:py-10 transition-all duration-300">
-      <article class="w-full space-y-8">
+    <!-- Main Case Study Column (Centered with comfortable reading measure) -->
+    <div id="case-main-col" class="flex-1 min-w-0 px-5 sm:px-8 lg:px-12 py-6 sm:py-10 transition-all duration-300 flex justify-center">
+      <article class="w-full max-w-[860px] space-y-8">
         <!-- Header -->
         <div class="space-y-4 pb-6 border-b border-[var(--border)]">
           <div class="flex items-center justify-between">
@@ -66,13 +66,13 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
                 <span id="right-panel-btn-label">Paneli Gizle</span>
               </button>
 
-              <span class="font-mono text-xs text-[var(--text-dim)]">
+              <span class="font-mono text-xs text-[var(--text-dim)]" style={`view-transition-name: case-date-${currentSlug};`}>
                 {entry.data.date}
               </span>
             </div>
           </div>
 
-        <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]">
+        <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]" style={`view-transition-name: case-title-${currentSlug};`}>
           {entry.data.title}
         </h1>
 
@@ -117,7 +117,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       )}
 
       <!-- Case Study Content with Optimal Reading Typography -->
-      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:max-w-[75ch] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
+      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ol>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
         <Content />
       </div>
 
@@ -270,78 +270,89 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   <!-- Collapsible Right Panel & Scrollspy Script -->
   <script is:inline>
     (function() {
-      // 1. Collapsible Right Panel Logic
-      const rightPanel = document.getElementById('article-right-panel');
-      const togglePanelBtn = document.getElementById('toggle-right-panel-btn');
-      const closePanelBtn = document.getElementById('close-right-panel-btn');
-      const panelBtnLabel = document.getElementById('right-panel-btn-label');
+      function initCasePage() {
+        // 1. Collapsible Right Panel Logic
+        const rightPanel = document.getElementById('article-right-panel');
+        const togglePanelBtn = document.getElementById('toggle-right-panel-btn');
+        const closePanelBtn = document.getElementById('close-right-panel-btn');
+        const panelBtnLabel = document.getElementById('right-panel-btn-label');
 
-      function setPanelCollapsed(collapsed) {
-        if (!rightPanel) return;
-        if (collapsed) {
-          rightPanel.classList.add('!hidden');
-          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Göster';
-          togglePanelBtn?.classList.add('border-[var(--accent)]', 'text-[var(--accent)]');
-          try { localStorage.setItem('article_panel_collapsed', 'true'); } catch (_) {}
-        } else {
-          rightPanel.classList.remove('!hidden');
-          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Gizle';
-          togglePanelBtn?.classList.remove('border-[var(--accent)]', 'text-[var(--accent)]');
-          try { localStorage.setItem('article_panel_collapsed', 'false'); } catch (_) {}
-        }
-      }
-
-      if (togglePanelBtn) {
-        togglePanelBtn.addEventListener('click', () => {
-          const isCollapsed = rightPanel?.classList.contains('!hidden');
-          setPanelCollapsed(!isCollapsed);
-        });
-      }
-
-      if (closePanelBtn) {
-        closePanelBtn.addEventListener('click', () => {
-          setPanelCollapsed(true);
-        });
-      }
-
-      // Restore user preference
-      try {
-        if (localStorage.getItem('article_panel_collapsed') === 'true') {
-          setPanelCollapsed(true);
-        }
-      } catch (_) {}
-
-      // 2. Scrollspy for Table of Contents
-      const tocLinks = document.querySelectorAll('.toc-anchor-link');
-      if (!tocLinks.length) return;
-
-      const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
-      if (!headings.length) return;
-
-      function onScroll() {
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const offset = 120;
-
-        let currentActive = null;
-        for (let i = 0; i < headings.length; i++) {
-          const top = headings[i].getBoundingClientRect().top + scrollY - offset;
-          if (scrollY >= top) {
-            currentActive = headings[i].id;
-          }
-        }
-
-        tocLinks.forEach(link => {
-          const slug = link.getAttribute('data-heading-slug');
-          if (slug === currentActive) {
-            link.classList.add('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+        function setPanelCollapsed(collapsed) {
+          if (!rightPanel) return;
+          if (collapsed) {
+            rightPanel.classList.add('!hidden');
+            if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Göster';
+            togglePanelBtn?.classList.add('border-[var(--accent)]', 'text-[var(--accent)]');
+            try { localStorage.setItem('article_panel_collapsed', 'true'); } catch (_) {}
           } else {
-            link.classList.remove('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+            rightPanel.classList.remove('!hidden');
+            if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Gizle';
+            togglePanelBtn?.classList.remove('border-[var(--accent)]', 'text-[var(--accent)]');
+            try { localStorage.setItem('article_panel_collapsed', 'false'); } catch (_) {}
           }
-        });
+        }
+
+        if (togglePanelBtn) {
+          togglePanelBtn.onclick = () => {
+            const isCollapsed = rightPanel?.classList.contains('!hidden');
+            setPanelCollapsed(!isCollapsed);
+          };
+        }
+
+        if (closePanelBtn) {
+          closePanelBtn.onclick = () => {
+            setPanelCollapsed(true);
+          };
+        }
+
+        // Restore user preference
+        try {
+          if (localStorage.getItem('article_panel_collapsed') === 'true') {
+            setPanelCollapsed(true);
+          }
+        } catch (_) {}
+
+        // 2. Scrollspy for Table of Contents
+        const tocLinks = document.querySelectorAll('.toc-anchor-link');
+        if (!tocLinks.length) return;
+
+        const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+        if (!headings.length) return;
+
+        function onScroll() {
+          const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+          const offset = 120;
+
+          let currentActive = null;
+          for (let i = 0; i < headings.length; i++) {
+            const top = headings[i].getBoundingClientRect().top + scrollY - offset;
+            if (scrollY >= top) {
+              currentActive = headings[i].id;
+            }
+          }
+
+          tocLinks.forEach(link => {
+            const slug = link.getAttribute('data-heading-slug');
+            if (slug === currentActive) {
+              link.classList.add('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+            } else {
+              link.classList.remove('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+            }
+          });
+        }
+
+        window.removeEventListener('scroll', window.__caseScrollHandler);
+        window.__caseScrollHandler = onScroll;
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
       }
 
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCasePage);
+      } else {
+        initCasePage();
+      }
+      document.addEventListener('astro:page-load', initCasePage);
     })();
   </script>
 </BaseLayout>

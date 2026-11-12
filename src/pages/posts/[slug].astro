@@ -29,8 +29,18 @@ const currentIndex = sortedPosts.findIndex((p) => getPostSlug(p) === currentSlug
 const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
 const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
 
+// Parent & Child relationship logic:
+const parentSlug = entry.data.parent;
+const parentPost = parentSlug ? allPosts.find((p) => getPostSlug(p) === parentSlug) : null;
+const childPosts = allPosts
+  .filter((p) => p.data.parent === currentSlug)
+  .sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99));
+const siblingPosts = parentSlug
+  ? allPosts.filter((p) => p.data.parent === parentSlug).sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99))
+  : [];
+
 const otherPosts = sortedPosts
-  .filter((p) => getPostSlug(p) !== currentSlug)
+  .filter((p) => getPostSlug(p) !== currentSlug && p.data.parent !== currentSlug && (!parentSlug || p.data.parent !== parentSlug))
   .slice(0, 3);
 
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
@@ -43,20 +53,34 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   fullWidth={true}
 >
   <div class="flex-1 w-full flex flex-col xl:flex-row items-stretch relative min-h-screen">
-    <!-- Main Article Column (Expands to fill available space) -->
-    <div id="article-main-col" class="flex-1 min-w-0 px-5 sm:px-8 lg:px-10 py-6 sm:py-10 transition-all duration-300">
-      <article class="w-full space-y-8">
+    <!-- Main Article Column (Centered with comfortable reading measure) -->
+    <div id="article-main-col" class="flex-1 min-w-0 px-5 sm:px-8 lg:px-12 py-6 sm:py-10 transition-all duration-300 flex justify-center">
+      <article class="w-full max-w-[860px] space-y-8">
         <!-- Header -->
         <div class="space-y-4 pb-6 border-b border-[var(--border)]">
           <div class="flex items-center justify-between">
-            <a
-              href="/#articles"
-              class="font-mono text-xs text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-              aria-label="Yazılar ve notlar listesine dön"
-            >
-              <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-              <span>Yazılara Dön</span>
-            </a>
+            <div class="flex items-center gap-1.5 font-mono text-xs text-[var(--text-dim)]">
+              <a
+                href="/#articles"
+                class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1 transition-colors tactile-btn group"
+                aria-label="Yazılar ve notlar listesine dön"
+              >
+                <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+                <span>Yazılar</span>
+              </a>
+              {parentPost && (
+                <>
+                  <span class="text-[var(--border-strong)]">/</span>
+                  <a
+                    href={`/posts/${getPostSlug(parentPost)}`}
+                    class="text-[var(--text-muted)] hover:text-[var(--text)] transition-colors truncate max-w-[180px] sm:max-w-[280px]"
+                    title={`Üst Döküman: ${parentPost.data.title}`}
+                  >
+                    {parentPost.data.title}
+                  </a>
+                </>
+              )}
+            </div>
 
             <div class="flex items-center gap-3">
               <button
@@ -72,13 +96,13 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
                 <span id="right-panel-btn-label">Paneli Gizle</span>
               </button>
 
-              <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]">
+              <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]" style={`view-transition-name: post-date-${currentSlug};`}>
                 {entry.data.date}
               </time>
             </div>
           </div>
 
-        <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]">
+        <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]" style={`view-transition-name: post-title-${currentSlug};`}>
           {entry.data.title}
         </h1>
 
@@ -122,7 +146,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       )}
 
       <!-- Article Content with Optimal Reading Typography -->
-      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:max-w-[75ch] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
+      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>pre]:bg-[var(--bg-code)] [&>pre]:border [&>pre]:border-[var(--border)] [&>pre]:p-4 [&>pre]:rounded-[2px] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
         <Content />
       </div>
 
@@ -216,7 +240,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
             <span>{tocHeadings.length} Başlık</span>
           </div>
 
-          <nav aria-label="İçindekiler" class="space-y-1 text-xs font-sans max-h-[calc(100vh-20rem)] overflow-y-auto pr-1">
+          <nav aria-label="İçindekiler" class="space-y-1 text-xs font-sans max-h-[calc(100vh-25rem)] overflow-y-auto pr-1">
             {tocHeadings.map((h) => (
               <a
                 href={`#${h.slug}`}
@@ -230,6 +254,71 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
               </a>
             ))}
           </nav>
+        </div>
+      )}
+
+      <!-- Child Topics Card (For Parent Posts) -->
+      {childPosts.length > 0 && (
+        <div class="border border-[var(--accent)]/30 bg-[var(--accent-subtle)]/30 p-4 rounded-[2px] space-y-2.5">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+            <span class="flex items-center gap-1.5 text-[var(--accent)]">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+              <span>Alt Dökümanlar</span>
+            </span>
+            <span>{childPosts.length} Bölüm</span>
+          </div>
+          <div class="space-y-1">
+            {childPosts.map((child, idx) => (
+              <a
+                href={`/posts/${getPostSlug(child)}`}
+                class="block group text-xs hover:bg-[var(--bg)] p-1.5 -mx-1.5 rounded-[2px] transition-colors"
+              >
+                <div class="flex items-start gap-1.5">
+                  <span class="font-mono text-[10px] text-[var(--accent)] shrink-0 mt-0.5">0{idx + 1}.</span>
+                  <span class="font-serif text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug">
+                    {child.data.title}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Series Index Card (For Child Posts) -->
+      {parentPost && siblingPosts.length > 0 && (
+        <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4 rounded-[2px] space-y-2.5">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+            <span class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+              <span>Konu Serisi</span>
+            </span>
+            <a href={`/posts/${getPostSlug(parentPost)}`} class="text-[var(--accent)] hover:underline font-mono text-[10px] flex items-center gap-0.5">
+              <span>Genel Bakış</span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="space-y-1">
+            {siblingPosts.map((sibling, idx) => {
+              const isCurrent = getPostSlug(sibling) === currentSlug;
+              return (
+                <a
+                  href={`/posts/${getPostSlug(sibling)}`}
+                  class:list={[
+                    'block text-xs p-1.5 -mx-1.5 rounded-[2px] transition-colors',
+                    isCurrent
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-2 border-[var(--accent)] pl-2'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'
+                  ]}
+                >
+                  <div class="flex items-start gap-1.5">
+                    <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0 mt-0.5">0{idx + 1}.</span>
+                    <span class="line-clamp-2 leading-snug">{sibling.data.title}</span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -273,6 +362,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
   <!-- Collapsible Right Panel & Scrollspy Script -->
   <script is:inline>
     (function() {
+    function initArticlePage() {
       // 1. Collapsible Right Panel Logic
       const rightPanel = document.getElementById('article-right-panel');
       const togglePanelBtn = document.getElementById('toggle-right-panel-btn');
@@ -295,16 +385,16 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       }
 
       if (togglePanelBtn) {
-        togglePanelBtn.addEventListener('click', () => {
+        togglePanelBtn.onclick = () => {
           const isCollapsed = rightPanel?.classList.contains('!hidden');
           setPanelCollapsed(!isCollapsed);
-        });
+        };
       }
 
       if (closePanelBtn) {
-        closePanelBtn.addEventListener('click', () => {
+        closePanelBtn.onclick = () => {
           setPanelCollapsed(true);
-        });
+        };
       }
 
       // Restore user preference
@@ -343,8 +433,18 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         });
       }
 
+      window.removeEventListener('scroll', window.__articleScrollHandler);
+      window.__articleScrollHandler = onScroll;
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
-    })();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initArticlePage);
+    } else {
+      initArticlePage();
+    }
+    document.addEventListener('astro:page-load', initArticlePage);
+  })();
   </script>
 </BaseLayout>

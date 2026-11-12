@@ -3,27 +3,52 @@ title: "PostgreSQL Mimarisi: Süreç Modeli, Bellek Yönetimi ve Temel Prensiple
 slug: "postgresql-mimarisi-ve-calisma-prensipleri"
 date: "2025-10-25"
 lang: "tr"
-summary: "İstemci bağlantı modelinden Shared Buffers yönetimine, WAL döngüsünden MVCC ve autovacuum mekanizmasına PostgreSQL'in çekirdek mimari ilkeleri."
+summary: "Client bağlantı modelinden Shared Buffers ve Local Memory yapısına, WAL döngüsünden kalıcı yazma yoluna PostgreSQL'in çekirdek mimari ilkeleri."
 tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
 ---
+import Mermaid from '../../components/Mermaid.astro';
 
 PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
-import Mermaid from '../../components/Mermaid.astro';
-import DataPageAnatomy from '../../components/DataPageAnatomy.astro';
-
 Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
+  <a href="/posts/postgresql-bellek-yonetimi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Bellek</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">shared_buffers & Local Memory</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">4 katmanlı tampon havuzu, Clock Sweep tahliyesi ve work_mem disk taşması.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-data-page-ve-tuple" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">02 · Depolama</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">8KB Data Page & Tuple</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Line Pointer indirection, Free Space dinamikleri ve 23B HeapTupleHeader.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-mvcc-ve-wal" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Eşzamanlılık</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">MVCC & WAL Mekanizması</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Dead Tuples, Autovacuum, HOT zincirleri ve Append-Only çökme kurtarma.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+</div>
+
+## 1. Bağlantı Modeli: Postmaster ve Backend Süreçleri
+
+PostgreSQL sunucusu ayağa kalktığında **`postmaster`** ana süreci çalışır ve gelen bağlantıları dinler. Client'tan yeni bir TCP isteği geldiğinde, `postmaster` işletim sisteminin `fork()` çağrısıyla bağımsız bir **`postgres` backend süreci** türetir.
+
 <Mermaid 
-  title="PostgreSQL Süreç ve Bellek Mimarisi (Çekirdek Düzeyi)" 
-  tabs={[
-    {
-      id: "connection",
-      label: "Bağlantı Modeli",
-      ariaLabel: "PostgreSQL İstemci Bağlantı ve Süreç Modeli Şeması",
-      code: `
+  title="1. Bağlantı Modeli (Client & Postmaster Fork)" 
+  ariaLabel="PostgreSQL Client Bağlantı ve Süreç Modeli Şeması"
+  code={`
 flowchart LR
-    Client["Client (İstemci)"] -->|TCP: 5432| Postmaster["Postmaster (Ana Süreç)"]
+    Client["Client"] -->|TCP: 5432| Postmaster["Postmaster (Ana Süreç)"]
     Postmaster -->|fork| Backend["Backend Process"]
     Backend -->|Özel Kullanır| LocalMem["Local Memory"]
     Backend -->|IPC ile Erişir| SharedMem["Shared Memory"]
@@ -35,19 +60,29 @@ flowchart LR
     class Client,Postmaster process
     class Backend primary
     class LocalMem,SharedMem memory
-`,
-      summarySteps: [
-        "1. İstemci uygulama, TCP 5432 portu üzerinden PostgreSQL sunucusuna bağlanır.",
-        "2. Postmaster ana süreci isteği doğrular ve işletim sisteminin fork() çağrısıyla bağımsız bir Backend Process (postgres) çatallar.",
-        "3. Backend Process, her istemci için yalıtılmış Local Memory (work_mem, temp_buffers) alanını özel olarak kullanır.",
-        "4. Backend Process, paylaşımlı veri havuzu ve kilit koordinasyonu için IPC üzerinden Shared Memory'ye erişir."
-      ]
-    },
-    {
-      id: "memory",
-      label: "Bellek Yapısı",
-      ariaLabel: "PostgreSQL Local ve Shared Memory Bellek Hiyerarşisi Şeması",
-      code: `
+`}
+  summarySteps={[
+    "1. Client uygulama, TCP 5432 portu üzerinden PostgreSQL sunucusuna bağlanır.",
+    "2. Postmaster ana süreci isteği doğrular ve işletim sisteminin fork() çağrısıyla bağımsız bir Backend Process (postgres) türetir.",
+    "3. Backend Process, her oturum için yalıtılmış Local Memory (work_mem, temp_buffers) alanını özel olarak kullanır.",
+    "4. Backend Process, ortak tampon havuzu ve kilitler için IPC üzerinden Shared Memory'ye erişir."
+  ]}
+/>
+
+- **İzolasyon:** Her istemci oturumu kendi izole bellek alanında koşar. Bir backend çökerse, işletim sistemi seviyesinde temizlenir; diğer oturumlar çalışmaya devam eder.
+- **Maliyet:** Her yeni OS süreci Linux üzerinde ~5–10MB temel bellek tüketir. 1000 aktif bağlantı açmak, veritabanına sorgu gelmese dahi 5–10GB RAM'in sırf süreç yönetimine harcanması demektir.
+- **Kural:** PostgreSQL doğrudan binlerce doğrudan istemci bağlantısına açılmamalıdır; önünde mutlaka bağlantı açma/kapama maliyetini sıfırlayan **PgBouncer** gibi hafif bir bağlantı havuzlayıcı (connection pooler) bulunmalıdır.
+
+---
+
+## 2. Bellek Mimarisi: Local Memory ve Shared Memory
+
+PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Paylaşılan Bellek (Shared Memory)** ve **Her istemci sürecine özel tahsis edilen Yerel Bellek (Local Memory)**.
+
+<Mermaid 
+  title="2. Bellek Yapısı (Local ve Shared Memory)" 
+  ariaLabel="PostgreSQL Local ve Shared Memory Bellek Hiyerarşisi Şeması"
+  code={`
 flowchart TB
     Backend["Backend Process"]
 
@@ -56,7 +91,7 @@ flowchart TB
         WorkMem["work_mem"]
         MaintMem["maintenance_work_mem"]
         TempBuf["temp_buffers"]
-        CatCache["Catalog ve Plan Cache"]
+        CatCache["Catalog & Plan Cache"]
     end
 
     subgraph SharedMemGroup["Shared Memory (Global ve IPC)"]
@@ -70,7 +105,7 @@ flowchart TB
         subgraph OtherShared["Diğer Ortak Alanlar"]
             direction LR
             WALBuf["wal_buffers"]
-            ProcArray["Lock ve ProcArray"]
+            ProcArray["Lock & ProcArray"]
         end
     end
 
@@ -84,55 +119,65 @@ flowchart TB
     class Backend process
     class WorkMem,MaintMem,TempBuf,CatCache,BufHash,DescHead,PoolFrames,ClockSweep,WALBuf,ProcArray memory
     class SB primary
-`,
-      summarySteps: [
-        "1. Backend Process iki ana bellek kümesine bağlanır: Oturuma Özel Yerel Bellek (Local Memory) ve Ortak Bellek (Shared Memory).",
-        "2. Local Memory içinde work_mem (sıralama/hash), maintenance_work_mem (bakım/DDL), temp_buffers (geçici tablolar) ve Catalog/Plan Cache izole çalışır.",
-        "3. Shared Memory'nin kalbi olan shared_buffers; Buffer Mapping Hash Table -> Buffer Descriptors -> Buffer Pool (8KB Sayfalar) katmanlarından oluşur.",
-        "4. Boş tampon kalmadığında Clock Sweep algoritması Buffer Descriptors dizisini dairesel tarayarak sayfa tahliyesi yapar.",
-        "5. wal_buffers ve Lock & ProcArray alanları tüm oturumlar tarafından IPC üzerinden ortaklaşa kullanılır."
-      ]
-    },
-    {
-      id: "write-path",
-      label: "Yazma Yolu",
-      ariaLabel: "PostgreSQL Veri Değişikliği ve Kalıcı Depolama Yazma Döngüsü Şeması",
-      code: `
-flowchart TB
-    subgraph ClientMem["İstemci ve Bellek"]
-        direction LR
-        Backend["Backend Process"]
+`}
+  summarySteps={[
+    "1. Backend Process iki ana bellek kümesine bağlanır: Oturuma Özel Yerel Bellek (Local Memory) ve Ortak Bellek (Shared Memory).",
+    "2. Local Memory içinde work_mem (sıralama/hash), maintenance_work_mem (bakım/DDL), temp_buffers (geçici tablolar) ve Catalog/Plan Cache izole çalışır.",
+    "3. Shared Memory'nin kalbi olan shared_buffers; Buffer Mapping Hash Table -> Buffer Descriptors -> Buffer Pool (8KB Sayfalar) katmanlarından oluşur.",
+    "4. Boş tampon kalmadığında Clock Sweep algoritması Buffer Descriptors dizisini dairesel tarayarak sayfa tahliyesi yapar.",
+    "5. wal_buffers ve Lock & ProcArray alanları tüm oturumlar tarafından IPC üzerinden ortaklaşa kullanılır."
+  ]}
+/>
+
+- **Local Memory:** Sorgu operatörü başına dinamik ayrılan `work_mem`, bakım işlemlerini üstlenen `maintenance_work_mem`, geçici tablolar için `temp_buffers` ve katalog önbelleklerini (`syscache`/`relcache`) kapsar.
+- **Shared Memory:** Tüm backend'lerin ortak veri tamponu olan `shared_buffers`, işlem günlüklerini tutan `wal_buffers` ve kilit yöneticisini (`ProcArray`) içerir.
+
+---
+
+## 3. Yazma Yolu: Kirli Sayfalar ve Kalıcı Depolama
+
+PostgreSQL'de bir veri değişikliği (`INSERT`, `UPDATE`, `DELETE`) gerçekleştiğinde, disk blokları anında diske yazılmaz. Değişiklik bellek üzerinde yapılır ve eşzamanlı olarak WAL tamponuna yazılır:
+
+<Mermaid 
+  title="3. Yazma Yolu (Write Path & Arka Plan Süreçleri)" 
+  ariaLabel="PostgreSQL Veri Değişikliği ve Kalıcı Depolama Yazma Döngüsü Şeması"
+  code={`
+flowchart LR
+    Backend["Backend Process"]
+
+    subgraph Memory["Bellek Tamponları"]
+        direction TB
         SharedBuffers["shared_buffers"]
         WALBuffers["wal_buffers"]
     end
 
-    subgraph BgWorkers["Arka Plan Yazıcıları"]
-        direction LR
-        WALWriter["WAL Writer"]
+    subgraph BgWorkers["Yazıcı Süreçler"]
+        direction TB
         BGWriter["BGWriter"]
         Checkpointer["Checkpointer"]
         Autovacuum["Autovacuum"]
+        WALWriter["WAL Writer"]
     end
 
     subgraph StorageFiles["Kalıcı Depolama (Disk)"]
-        direction LR
+        direction TB
+        DataFiles[("Data Files (Heap & Index)")]
         WALFiles[("pg_wal (WAL Dosyaları)")]
-        DataFiles[("Data Files (Heap ve Index)")]
     end
 
-    Backend -->|1. Sayfa Değişir - Kirli| SharedBuffers
-    Backend -->|2. WAL Kaydı Yazılır| WALBuffers
+    Backend -->|1. Kirli Sayfa| SharedBuffers
+    Backend -->|2. WAL Kaydı| WALBuffers
 
-    WALBuffers -->|3. Flush Eder| WALWriter
-    WALWriter -->|Senkron ve Periyodik| WALFiles
+    SharedBuffers -->|4. Proaktif| BGWriter
+    BGWriter --> DataFiles
 
-    SharedBuffers -->|4. Yavaşça Yazar| BGWriter
-    BGWriter -->|Proaktif Flush| DataFiles
+    SharedBuffers -->|5. Checkpoint| Checkpointer
+    Checkpointer --> DataFiles
 
-    SharedBuffers -->|5. Toplu Flush| Checkpointer
-    Checkpointer -->|Checkpoint Anında| DataFiles
+    WALBuffers -->|3. Senkron Flush| WALWriter
+    WALWriter --> WALFiles
 
-    Autovacuum -.->|6. Ölü Satır Temizliği| DataFiles
+    Autovacuum -.->|6. Temizlik| DataFiles
 
     classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
     classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
@@ -145,214 +190,37 @@ flowchart TB
     class SharedBuffers primaryMem
     class WALBuffers memory
     class WALFiles,DataFiles storage
-`,
-      summarySteps: [
-        "1. Backend Process, hedef veri sayfasını shared_buffers içinde günceller (sayfa kirli / dirty duruma geçer).",
-        "2. Yapılan değişikliğin WAL kaydı eşzamanlı olarak wal_buffers tamponuna yazılır.",
-        "3. WAL Writer süreci, wal_buffers içeriğini diske (pg_wal dosyaları) senkron veya periyodik olarak flush eder.",
-        "4. BGWriter süreci, dirty sayfaları shared_buffers'tan yavaşça ve proaktif olarak Data Files'a yazar.",
-        "5. Checkpointer süreci, checkpoint anında kalan tüm dirty sayfaları toplu olarak Data Files'a yazar ve kurtarma başlangıç noktasını ilerletir.",
-        "6. Autovacuum süreci, ölü satırları (dead tuples) Data Files üzerinden temizler ve boş alanları tekrar kullanıma açar."
-      ]
-    }
+`}
+  summarySteps={[
+    "1. Backend Process, hedef data page'i shared_buffers içinde günceller (sayfa kirli / dirty duruma geçer).",
+    "2. Değişikliğin WAL kaydı eşzamanlı olarak wal_buffers tamponuna yazılır.",
+    "3. WAL Writer süreci, wal_buffers içeriğini diske (pg_wal) flush eder.",
+    "4. BGWriter süreci, dirty sayfaları shared_buffers'tan yavaşça ve proaktif olarak Data Files'a yazar.",
+    "5. Checkpointer süreci, checkpoint anında kalan tüm dirty sayfaları topluca Data Files'a yazar ve kurtarma başlangıç noktasını ilerletir.",
+    "6. Autovacuum süreci, ölü satırları (dead tuples) Data Files üzerinden temizler ve boş alanları tekrar kullanıma açar."
   ]}
 />
 
-## 1. Süreç Modeli: Neden Process ve Neden Havuzlama?
-
-PostgreSQL sunucusu ayağa kalktığında **`postmaster`** ana süreci çalışır ve gelen bağlantıları dinler. İstemciden yeni bir TCP isteği geldiğinde, `postmaster` işletim sisteminin `fork()` çağrısıyla bağımsız bir **`postgres` backend süreci** türetir.
-
-- **Güvenlik ve İzolasyon:** Her istemci oturumu kendi izole bellek alanında (PGA benzeri yerel bellek) koşar. Bir backend çökerse, işletim sistemi seviyesinde temizlenir; diğer istemciler etkilenmez.
-- **Maliyet:** Her yeni OS süreci Linux üzerinde ~5–10MB temel bellek tüketir. 1000 aktif bağlantı açmak, veritabanına sorgu gelmese bile 5–10GB RAM'in sırf süreç yönetimine harcanması demektir.
-- **Kural:** PostgreSQL doğrudan binlerce bağlantıya açılmamalıdır; önünde mutlaka bağlantı açma/kapama maliyetini sıfırlayan **PgBouncer** gibi hafif bir bağlantı havuzlayıcı (connection pooler) bulunmalıdır.
-
-## 2. Bellek Mimarisi: Paylaşılan ve Oturuma Özel Alanlar
-
-PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Paylaşılan Bellek (Shared Memory)** ve **Her istemci sürecine özel tahsis edilen Yerel Bellek (Local Memory)**.
-
-### A. Oturuma Özel Bellek (Local Memory / Backend Private Memory)
-
-Her `postgres` backend süreci, kendisine gelen sorguları işlerken ortak bellekten tamamen izole kendi özel bellek alanlarını kullanır. Bu alanlar sorgu bittiğinde işletim sistemine geri verilir:
-
-1. **`work_mem` (Sıralama ve Hash Tabloları):**
-   - `ORDER BY`, `DISTINCT`, `HASH JOIN`, `MERGE JOIN` ve hash aggregation işlemleri için ayrılır.
-   - **Kritik Mimari Kural:** `work_mem` bağlantı başına değil, **sorgu yürütme planındaki HER BİR İŞLEMCİ (node/operator) başına** dinamik olarak harcanır. 
-   - Örneğin; içinde 2 adet hash join ve 1 adet sort bulunan karmaşık bir sorgu, tek bir oturumda `3 × work_mem` kadar RAM tüketebilir. Eğer sunucuda 100 eşzamanlı aktif bağlantı varsa, anlık tüketim `100 × 3 × work_mem` seviyesine fırlar.
-   - **Disk Spill:** Eğer bir operatörün ihtiyaç duyduğu veri `work_mem` sınırını aşarsa, PostgreSQL işlemi bellekten diske taşır (**Spill to Disk**). `$PGDATA/base/pgsql_tmp` dizini altında geçici dosyalar oluşturulur ve harici sıralama (external merge sort) yapılır. `EXPLAIN ANALYZE` çıktısında `"Sort Method: external merge Disk"` ifadesi bu darboğazı belgeler.
-
-2. **`maintenance_work_mem` (Bakım ve DDL Operasyonları):**
-   - `VACUUM`, `ANALYZE`, `CREATE INDEX`, `REINDEX` ve `ALTER TABLE ADD FOREIGN KEY` gibi yoğun I/O ve işlemci gerektiren bakım operasyonları tarafından kullanılır.
-   - Sıradan sorgular tarafından tüketilmediğinden ve genelde aynı anda tek bir bakım işlemi çalıştığından, `work_mem`'e kıyasla çok daha cömert (örn. 1GB–2GB) yapılandırılabilir.
-
-3. **`temp_buffers` (Geçici Tablo Tamponu):**
-   - Oturuma özel `CREATE TEMP TABLE` ile oluşturulan geçici tabloların 8KB'lık data page'lerini tutmak için ayrılır.
-   - Bu data page'ler ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı kilit çekişmesi (lock contention) yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
-
-4. **Yerel Plan & Sistem Kataloğu Önbelleği (syscache & relcache):**
-   - Her backend süreci, sık kullandığı tablo metaverilerini (`relcache`), katalog satırlarını (`syscache`) ve `PREPARE` ile hazırlanmış sorgu planlarını (prepared statement plan cache) kendi yerel belleğinde saklar. Böylece her sorguda katalog tablolarına kilit atıp disk okuması yapmaktan kurtulur.
-
 ---
 
-### B. Paylaşılan Bellek (Shared Memory) ve `shared_buffers` İç Mimarisi
+## 4. Mimari Bileşenlerin Derinlemesine İncelemeleri
 
-Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşzamanlı eriştiği ortak RAM alanıdır. `shared_buffers`, PostgreSQL'in kalbidir ve tek bir monolitik blok değil, birbirine sıkı sıkıya bağlı **4 alt katmandan** oluşur:
+PostgreSQL mimarisinin kritik alt bileşenleri ayrı teknik dökümanlar halinde ele alınmıştır:
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   shared_buffers ÇEKİRDEK İÇ MİMARİSİ                  │
-│                                                                        │
-│ 1. Buffer Mapping Hash Table (O(1))                                    │
-│    BufferTag (relNode + forkNum + blockNum) ──► Buffer ID [0..N-1]     │
-│                                                      │                 │
-│ 2. Buffer Descriptors Array                          ▼                 │
-│    ┌──────────────┬────────────────────────┬─────────────────────┐     │
-│    │ Tag Metadata │ 32-bit Atomic State    │ content_lock LWLock │ ... │
-│    │ (Blok No)    │ (Dirty, Refcount, Pin) │ (Eşzamanlı Erişim)  │     │
-│    └──────────────┴────────────────────────┴─────────────────────┘     │
-│                            │                                           │
-│ 3. Buffer Pool Frames      ▼                                           │
-│    ┌─────────────────┬─────────────────┬─────────────────┐             │
-│    │ Frame 0: [ 8KB ]│ Frame 1: [ 8KB ]│ Frame N: [ 8KB ]│             │
-│    └─────────────────┴─────────────────┴─────────────────┘             │
-│                            ▲                                           │
-│ 4. Clock Sweep Algoritması ┘ (Dairesel ibre: Pin=0 & usage_count=0)    │
-│    (usage_count == 0 ve refcount == 0 olan data page kurban seçilir)   │
-└────────────────────────────────────────────────────────────────────────┘
-```
+1. **[PostgreSQL Bellek Yönetimi: Local Memory, shared_buffers ve Clock Sweep](/posts/postgresql-bellek-yonetimi)**  
+   *work_mem dinamikleri, spill-to-disk operasyonları, shared_buffers 4 katmanı, Clock Sweep tahliyesi ve BGWriter vs Checkpointer görev dağılımı.*
 
-1. **Buffer Mapping Table (Paylaşımlı Hash Tablosu):**
-   - Bir backend, diskteki bir tablonun belirli bir bloğuna ihtiyaç duyduğunda önce bu hash tablosuna bakar.
-   - `BufferTag` yapısı: `(spcNode, dbNode, relNode)` (tablo kimliği), `forkNum` (veri mi, visibility map mi, FSM mi?) ve `blockNum` (8KB blok sırası) bilgilerini içerir.
-   - Bu anahtar $O(1)$ sürede taranarak bloğun hangi tampon slotunda (`Buffer ID`) bulunduğu tespit edilir. Eğer blok buradaysa **Buffer Hit** oluşur ve diske gitmeden nanosecond seviyesinde okunur.
+2. **[PostgreSQL Fiziksel Depolama: 8KB Data Page ve Tuple Anatomisi](/posts/postgresql-data-page-ve-tuple)**  
+   *8KB bellek şeridi düzeni, TID dolaylı adresleme, Free Space iki yönlü büyümesi, HeapTupleHeaderData ve TOAST mimarisi.*
 
-2. **Buffer Descriptors (Başlık Metadata Dizisi):**
-   - Her bir 8KB data page çerçevesine karşılık gelen bir `BufferDesc` başlığı bulunur. Bellekte bitişik bir dizi olarak saklanır.
-   - **32-Bit Atomic State:** Data page durumları atomic bayraklarla yönetilir:
-     - `BM_DIRTY`: Data page bellekte değiştirildi mi? (Diske yazılması gerekiyor).
-     - `BM_VALID`: Data page geçerli veri içeriyor mu?
-     - `BM_TAG_VALID`: BufferTag geçerli mi?
-     - `BM_IO_IN_PROGRESS`: Data page şu an diskten okunuyor mu?
-     - `refcount` (Pin Sayısı): O an kaç backend bu data page'i aktif olarak okuyor veya yazıyor? `refcount > 0` olan data page "pinli" kabul edilir ve bellekten kesinlikle atılamaz.
-     - `usage_count` (0–5 arası sayaç): Data page'e her erişildiğinde artırılır; bloğun ne kadar "popüler" olduğunu gösterir.
-   - **`content_lock` (Hafif Kilit / LWLock):** Data page içeriği okunurken paylaşımlı (`shared`), değiştirilirken ise özel (`exclusive`) modda kilitlenir.
+3. **[PostgreSQL Eşzamanlılık ve Güvenlik: MVCC, Autovacuum ve WAL Mekanizması](/posts/postgresql-mvcc-ve-wal)**  
+   *MVCC çoklu sürüm prensibi, ölü satırlar (dead tuples), tablo şişmesi (bloat) tespiti, autovacuum döngüsü, HOT optimizasyonu ve crash recovery adımları.*
 
-3. **Buffer Pool (8KB Data Page Slotları):**
-   - İşletim sisteminden ayrılmış devasa bitişik sanal bellek alanıdır. Tipik üretim sunucularında toplam fiziksel RAM'in **%25'i** buraya tahsis edilir.
-   - Diskten okunan heap tabloları ve B-Tree/GIN indeks data page'leri birebir bu 8KB slotlara yüklenir.
-   - Geri kalan RAM (%75), işletim sisteminin disk tamponuna (**OS Page Cache**) bırakılır. PostgreSQL çift tamponlama (double buffering) mantığıyla çalışır: Diskten okunan blok önce OS page cache'e, oradan `shared_buffers` çerçevesine gelir.
-
-4. **Clock Sweep Algoritması (Data Page Tahliye Mekanizması):**
-   - Yeni bir blok okunacakken havuzda boş tampon kalmamışsa, eski bir data page'in tahliye edilmesi (eviction / victim selection) gerekir.
-   - PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü devasa eşzamanlı sistemlerde tek bir global LRU kilidi devasa bir çekişme (lock contention) darboğazı yaratır.
-   - Bunun yerine **Lock-Free Clock Sweep** algoritması kullanılır:
-     - Bir saat ibresi (`StrategyControl->nextVictimBuffer`) dairesel olarak `Buffer Descriptors` dizisini tarar.
-     - Eğer taranan slot pinli ise (`refcount > 0`), atlar.
-     - Slot pinli değil ama `usage_count > 0` ise, sayacını 1 azaltır (`usage_count--`) ve bir sonrakine geçer.
-     - Pinli olmayan ve `usage_count == 0` olan ilk slot **kurban tampon (victim buffer)** olarak seçilir.
-     - Eğer seçilen kurban kirli (`BM_DIRTY`) ise, önce diske yazılır, ardından yeni data page için tahsis edilir.
-
-5. **`BGWriter` ile `Checkpointer` Süreçlerinin Görev Ayrımı:**
-   - **`Checkpointer`:** Periyodik kontrol noktalarında (`checkpoint_timeout` veya `max_wal_size` dolduğunda) `shared_buffers` içindeki tüm kirli data page'leri topluca diske yazar ve `fsync` eder. Görevi çökme anında kurtarma süresini (MTTR) kısaltmaktır.
-   - **`BGWriter` (Background Writer):** Sürekli olarak `shared_buffers`'ı sessizce tarar ve kirli data page'leri diske önceden basar. Görevi, sorgu çalıştıran backend süreçlerinin yeni data page okurken "kirli kurban tamponu diske yazmak için I/O beklemek" zorunda kalmasını engellemektir.
-
-6. **`wal_buffers`:**
-   - Veritabanındaki değişikliklerin (WAL kayıtları) diske yazılmadan önce toplandığı 16MB–64MB dairesel bellek alanıdır. İşlem `COMMIT` ettiğinde `WAL Writer` süreci bu kayıtları diske (`pg_wal`) sıralı (sequential) olarak basar.
-
-7. **Kilit Tabloları & `ProcArray`:**
-   - MVCC görünürlüğünü sağlayan aktif işlem kimlikleri (`XID`), satır/tablo kilitleri (`Lock Manager`) ve snapshot metaverileri bu ortak alanda saklanır. Okuyucuların yazıcıları kilitlememesi bu yapı sayesinde garanti edilir.
-
-## 3. Fiziksel Depolama Düzeni: 8KB Data Page ve Tuple Anatomisi
-
-PostgreSQL disk üzerinde verileri hiçbir zaman tekil satırlar halinde saklamaz ya da okumaz. Disk (`$PGDATA/base`) ve bellek (`shared_buffers`) arasındaki tüm I/O transferleri, standart **8192 baytlık (8KB)** sabit bloklar halinde gerçekleşir. Bu temel blok birimine **Data Page** (veya disk bloğu) denir.
-
-Bir data page'in fiziksel düzeni, yüksek eşzamanlılıkta kilit çekişmelerini önlemek ve parçalanmayı (fragmentation) engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır:
-
-<DataPageAnatomy />
-
-### A. 8KB Data Page Mimarisi
-
-Bir data page baştan sona şu 4 temel katmandan oluşur:
-
-1. **`PageHeaderData` (24 Bayt Sabit Başlık):**
-   - **`pd_lsn` (8 bayt):** Bu data page üzerinde değişiklik yapan en son WAL kaydının Log Sequence Number adresidir. Çökme sonrası kurtarmada (Crash Recovery) WAL kaydının sayfaya tekrar uygulanıp uygulanmayacağına bu numarayla karar verilir.
-   - **`pd_checksum` (2 bayt):** Disk seviyesindeki bit çürümesine (silent bit rot) karşı sayfa sağlama toplamı.
-   - **`pd_flags` (2 bayt):** Sayfa bayrakları (`PD_ALL_VISIBLE` gibi sayfa içi görünürlük durumları).
-   - **`pd_lower` (2 bayt):** Line pointer dizisinin bittiği ofset (sayfa başından aşağıya doğru ilerler).
-   - **`pd_upper` (2 bayt):** En son yazılan tuple'ın başladığı ofset (sayfa sonundan yukarıya doğru ilerler).
-   - **`pd_special` (2 bayt):** İndeks sayfalarında (B-Tree sibling linkleri vb.) sayfa sonundaki özel alanın başlangıç ofseti (Heap data page'lerinde genellikle sayfa sonu olan 8192'dir).
-
-2. **`ItemIdData` (Line Pointer / Item Pointer Dizisi - Tuple Başına 4 Bayt):**
-   - Sayfa başından aşağı doğru (`pd_lower` yönünde) büyür.
-   - Her eleman 32-bitlik bir işaretçidir: `lp_off` (tuple'ın sayfa içindeki bayt ofseti, 15 bit), `lp_flags` (kullanımda, ölü, yönlendirici HOT, 2 bit), `lp_len` (tuple bayt uzunluğu, 15 bit).
-   - **Neden Dolaylı Adresleme (Indirection)?:** İndeksler (B-Tree, GiST) doğrudan satırın fiziksel bayt adresini saklamaz. Bunun yerine **TID (Tuple ID: `(BlockNumber, OffsetNumber)`)** referansını saklar (örneğin `(0, 1)`: 0 numaralı bloğun 1 numaralı line pointer'ı).
-   - Bu mimari tercih sayesinde `VACUUM` veya sayfa defragmentasyonu satırları sayfa içinde kaydırdığında, indeksleri güncellemeye gerek kalmaz; sadece 4 baytlık line pointer'ın `lp_off` değeri güncellenir.
-
-3. **`Free Space` (Dinamik Serbest Alan):**
-   - `pd_lower` ile `pd_upper` arasında kalan boşluktur.
-   - Yeni satırlar eklendikçe line pointer dizisi aşağı doğru (`pd_lower++`), satır gövdeleri ise sayfa sonundan yukarı doğru (`pd_upper--`) genişler. İki sınır birbirine değdiğinde data page dolmuş kabul edilir.
-
-4. **Tuple Depolama Alanı (Aşağıdan Yukarıya Doğru):**
-   - Satırların fiziksel gövdeleri sayfanın en sonundan (8192. bayttan) başlanarak geriye doğru yazılır.
+4. **[PostgreSQL Sorgu İşleme: Parser, Planner ve Executor Yaşam Döngüsü](/posts/postgresql-sorgu-yasam-dongusu)**  
+   *Parser/Analyze, Rewriter, Cost-Based Optimizer maliyet hesabı, Volcano Executor yürütme modeli ve EXPLAIN (ANALYZE, BUFFERS) teşhisi.*
 
 ---
-
-### B. Tuple (HeapTuple) İç Anatomisi
-
-Tabloya eklenen her bir satır versiyonu, data page içinde bir **HeapTuple** olarak saklanır. Bir tuple iki ana parçadan oluşur:
-
-1. **`HeapTupleHeaderData` (23 Bayt Başlık):**
-   - **`t_xmin` (4 bayt):** Bu tuple versiyonunu `INSERT` eden veya `UPDATE` ile oluşturan transaction kimliği (XID).
-   - **`t_xmax` (4 bayt):** Bu tuple versiyonunu silen (`DELETE`) veya güncelleyen (`UPDATE`) transaction kimliği. Satır güncel ve aktifse değeri `0`'dır.
-   - **`t_cid` (4 bayt):** Aynı transaction içerisindeki SQL komut sırası (Command ID).
-   - **`t_ctid` (6 bayt - ItemPointer):** Bu tuple'ın kendi fiziksel adresi `(block, offset)`. Eğer satır `UPDATE` edildiyse, `t_ctid` güncellenen **yeni satır versiyonunun fiziksel adresini** işaret eder (Tuple Versiyon Zinciri).
-   - **`t_infomask` & `t_infomask2` (4 bayt):** Satırın MVCC durum bayrakları (`HEAP_XMIN_COMMITTED`, `HEAP_XMAX_INVALID`, `HEAP_HOT_UPDATED`) ve tablodaki sütun sayısı (`t_natts`).
-
-2. **Null Bitmap (Değişken Boyut):**
-   - Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik bir varlık haritası tutulur. Sütun değeri `NULL` ise veri alanında hiç bayt harcanmaz.
-
-3. **User Data (Sütun Değerleri / Payload):**
-   - Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (binary) formatta sıralı saklanır. 2KB'ı aşan büyük sütunlar (büyük JSONB, uzun metinler) otomatik olarak ana data page'den ayrı **TOAST (The Oversized-Attribute Storage Technique)** tablolarına taşınır.
-
-## 4. MVCC ve Data Page Döngüsü: Güncelleme Neden Masraflıdır?
-
-PostgreSQL eşzamanlılığı sağlamak için **MVCC (Multi-Version Concurrency Control)** kullanır. MVCC'nin temel kuralı şudur:
-
-> *"Okuyucular yazıcıları engellemez, yazıcılar da okuyucuları engellemez."*
-
-Bunu sağlamak için PostgreSQL satırları yerinde (in-place) ezerek güncellemez:
-
-1. Bir `UPDATE` çalıştığında, eski satır silinmiş olarak işaretlenir (`t_xmax` alanına işlemi yapan transaction ID yazılır).
-2. Yeni satır, data page içine yeni bir satır (tuple) olarak **fiziksel olarak yeniden yazılır**.
-3. Eski tuple'ın `t_ctid` değeri, yeni tuple'ın data page adresini gösterecek şekilde güncellenir.
-4. İşlem tamamlandığında eski satır "ölü satır" (dead tuple) haline gelir.
-
-```sql
--- Bir tablodaki ölü satır (dead tuple) oranını izleme:
-SELECT relname,
-       n_live_tup AS canli_satir,
-       n_dead_tup AS olu_satir,
-       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS olu_yuzde,
-       last_autovacuum
-FROM pg_stat_user_tables
-ORDER BY n_dead_tup DESC
-LIMIT 5;
-```
-
-Ölü satırların diskte yer kaplamasına **tablo şişmesi (bloat)** denir. İşte bu ölü alanları geri kazanmak, data page içindeki `Free Space` alanını genişletmek ve işletim sistemi bloklarını yeniden kullanılabilir işaretlemek için **`autovacuum`** arka plan süreci çalışır.
-
-> **HOT (Heap-Only Tuple) Optimizasyonu:** Eğer güncellenen sütunlar üzerinde herhangi bir indeks tanımlı değilse ve mevcut data page içinde yeterli `Free Space` varsa, PostgreSQL yeni tuple'ı aynı data page içine yazar. Bu durumda indeks tablolarına hiç dokunulmaz; sadece mevcut line pointer yeni tuple'a zincirlenir. Bu, indeks şişmesini önleyen en kritik çekirdek optimizasyonudur.
-
-## 5. WAL (Write-Ahead Logging) ve Çarpışma Güvenliği
-
-Bir transaction `COMMIT` ettiğinde PostgreSQL, tüm 8KB'lık kirli data page'leri anında data file'lara yazmaz. Çünkü diske rastgele 8KB bloklar yazmak I/O darboğazı yaratır.
-
-Bunun yerine:
-1. Yapılan değişikliğin bayt seviyesindeki özeti **WAL (Write-Ahead Log)** dosyasına ardışık (sequential) olarak yazılır ve diske `fsync` edilir.
-2. Ardışık I/O diskin en hızlı yaptığı iştir; işlem anında güvenceye alınır ve istemciye "COMMIT OK" denir.
-3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (örn. 5-15 dakikada bir) bellekteki kirli data page'leri topluca diske basar (Checkpoint).
-
-Eğer sunucunun fişi çekilirse, PostgreSQL açılışta son checkpoint noktasından başlar, WAL kayıtlarını sırayla yeniden oynatır (Redo) ve veritabanını tutarlı hale getirir.
 
 ## Mimari Özet
 
-PostgreSQL; process izolasyonu, öngörülebilir paylaşılan bellek havuzları, 8KB data page düzeni ve katı ACID garantileriyle kurulmuş sağlam bir kaledir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS cache dengesini kurmak ve `autovacuum` süreçlerini tablonun yazma temposuna göre optimize etmektir.
+PostgreSQL; process izolasyonu, öngörülebilir bellek havuzları, 8KB data page düzeni ve katı ACID garantileriyle kurulmuş sağlam bir Unix kalesidir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS page cache dengesini kurmak ve `autovacuum` süreçlerini yazma temposuna göre optimize etmektir.

@@ -10,6 +10,10 @@ export default defineConfig({
   devToolbar: {
     enabled: false,
   },
+  redirects: {
+    '/cases/timescaledb': '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
+    '/posts/timescaledb-continuous-aggregates-ve-retention-pratikte': '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
+  },
   integrations: [
     mdx({
       syntaxHighlight: 'shiki',

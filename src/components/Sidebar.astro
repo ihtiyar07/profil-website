@@ -4,6 +4,7 @@ import { SITE_META } from '../data/siteMeta';
 interface NavArticleItem {
   title: string;
   href: string;
+  children?: NavArticleItem[];
 }
 
 interface NavSection {
@@ -21,7 +22,25 @@ const navSections: NavSection[] = [
     items: [
       {
         title: 'Genel Bakış: Mimari & Çalışma Mantığı',
-        href: '/posts/postgresql-mimarisi-ve-calisma-prensipleri'
+        href: '/posts/postgresql-mimarisi-ve-calisma-prensipleri',
+        children: [
+          {
+            title: 'Bellek Yönetimi: shared_buffers',
+            href: '/posts/postgresql-bellek-yonetimi'
+          },
+          {
+            title: '8KB Data Page & Tuple Anatomisi',
+            href: '/posts/postgresql-data-page-ve-tuple'
+          },
+          {
+            title: 'MVCC, Autovacuum ve WAL',
+            href: '/posts/postgresql-mvcc-ve-wal'
+          },
+          {
+            title: 'Sorgu İşleme: Parser, Planner & Executor',
+            href: '/posts/postgresql-sorgu-yasam-dongusu'
+          }
+        ]
       },
       {
         title: 'Patroni: HA ve Otomatik Failover',
@@ -32,12 +51,8 @@ const navSections: NavSection[] = [
         href: '/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api'
       },
       {
-        title: 'TimescaleDB Continuous Aggregates',
-        href: '/posts/timescaledb-continuous-aggregates-ve-retention-pratikte'
-      },
-      {
-        title: 'TimescaleDB & Hypertables Mimarisi',
-        href: '/cases/timescaledb'
+        title: 'TimescaleDB: Kurulum, Benchmark ve Analitik',
+        href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi'
       }
     ]
   },
@@ -105,10 +120,14 @@ const navSections: NavSection[] = [
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+
+function sectionTotal(section: NavSection): number {
+  return section.items.reduce((acc, it) => acc + 1 + (it.children?.length || 0), 0);
+}
 ---
 
 <!-- Desktop Sticky Sidebar (Left Column: docking at >=768px) -->
-<aside class="hidden md:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg)] overflow-y-auto select-none transition-colors z-30">
+<aside transition:persist="sidebar-desktop" class="hidden md:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg)] overflow-y-auto select-none transition-colors z-30">
   <div class="p-5 flex flex-col justify-between min-h-full">
     <!-- Top: Identity & Collapsible Topic Tree -->
     <div class="space-y-6">
@@ -127,59 +146,110 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 
       <!-- Collapsible Topic Tree Navigation -->
       <nav aria-label="Konu ve Yazı Ağacı" class="space-y-3">
-        {navSections.map((section) => {
-          const isSectionActive = section.overviewHref && (section.overviewHref.replace(/\/+$/, '') === currentPath);
-
-          return (
+        {navSections.map((section) => (
             <div class="sidebar-accordion-group border-b border-[var(--border)]/60 pb-2.5 last:border-b-0">
-              <!-- Accordion Toggle Header with Direct Overview Link -->
-              <div class="w-full flex items-center justify-between px-1.5 py-1 text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-dim)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] group">
-                <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                  <button
-                    type="button"
-                    class="sidebar-accordion-btn p-0.5 text-[var(--text-dim)] hover:text-[var(--text)] transition-colors rounded-[2px] cursor-pointer focus:outline-none shrink-0"
-                    aria-label={`${section.title} alt başlıklarını aç veya kapat`}
-                    aria-expanded="true"
-                    data-section-id={section.id}
-                  >
-                    <svg class="chevron-icon w-3 h-3 text-[var(--text-dim)] transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {section.overviewHref ? (
-                    <a
-                      href={section.overviewHref}
-                      class:list={[
-                        'font-medium truncate transition-colors',
-                        isSectionActive
-                          ? 'text-[var(--accent)] font-semibold'
-                          : 'text-[var(--text-muted)] group-hover:text-[var(--text)] hover:!text-[var(--accent)]'
-                      ]}
-                      title={`${section.title} — Genel Bakış`}
-                    >
-                      {section.title}
-                    </a>
-                  ) : (
-                    <span class="text-[var(--text-muted)] font-medium truncate">{section.title}</span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  class="sidebar-accordion-btn text-[10px] font-mono text-[var(--text-dim)] opacity-70 hover:opacity-100 p-0.5 transition-opacity cursor-pointer focus:outline-none shrink-0"
-                  aria-label={`${section.title} listesi (${section.items.length} içerik)`}
-                  aria-expanded="true"
-                  data-section-id={section.id}
-                >
-                  {section.items.length}
-                </button>
-              </div>
+              <!-- Full-row Accordion Toggle Button with Right-aligned +/- icon -->
+              <button
+                type="button"
+                class="sidebar-accordion-btn w-full flex items-center justify-between px-1.5 py-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] cursor-pointer focus:outline-none group"
+                aria-label={`${section.title} alt başlıklarını aç veya kapat`}
+                aria-expanded="true"
+                data-section-id={section.id}
+              >
+                <span class="font-medium truncate min-w-0 text-left">{section.title}</span>
+                <span class="w-5 h-5 flex items-center justify-center text-[var(--text-dim)] group-hover:text-[var(--text)] shrink-0">
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
+                  </svg>
+                </span>
+              </button>
 
               <!-- Animated Collapsible Article Links List -->
               <div class="sidebar-accordion-wrapper">
-                <div class="space-y-0.5 pl-2 pt-1">
+                <div>
+                  <div class="space-y-1 pl-2 pt-1">
                   {section.items.map((item) => {
                     const cleanHref = item.href.replace(/\/+$/, '') || '/';
                     const isActive = cleanHref === currentPath;
+                    const hasActiveChild = item.children?.some(c => (c.href.replace(/\/+$/, '') || '/') === currentPath);
+                    const hasChildren = item.children && item.children.length > 0;
+                    const isExpandedDefault = isActive || hasActiveChild;
+
+                    if (hasChildren) {
+                      return (
+                        <div class="has-subitems-group space-y-0.5">
+                          <!-- Parent Row: Title link + Toggle button -->
+                          <div class:list={[
+                            'flex items-center justify-between rounded-[2px] transition-colors group',
+                            isActive
+                              ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]'
+                              : hasActiveChild
+                                ? 'bg-[var(--bg-subtle)]/70 text-[var(--text)] font-medium border-l border-[var(--accent)]/50'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
+                          ]}>
+                            <a
+                              href={item.href}
+                              title={item.title}
+                              class:list={[
+                                'sidebar-article-link flex items-center min-w-0 flex-1 py-1.5 pl-2 pr-1 text-xs font-sans transition-colors',
+                                isActive ? 'text-[var(--accent)] font-medium' : hasActiveChild ? 'text-[var(--text)] font-medium' : ''
+                              ]}
+                              aria-current={isActive ? 'page' : undefined}
+                            >
+                              <span class="truncate">{item.title}</span>
+                            </a>
+
+                            <button
+                              type="button"
+                              class="sidebar-subitem-toggle w-6 h-6 mr-1 flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg)] rounded-[2px] cursor-pointer transition-colors focus:outline-none shrink-0"
+                              aria-label={`${item.title} alt başlıklarını aç veya kapat`}
+                              aria-expanded={isExpandedDefault ? "true" : "false"}
+                            >
+                              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                                <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          <!-- Collapsible Sub-items List -->
+                          <div class:list={[
+                            'sidebar-subitems-wrapper',
+                            !isExpandedDefault && 'collapsed'
+                          ]}>
+                            <div>
+                              <div class="pl-3 ml-2.5 border-l border-[var(--border)]/70 space-y-0.5 my-0.5">
+                                {item.children.map((child) => {
+                                  const cleanChildHref = child.href.replace(/\/+$/, '') || '/';
+                                  const isChildActive = cleanChildHref === currentPath;
+
+                                  return (
+                                    <a
+                                      href={child.href}
+                                      title={child.title}
+                                      class:list={[
+                                        'sidebar-article-link flex items-center justify-between py-1 rounded-[2px] text-[11.5px] font-sans transition-colors group',
+                                        isChildActive
+                                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] -ml-[1px] pl-2 pr-1.5'
+                                          : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2 pr-1.5'
+                                      ]}
+                                      aria-current={isChildActive ? 'page' : undefined}
+                                    >
+                                      <span class="truncate flex items-center gap-1.5">
+                                        <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 group-hover:bg-[var(--accent)] shrink-0"></span>
+                                        <span class="truncate">{child.title}</span>
+                                      </span>
+                                      <span class="text-[9px] font-mono text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0" aria-hidden="true">→</span>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <a
@@ -188,7 +258,7 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
                         class:list={[
                           'sidebar-article-link flex items-center justify-between py-1.5 rounded-[2px] text-xs font-sans transition-colors group',
                           isActive
-                            ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l-2 border-[var(--accent)] pl-2 pr-2'
+                            ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2'
                             : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2.5 pr-2'
                         ]}
                         aria-current={isActive ? 'page' : undefined}
@@ -198,87 +268,84 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
                       </a>
                     );
                   })}
+                  </div>
                 </div>
               </div>
             </div>
-          );
-        })}
+        ))}
       </nav>
     </div>
 
-    <!-- Bottom: Theme Switcher & Social Links -->
-    <div class="pt-4 mt-6 border-t border-[var(--border)] space-y-3">
-      <!-- Theme Switch Row -->
-      <div class="flex items-center justify-between px-1">
-        <span class="text-xs font-mono text-[var(--text-dim)]">Görünüm</span>
-        <button
-          type="button"
-          class="theme-toggle-btn p-1.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-colors cursor-pointer flex items-center justify-center w-7 h-7 tactile-btn"
-          aria-label="Temayı Değiştir"
-          title="Temayı Değiştir"
-        >
-          <!-- Sun Icon (shown in dark theme to switch to light) -->
-          <svg class="theme-icon-sun w-3.5 h-3.5 hidden text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-          <!-- Moon Icon (shown in light theme to switch to dark) -->
-          <svg class="theme-icon-moon w-3.5 h-3.5 hidden text-[var(--text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Social Links (Aligned Icon + Text) -->
-      <div class="space-y-0.5 pt-2 border-t border-[var(--border)]/60">
+    <!-- Bottom: Utility Bar (Social Icons + Theme Switcher) -->
+    <div class="pt-3 mt-4 border-t border-[var(--border)] flex items-center justify-between px-1">
+      <!-- Social Links (Aligned Icons Only) -->
+      <div class="flex items-center gap-1">
         <a
           href={SITE_META.github}
           target="_blank"
           rel="noopener noreferrer"
-          class="flex items-center gap-2 px-2 py-1 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-          title="GitHub Profilini Aç"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          title="GitHub"
+          aria-label="GitHub Profilini Aç"
         >
-          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
           </svg>
-          <span>GitHub</span>
         </a>
         <a
           href={SITE_META.linkedin}
           target="_blank"
           rel="noopener noreferrer"
-          class="flex items-center gap-2 px-2 py-1 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-          title="LinkedIn Profilini Aç"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          title="LinkedIn"
+          aria-label="LinkedIn Profilini Aç"
         >
-          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
           </svg>
-          <span>LinkedIn</span>
         </a>
         <a
           href={`mailto:${SITE_META.email}`}
-          class="flex items-center gap-2 px-2 py-1 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-          title="E-posta Gönder"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          title="E-posta"
+          aria-label="E-posta Gönder"
         >
-          <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <span>E-posta</span>
         </a>
       </div>
+
+      <!-- Theme Switch Button -->
+      <button
+        type="button"
+        class="theme-toggle-btn w-7 h-7 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-colors cursor-pointer tactile-btn"
+        aria-label="Temayı Değiştir"
+        title="Temayı Değiştir"
+      >
+        <!-- Sun Icon (shown in dark theme to switch to light) -->
+        <svg class="theme-icon-sun w-3.5 h-3.5 hidden text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <!-- Moon Icon (shown in light theme to switch to dark) -->
+        <svg class="theme-icon-moon w-3.5 h-3.5 hidden text-[var(--text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
     </div>
   </div>
 </aside>
 
 <!-- Mobile Sticky Topbar (< 768px) -->
-<div class="md:hidden sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md transition-colors">
+<div transition:persist="sidebar-mobile-topbar" class="md:hidden sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md transition-colors">
   <div class="px-4 h-14 flex items-center justify-between">
     <!-- Brand with Photo -->
     <a href="/" class="flex items-center gap-2.5 focus:outline-none" aria-label="Ahmet İhtiyar — Ana Sayfa">
@@ -346,6 +413,7 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 <!-- Mobile Drawer Backdrop Overlay -->
 <div
   id="mobile-drawer-backdrop"
+  transition:persist="sidebar-backdrop"
   class="fixed inset-0 bg-black/50 z-40 backdrop-blur-xs hidden md:hidden transition-opacity"
   aria-hidden="true"
 ></div>
@@ -353,59 +421,112 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 <!-- Mobile Drawer Modal (< 768px) -->
 <div
   id="mobile-sidebar-drawer"
+  transition:persist="sidebar-mobile-drawer"
   role="dialog"
   aria-modal="true"
   aria-label="Mobil Navigasyon Menüsü"
   class="fixed top-14 left-0 right-0 bottom-0 z-50 bg-[var(--bg)] border-t border-[var(--border)] px-4 py-4 space-y-4 overflow-y-auto hidden md:hidden shadow-2xl"
 >
   <nav aria-label="Mobil Konu ve Yazı Ağacı" class="space-y-3">
-    {navSections.map((section) => {
-      const isSectionActive = section.overviewHref && (section.overviewHref.replace(/\/+$/, '') === currentPath);
-
-      return (
+    {navSections.map((section) => (
         <div class="mobile-accordion-group border-b border-[var(--border)]/60 pb-3 last:border-b-0 space-y-1">
-          <div class="w-full flex items-center justify-between px-1.5 py-1 text-xs font-mono font-semibold uppercase tracking-wider text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] group">
-            <div class="flex items-center gap-1.5 min-w-0 flex-1">
-              <button
-                type="button"
-                class="mobile-accordion-btn p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--text)] transition-colors cursor-pointer shrink-0"
-                aria-label={`${section.title} alt başlıklarını aç veya kapat`}
-                aria-expanded="true"
-              >
-                <svg class="chevron-icon w-3.5 h-3.5 text-[var(--text-dim)] transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {section.overviewHref ? (
-                <a
-                  href={section.overviewHref}
-                  class:list={[
-                    'mobile-article-link font-medium truncate transition-colors',
-                    isSectionActive ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text)] group-hover:text-[var(--accent)]'
-                  ]}
-                  title={`${section.title} — Genel Bakış`}
-                >
-                  {section.title}
-                </a>
-              ) : (
-                <span class="truncate">{section.title}</span>
-              )}
-            </div>
-            <button
-              type="button"
-              class="mobile-accordion-btn text-[10px] font-mono text-[var(--text-dim)] opacity-70 hover:opacity-100 p-1 shrink-0"
-              aria-label={`${section.title} listesi (${section.items.length} içerik)`}
-              aria-expanded="true"
-            >
-              {section.items.length}
-            </button>
-          </div>
+          <button
+            type="button"
+            class="mobile-accordion-btn w-full flex items-center justify-between px-1.5 py-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] cursor-pointer focus:outline-none group"
+            aria-label={`${section.title} alt başlıklarını aç veya kapat`}
+            aria-expanded="true"
+            data-section-id={section.id}
+          >
+            <span class="font-medium truncate min-w-0 text-left">{section.title}</span>
+            <span class="w-6 h-6 flex items-center justify-center text-[var(--text-dim)] group-hover:text-[var(--text)] shrink-0">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
+              </svg>
+            </span>
+          </button>
 
           <div class="mobile-accordion-wrapper">
-            <div class="space-y-0.5 pl-2.5 pt-1">
+            <div>
+              <div class="space-y-1 pl-2.5 pt-1">
               {section.items.map((item) => {
                 const cleanHref = item.href.replace(/\/+$/, '') || '/';
                 const isActive = cleanHref === currentPath;
+                const hasActiveChild = item.children?.some(c => (c.href.replace(/\/+$/, '') || '/') === currentPath);
+                const hasChildren = item.children && item.children.length > 0;
+                const isExpandedDefault = isActive || hasActiveChild;
+
+                if (hasChildren) {
+                  return (
+                    <div class="has-subitems-group space-y-0.5">
+                      <div class:list={[
+                        'flex items-center justify-between rounded-[2px] transition-colors',
+                        isActive
+                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]'
+                          : hasActiveChild
+                            ? 'bg-[var(--bg-subtle)]/70 text-[var(--text)] font-medium border-l border-[var(--accent)]/50'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
+                      ]}>
+                        <a
+                          href={item.href}
+                          title={item.title}
+                          class:list={[
+                            'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate',
+                            isActive ? 'text-[var(--accent)] font-medium' : hasActiveChild ? 'text-[var(--text)] font-medium' : ''
+                          ]}
+                          aria-current={isActive ? 'page' : undefined}
+                        >
+                          {item.title}
+                        </a>
+
+                        <button
+                          type="button"
+                          class="mobile-subitem-toggle w-7 h-7 mr-1 flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg)] rounded-[2px] cursor-pointer transition-colors focus:outline-none shrink-0"
+                          aria-label={`${item.title} alt başlıklarını aç veya kapat`}
+                          aria-expanded={isExpandedDefault ? "true" : "false"}
+                        >
+                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div class:list={[
+                        'mobile-subitems-wrapper',
+                        !isExpandedDefault && 'collapsed'
+                      ]}>
+                        <div>
+                          <div class="pl-3 ml-2.5 border-l border-[var(--border)]/70 space-y-0.5 my-0.5">
+                            {item.children.map((child) => {
+                              const cleanChildHref = child.href.replace(/\/+$/, '') || '/';
+                              const isChildActive = cleanChildHref === currentPath;
+
+                              return (
+                                <a
+                                  href={child.href}
+                                  title={child.title}
+                                  class:list={[
+                                    'mobile-article-link block py-1 rounded-[2px] text-[11.5px] font-sans transition-colors',
+                                    isChildActive
+                                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] -ml-[1px] pl-2 pr-2'
+                                      : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2 pr-2'
+                                  ]}
+                                  aria-current={isChildActive ? 'page' : undefined}
+                                >
+                                  <span class="flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 shrink-0"></span>
+                                    <span class="truncate">{child.title}</span>
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <a
@@ -414,7 +535,7 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
                     class:list={[
                       'mobile-article-link block py-1.5 rounded-[2px] text-xs font-sans transition-colors',
                       isActive
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l-2 border-[var(--accent)] pl-2 pr-2.5'
+                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2.5'
                         : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2.5 pr-2.5'
                     ]}
                     aria-current={isActive ? 'page' : undefined}
@@ -423,81 +544,116 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
                   </a>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
-      );
-    })}
+    ))}
   </nav>
 
-  <!-- Mobile Drawer Social Channels -->
-  <div class="pt-4 border-t border-[var(--border)] space-y-1">
-    <span class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider block px-2 mb-1">Bağlantılar</span>
-    <a
-      href={SITE_META.github}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="mobile-channel-link flex items-center gap-2.5 px-2 py-1.5 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-    >
-      <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-      </svg>
-      <span>GitHub Profil</span>
-    </a>
-    <a
-      href={SITE_META.linkedin}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="mobile-channel-link flex items-center gap-2.5 px-2 py-1.5 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-    >
-      <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
-      </svg>
-      <span>LinkedIn Profil</span>
-    </a>
-    <a
-      href={`mailto:${SITE_META.email}`}
-      class="mobile-channel-link flex items-center gap-2.5 px-2 py-1.5 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] rounded-[2px] transition-colors"
-    >
-      <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-      <span>E-posta Gönder</span>
-    </a>
+  <!-- Mobile Drawer Social Channels (Horizontal Icon Row) -->
+  <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between px-1">
+    <span class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider">Bağlantılar</span>
+    <div class="flex items-center gap-1.5">
+      <a
+        href={SITE_META.github}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        title="GitHub"
+        aria-label="GitHub Profilini Aç"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+      </a>
+      <a
+        href={SITE_META.linkedin}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        title="LinkedIn"
+        aria-label="LinkedIn Profilini Aç"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+        </svg>
+      </a>
+      <a
+        href={`mailto:${SITE_META.email}`}
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        title="E-posta"
+        aria-label="E-posta Gönder"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      </a>
+    </div>
   </div>
 </div>
 
 <style>
   .sidebar-accordion-wrapper,
-  .mobile-accordion-wrapper {
+  .mobile-accordion-wrapper,
+  .sidebar-subitems-wrapper,
+  .mobile-subitems-wrapper {
     display: grid;
     grid-template-rows: 1fr;
     transition: grid-template-rows 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .sidebar-accordion-wrapper.collapsed,
-  .mobile-accordion-wrapper.collapsed {
+  .mobile-accordion-wrapper.collapsed,
+  .sidebar-subitems-wrapper.collapsed,
+  .mobile-subitems-wrapper.collapsed {
     grid-template-rows: 0fr;
   }
   .sidebar-accordion-wrapper > div,
-  .mobile-accordion-wrapper > div {
+  .mobile-accordion-wrapper > div,
+  .sidebar-subitems-wrapper > div,
+  .mobile-subitems-wrapper > div {
     overflow: hidden;
+    min-height: 0;
+  }
+
+  .toggle-vert {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .sidebar-accordion-btn[aria-expanded="true"] .toggle-vert,
+  .mobile-accordion-btn[aria-expanded="true"] .toggle-vert,
+  .sidebar-subitem-toggle[aria-expanded="true"] .toggle-vert,
+  .mobile-subitem-toggle[aria-expanded="true"] .toggle-vert {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  .sidebar-accordion-btn[aria-expanded="false"] .toggle-vert,
+  .mobile-accordion-btn[aria-expanded="false"] .toggle-vert,
+  .sidebar-subitem-toggle[aria-expanded="false"] .toggle-vert,
+  .mobile-subitem-toggle[aria-expanded="false"] .toggle-vert {
+    transform: scaleY(1);
+    opacity: 1;
   }
 </style>
 
 <script is:inline>
   (function() {
-    // 1. Theme Controller with System Prefers Fallback and LocalStorage Persistence
-    const themeButtons = document.querySelectorAll('.theme-toggle-btn');
-    const sunIcons = document.querySelectorAll('.theme-icon-sun');
-    const moonIcons = document.querySelectorAll('.theme-icon-moon');
+    if (window.__sidebarInitialized) return;
+    window.__sidebarInitialized = true;
 
+    // 1. Theme Helpers
     function getEffectiveTheme() {
-      const stored = localStorage.getItem('theme');
-      if (stored === 'dark' || stored === 'light') return stored;
+      try {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'dark' || stored === 'light') return stored;
+      } catch (_) {}
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     function syncThemeUI(theme) {
+      const sunIcons = document.querySelectorAll('.theme-icon-sun');
+      const moonIcons = document.querySelectorAll('.theme-icon-moon');
       if (theme === 'dark') {
         sunIcons.forEach(i => i.classList.remove('hidden'));
         moonIcons.forEach(i => i.classList.add('hidden'));
@@ -507,71 +663,27 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
       }
     }
 
-    const currentTheme = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
-    syncThemeUI(currentTheme);
+    syncThemeUI(document.documentElement.getAttribute('data-theme') || getEffectiveTheme());
 
-    themeButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const active = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
-        const next = active === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try {
-          localStorage.setItem('theme', next);
-        } catch (_) {}
-        syncThemeUI(next);
-      });
-    });
-
-    // Listen to system OS theme changes if user hasn't chosen manually
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('theme')) {
-        const next = e.matches ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', next);
-        syncThemeUI(next);
-      }
+      try {
+        if (!localStorage.getItem('theme')) {
+          const next = e.matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', next);
+          syncThemeUI(next);
+        }
+      } catch (_) {}
     });
 
-    // 2. Collapsible Accordions (Desktop & Mobile) with 150ms smooth CSS animation
-    function setupAccordions(groupSelector, buttonSelector, wrapperSelector) {
-      const groups = document.querySelectorAll(groupSelector);
-
-      groups.forEach(group => {
-        const toggleButtons = group.querySelectorAll(buttonSelector);
-        const wrapper = group.querySelector(wrapperSelector);
-        const chevron = group.querySelector('.chevron-icon');
-
-        toggleButtons.forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
-            const nextState = !isExpanded;
-
-            toggleButtons.forEach(b => b.setAttribute('aria-expanded', String(nextState)));
-            if (nextState) {
-              wrapper?.classList.remove('collapsed');
-              chevron?.classList.remove('-rotate-90');
-            } else {
-              wrapper?.classList.add('collapsed');
-              chevron?.classList.add('-rotate-90');
-            }
-          });
-        });
-      });
-    }
-
-    setupAccordions('.sidebar-accordion-group', '.sidebar-accordion-btn', '.sidebar-accordion-wrapper');
-    setupAccordions('.mobile-accordion-group', '.mobile-accordion-btn', '.mobile-accordion-wrapper');
-
-    // 3. Accessible Mobile Drawer with Backdrop Overlay & ESC Key Trap (< 768px)
-    const menuBtn = document.getElementById('mobile-menu-toggle-btn');
-    const drawer = document.getElementById('mobile-sidebar-drawer');
-    const backdrop = document.getElementById('mobile-drawer-backdrop');
-    const hamburger = document.getElementById('hamburger-icon');
-    const closeIcon = document.getElementById('close-icon');
-
+    // 2. Mobile Drawer Helpers
     function openDrawer() {
+      const menuBtn = document.getElementById('mobile-menu-toggle-btn');
+      const drawer = document.getElementById('mobile-sidebar-drawer');
+      const backdrop = document.getElementById('mobile-drawer-backdrop');
+      const hamburger = document.getElementById('hamburger-icon');
+      const closeIcon = document.getElementById('close-icon');
       if (!drawer || !menuBtn) return;
+
       drawer.classList.remove('hidden');
       backdrop?.classList.remove('hidden');
       menuBtn.setAttribute('aria-expanded', 'true');
@@ -579,49 +691,250 @@ const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
       closeIcon?.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
 
-      // Focus first link or button inside drawer
       const firstEl = drawer.querySelector('a, button');
       firstEl?.focus();
     }
 
-    function closeDrawer() {
+    function closeDrawer(restoreFocus) {
+      const menuBtn = document.getElementById('mobile-menu-toggle-btn');
+      const drawer = document.getElementById('mobile-sidebar-drawer');
+      const backdrop = document.getElementById('mobile-drawer-backdrop');
+      const hamburger = document.getElementById('hamburger-icon');
+      const closeIcon = document.getElementById('close-icon');
       if (!drawer || !menuBtn) return;
+
+      const wasOpen = menuBtn.getAttribute('aria-expanded') === 'true';
       drawer.classList.add('hidden');
       backdrop?.classList.add('hidden');
       menuBtn.setAttribute('aria-expanded', 'false');
       hamburger?.classList.remove('hidden');
       closeIcon?.classList.add('hidden');
       document.body.style.overflow = '';
-      menuBtn.focus();
+      if (restoreFocus && wasOpen) {
+        menuBtn.focus();
+      }
     }
 
-    if (menuBtn) {
-      menuBtn.addEventListener('click', () => {
+    // 3. Bulletproof Event Delegation (never breaks on View Transitions or DOM swaps)
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+
+      // A. Category Accordion Toggle (Desktop & Mobile)
+      const accordionBtn = target.closest('.sidebar-accordion-btn, .mobile-accordion-btn');
+      if (accordionBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const isDesktop = accordionBtn.classList.contains('sidebar-accordion-btn');
+        const group = accordionBtn.closest(isDesktop ? '.sidebar-accordion-group' : '.mobile-accordion-group');
+        const wrapper = group?.querySelector(isDesktop ? '.sidebar-accordion-wrapper' : '.mobile-accordion-wrapper');
+        const isExpanded = accordionBtn.getAttribute('aria-expanded') === 'true';
+        const nextState = !isExpanded;
+
+        accordionBtn.setAttribute('aria-expanded', String(nextState));
+        if (wrapper) {
+          wrapper.classList.toggle('collapsed', !nextState);
+        }
+        return;
+      }
+
+      // B. Sub-item Accordion Toggle (+ / −)
+      const subToggle = target.closest('.sidebar-subitem-toggle, .mobile-subitem-toggle');
+      if (subToggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        const isDesktop = subToggle.classList.contains('sidebar-subitem-toggle');
+        const parentGroup = subToggle.closest('.has-subitems-group');
+        const wrapper = parentGroup?.querySelector(isDesktop ? '.sidebar-subitems-wrapper' : '.mobile-subitems-wrapper');
+        const isExpanded = subToggle.getAttribute('aria-expanded') === 'true';
+        const nextState = !isExpanded;
+
+        subToggle.setAttribute('aria-expanded', String(nextState));
+        if (wrapper) {
+          wrapper.classList.toggle('collapsed', !nextState);
+        }
+        return;
+      }
+
+      // C. Theme Switcher
+      if (target.closest('.theme-toggle-btn')) {
+        const active = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
+        const next = active === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try {
+          localStorage.setItem('theme', next);
+        } catch (_) {}
+        syncThemeUI(next);
+        return;
+      }
+
+      // D. Mobile Drawer Controls
+      const menuBtn = target.closest('#mobile-menu-toggle-btn');
+      if (menuBtn) {
         const isExpanded = menuBtn.getAttribute('aria-expanded') === 'true';
         if (isExpanded) {
-          closeDrawer();
+          closeDrawer(true);
         } else {
           openDrawer();
         }
-      });
-    }
+        return;
+      }
 
-    if (backdrop) {
-      backdrop.addEventListener('click', closeDrawer);
-    }
-
-    // ESC key closes drawer
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && menuBtn?.getAttribute('aria-expanded') === 'true') {
-        closeDrawer();
+      if (target.closest('#mobile-drawer-backdrop') || target.closest('.mobile-article-link, .mobile-channel-link')) {
+        closeDrawer(false);
       }
     });
 
-    // Close mobile drawer when an article or channel link is clicked
-    document.querySelectorAll('.mobile-article-link, .mobile-channel-link').forEach(link => {
-      link.addEventListener('click', () => {
-        closeDrawer();
-      });
+    // ESC key closes mobile drawer
+    document.addEventListener('keydown', (e) => {
+      const menuBtn = document.getElementById('mobile-menu-toggle-btn');
+      if (e.key === 'Escape' && menuBtn?.getAttribute('aria-expanded') === 'true') {
+        closeDrawer(true);
+      }
     });
+
+    // 4. Dynamic Active State Sync for View Transitions
+    function updateActiveSidebarLinks() {
+      const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+      syncThemeUI(document.documentElement.getAttribute('data-theme') || getEffectiveTheme());
+
+      // Desktop Links
+      document.querySelectorAll('.sidebar-article-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href) return;
+        const cleanHref = href.replace(/\/+$/, '') || '/';
+        const isActive = cleanHref === currentPath;
+        const isChild = link.closest('.sidebar-subitems-wrapper') !== null;
+        const parentGroup = link.closest('.has-subitems-group');
+
+        if (isActive) {
+          link.setAttribute('aria-current', 'page');
+          // Ensure enclosing category section is expanded when navigating into an active article
+          const sectionGroup = link.closest('.sidebar-accordion-group');
+          const sectionWrapper = sectionGroup?.querySelector('.sidebar-accordion-wrapper');
+          const sectionBtn = sectionGroup?.querySelector('.sidebar-accordion-btn');
+          if (sectionWrapper?.classList.contains('collapsed')) {
+            sectionWrapper.classList.remove('collapsed');
+            sectionBtn?.setAttribute('aria-expanded', 'true');
+          }
+
+          if (isChild) {
+            link.className = 'sidebar-article-link flex items-center justify-between py-1 rounded-[2px] text-[11.5px] font-sans transition-colors group bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] -ml-[1px] pl-2 pr-1.5';
+            if (parentGroup) {
+              const subWrapper = parentGroup.querySelector('.sidebar-subitems-wrapper');
+              const subToggle = parentGroup.querySelector('.sidebar-subitem-toggle');
+              subWrapper?.classList.remove('collapsed');
+              subToggle?.setAttribute('aria-expanded', 'true');
+            }
+          } else if (parentGroup) {
+            link.className = 'sidebar-article-link flex items-center min-w-0 flex-1 py-1.5 pl-2 pr-1 text-xs font-sans transition-colors text-[var(--accent)] font-medium';
+            const parentRow = link.closest('div');
+            if (parentRow) {
+              parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors group bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]';
+            }
+          } else {
+            link.className = 'sidebar-article-link flex items-center justify-between py-1.5 rounded-[2px] text-xs font-sans transition-colors group bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2';
+          }
+        } else {
+          link.removeAttribute('aria-current');
+          if (isChild) {
+            link.className = 'sidebar-article-link flex items-center justify-between py-1 rounded-[2px] text-[11.5px] font-sans transition-colors group text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2 pr-1.5';
+          } else if (parentGroup) {
+            link.className = 'sidebar-article-link flex items-center min-w-0 flex-1 py-1.5 pl-2 pr-1 text-xs font-sans transition-colors';
+          } else {
+            link.className = 'sidebar-article-link flex items-center justify-between py-1.5 rounded-[2px] text-xs font-sans transition-colors group text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2.5 pr-2';
+          }
+        }
+      });
+
+      // Update desktop parent row hasActiveChild state
+      document.querySelectorAll('aside .has-subitems-group').forEach(group => {
+        const activeChild = group.querySelector('.sidebar-subitems-wrapper [aria-current="page"]');
+        const parentLink = group.querySelector('.sidebar-article-link:not(.sidebar-subitems-wrapper *)');
+        const parentRow = parentLink?.closest('div');
+        const isParentActive = parentLink?.getAttribute('aria-current') === 'page';
+
+        if (!isParentActive && parentRow && parentLink) {
+          if (activeChild) {
+            parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors group bg-[var(--bg-subtle)]/70 text-[var(--text)] font-medium border-l border-[var(--accent)]/50';
+            parentLink.className = 'sidebar-article-link flex items-center min-w-0 flex-1 py-1.5 pl-2 pr-1 text-xs font-sans transition-colors text-[var(--text)] font-medium';
+          } else {
+            parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors group text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]';
+            parentLink.className = 'sidebar-article-link flex items-center min-w-0 flex-1 py-1.5 pl-2 pr-1 text-xs font-sans transition-colors';
+          }
+        }
+      });
+
+      // Mobile Links
+      document.querySelectorAll('.mobile-article-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href) return;
+        const cleanHref = href.replace(/\/+$/, '') || '/';
+        const isActive = cleanHref === currentPath;
+        const isChild = link.closest('.mobile-subitems-wrapper') !== null;
+        const parentGroup = link.closest('.has-subitems-group');
+
+        if (isActive) {
+          link.setAttribute('aria-current', 'page');
+          const sectionGroup = link.closest('.mobile-accordion-group');
+          const sectionWrapper = sectionGroup?.querySelector('.mobile-accordion-wrapper');
+          const sectionBtn = sectionGroup?.querySelector('.mobile-accordion-btn');
+          if (sectionWrapper?.classList.contains('collapsed')) {
+            sectionWrapper.classList.remove('collapsed');
+            sectionBtn?.setAttribute('aria-expanded', 'true');
+          }
+
+          if (isChild) {
+            link.className = 'mobile-article-link block py-1 rounded-[2px] text-[11.5px] font-sans transition-colors bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] -ml-[1px] pl-2 pr-2';
+            if (parentGroup) {
+              const subWrapper = parentGroup.querySelector('.mobile-subitems-wrapper');
+              const subToggle = parentGroup.querySelector('.mobile-subitem-toggle');
+              subWrapper?.classList.remove('collapsed');
+              subToggle?.setAttribute('aria-expanded', 'true');
+            }
+          } else if (parentGroup) {
+            link.className = 'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate text-[var(--accent)] font-medium';
+            const parentRow = link.closest('div');
+            if (parentRow) {
+              parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]';
+            }
+          } else {
+            link.className = 'mobile-article-link block py-1.5 rounded-[2px] text-xs font-sans transition-colors bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2.5';
+          }
+        } else {
+          link.removeAttribute('aria-current');
+          if (isChild) {
+            link.className = 'mobile-article-link block py-1 rounded-[2px] text-[11.5px] font-sans transition-colors text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2 pr-2';
+          } else if (parentGroup) {
+            link.className = 'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate';
+          } else {
+            link.className = 'mobile-article-link block py-1.5 rounded-[2px] text-xs font-sans transition-colors text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] pl-2.5 pr-2.5';
+          }
+        }
+      });
+
+      // Update mobile parent row hasActiveChild state
+      document.querySelectorAll('#mobile-sidebar-drawer .has-subitems-group').forEach(group => {
+        const activeChild = group.querySelector('.mobile-subitems-wrapper [aria-current="page"]');
+        const parentLink = group.querySelector('.mobile-article-link:not(.mobile-subitems-wrapper *)');
+        const parentRow = parentLink?.closest('div');
+        const isParentActive = parentLink?.getAttribute('aria-current') === 'page';
+
+        if (!isParentActive && parentRow && parentLink) {
+          if (activeChild) {
+            parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors bg-[var(--bg-subtle)]/70 text-[var(--text)] font-medium border-l border-[var(--accent)]/50';
+            parentLink.className = 'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate text-[var(--text)] font-medium';
+          } else {
+            parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]';
+            parentLink.className = 'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate';
+          }
+        }
+      });
+
+      closeDrawer(false);
+    }
+
+    document.addEventListener('astro:page-load', updateActiveSidebarLinks);
   })();
 </script>

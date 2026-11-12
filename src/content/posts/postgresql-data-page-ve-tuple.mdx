@@ -1,0 +1,67 @@
+---
+title: "PostgreSQL Fiziksel Depolama: 8KB Data Page ve Tuple Anatomisi"
+slug: "postgresql-data-page-ve-tuple"
+date: "2025-10-25"
+lang: "tr"
+summary: "PostgreSQL'in 8KB Data Page bellek şeridi düzeni, Line Pointer dolaylı adreslemesi (TID), Free Space iki yönlü büyümesi ve HeapTupleHeaderData iç anatomisi."
+tags: ["PostgreSQL", "Depolama", "Data Page", "Tuple", "Mimari"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 2
+---
+
+PostgreSQL disk üzerinde verileri hiçbir zaman tekil satırlar halinde saklamaz ya da okumaz. Disk (`$PGDATA/base`) ve bellek (`shared_buffers`) arasındaki tüm I/O transferleri, standart **8192 baytlık (8KB)** sabit bloklar halinde gerçekleşir. Bu temel depolama birimine **Data Page** (veya disk bloğu) denir.
+
+import DataPageAnatomy from '../../components/DataPageAnatomy.astro';
+
+Bir data page'in fiziksel düzeni; yüksek eşzamanlılıkta kilit çekişmelerini önlemek, defragmentasyon esnasında indeksleri korumak ve parçalanmayı engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır:
+
+<DataPageAnatomy />
+
+## 1. 8KB Data Page Mimarisi
+
+Bir data page baştan sona şu 4 temel katmandan oluşur:
+
+### A. `PageHeaderData` (24 Bayt Sabit Başlık)
+Sayfanın ilk 24 baytı, sayfanın durumunu ve sınır ofsetlerini tanımlayan çekirdek başlıktır:
+- **`pd_lsn` (8 bayt):** Bu data page üzerinde değişiklik yapan en son WAL kaydının Log Sequence Number adresidir. Çökme sonrası kurtarmada (Crash Recovery) WAL kaydının sayfaya tekrar uygulanıp uygulanmayacağına bu numarayla (`pd_lsn >= wal_record_lsn`) karar verilir.
+- **`pd_checksum` (2 bayt):** Disk seviyesindeki sessiz veri bozulmalarına (silent bit rot) karşı sayfa sağlama toplamı.
+- **`pd_flags` (2 bayt):** Sayfa bayrakları (`PD_ALL_VISIBLE` gibi sayfa içi görünürlük durumları).
+- **`pd_lower` (2 bayt):** Line pointer dizisinin bittiği ofset (sayfa başından aşağıya doğru ilerler).
+- **`pd_upper` (2 bayt):** En son yazılan tuple'ın başladığı ofset (sayfa sonundan yukarıya doğru ilerler).
+- **`pd_special` (2 bayt):** İndeks sayfalarında (B-Tree sibling linkleri vb.) sayfa sonundaki özel alanın başlangıç ofseti (Heap data page'lerinde genellikle sayfa sonu olan 8192'dir).
+
+### B. `ItemIdData` (Line Pointer Dizisi — Tuple Başına 4 Bayt)
+Sayfa başından aşağı doğru (`pd_lower` yönünde) büyür. Her eleman 32-bitlik kompakt bir işaretçidir:
+- `lp_off` (15 bit): Tuple'ın sayfa içindeki bayt ofseti.
+- `lp_flags` (2 bit): Durum bayrağı (kullanımda, ölü, yönlendirici HOT).
+- `lp_len` (15 bit): Tuple'ın toplam bayt uzunluğu.
+
+> **Neden Dolaylı Adresleme (Indirection)?:**
+> İndeksler (B-Tree, GiST) doğrudan satırın fiziksel bayt adresini (`offset`) saklamaz. Bunun yerine **TID (Tuple ID: `(BlockNumber, OffsetNumber)`)** referansını saklar (örneğin `(0, 1)`: 0 numaralı bloğun 1 numaralı line pointer'ı).
+>
+> Bu mimari tercih sayesinde `VACUUM` veya sayfa defragmentasyonu satırları sayfa içinde kaydırdığında, indeksleri güncellemeye gerek kalmaz; sadece 4 baytlık line pointer'ın `lp_off` değeri güncellenir.
+
+### C. `Free Space` (Dinamik Serbest Alan)
+`pd_lower` ile `pd_upper` arasında kalan boş alandır. Yeni satırlar eklendikçe line pointer dizisi aşağı doğru (`pd_lower++`), satır gövdeleri ise sayfa sonundan yukarı doğru (`pd_upper--`) genişler. İki sınır birbirine değdiğinde data page dolmuş kabul edilir.
+
+### D. Tuple Depolama Alanı (Sondan Başa Doğru)
+Satırların fiziksel gövdeleri sayfanın en sonundan (8192. bayttan) başlanarak geriye doğru yazılır. Böylece ilk eklenen satır (`T1`) sayfanın en sağında, son eklenen satır ise `pd_upper` sınırında yer alır.
+
+---
+
+## 2. Tuple (HeapTuple) İç Anatomisi
+
+Tabloya eklenen her bir satır versiyonu, data page içinde bir **HeapTuple** olarak saklanır. Bir tuple üç ana parçadan oluşur:
+
+### A. `HeapTupleHeaderData` (23 Bayt Sabit Başlık)
+- **`t_xmin` (4 bayt):** Bu tuple versiyonunu `INSERT` eden veya `UPDATE` ile oluşturan transaction kimliği (XID).
+- **`t_xmax` (4 bayt):** Bu tuple versiyonunu silen (`DELETE`) veya güncelleyen (`UPDATE`) transaction kimliği. Satır güncel ve aktifse değeri `0`'dır.
+- **`t_cid` (4 bayt):** Aynı transaction içerisindeki SQL komut sırası (Command ID).
+- **`t_ctid` (6 bayt — ItemPointer):** Bu tuple'ın kendi fiziksel adresi `(block, offset)`. Eğer satır `UPDATE` edildiyse, `t_ctid` güncellenen **yeni satır versiyonunun fiziksel adresini** işaret eder (Tuple Versiyon Zinciri).
+- **`t_infomask` & `t_infomask2` (4 bayt):** Satırın MVCC durum bayrakları (`HEAP_XMIN_COMMITTED`, `HEAP_XMAX_INVALID`, `HEAP_HOT_UPDATED`) ve tablodaki sütun sayısı (`t_natts`).
+
+### B. Null Bitmap (Değişken Boyut)
+Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik bir varlık haritası tutulur. Sütun değeri `NULL` ise kullanıcı veri alanında o sütun için hiç bayt harcanmaz.
+
+### C. User Data (Sütun Değerleri / Payload)
+Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (binary) formatta sıralı saklanır. 2KB'ı aşan büyük sütunlar (büyük JSONB, uzun metinler) otomatik olarak ana data page'den ayrı **TOAST (The Oversized-Attribute Storage Technique)** tablolarına taşınır.

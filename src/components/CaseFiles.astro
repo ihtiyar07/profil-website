@@ -1,14 +1,14 @@
 ---
 const systems = [
   {
-    slug: 'timescaledb',
+    href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
     id: '01',
     title: 'TimescaleDB: Zaman Serisi Depolama ve Hypertables',
-    description: 'Yüksek hacimli telemetri ve metrik verisi için chunk boyutlandırmanın RAM buffer cache kapasitesine göre ayarlanması, continuous aggregates ve sütunsal sıkıştırma.',
-    stack: ['PostgreSQL', 'TimescaleDB', 'Zstd Sıkıştırma', 'Linux']
+    description: 'Docker ile hızlı kurulum, 10M satırlık telemetri benchmark’ı, RAM odaklı chunk partitioning, continuous aggregates ve time_bucket_gapfill analitiği.',
+    stack: ['PostgreSQL', 'TimescaleDB', 'Docker', 'Zstd Sıkıştırma']
   },
   {
-    slug: 'apache-arrow',
+    href: '/cases/apache-arrow',
     id: '02',
     title: 'Apache Arrow: Sıfır Kopyalama (Zero-Copy) Veri Akışı',
     description: 'Büyük analitik sorgu sonuçlarının JSON serileştirme darboğazına girmeden doğrudan Arrow RecordBatch IPC akışıyla istemci belleğine eşlenmesi.',
@@ -40,7 +40,7 @@ const systems = [
           </div>
 
           <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
-            <a href={`/cases/${item.slug}`} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
+            <a href={item.href} class="focus:outline-none hover:underline underline-offset-4 decoration-[var(--accent)]">
               {item.title}
             </a>
           </h3>
@@ -60,7 +60,7 @@ const systems = [
           </div>
 
           <div class="pt-1 flex justify-end">
-            <a href={`/cases/${item.slug}`} class="font-mono text-xs text-[var(--text-accent)] inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform" aria-label={`${item.title}`}>
+            <a href={item.href} class="font-mono text-xs text-[var(--text-accent)] inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform" aria-label={`${item.title}`}>
               <span>İncele</span>
               <span aria-hidden="true">→</span>
             </a>

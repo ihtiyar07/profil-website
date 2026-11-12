@@ -108,25 +108,34 @@ import { SITE_META } from '../data/siteMeta';
 <!-- Email Copy Script -->
 <script is:inline>
   (function() {
-    const copyBtn = document.getElementById('copy-contact-email-btn');
-    if (!copyBtn) return;
-    copyBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const email = 'ahmetihtiyar1453@gmail.com';
-      const label = copyBtn.querySelector('.copy-email-label');
-      try {
-        await navigator.clipboard.writeText(email);
-        if (label) label.textContent = 'Kopyalandı';
-        if (typeof window.showToast === 'function') {
-          window.showToast('E-posta panoya kopyalandı');
+    function initContactCopy() {
+      const copyBtn = document.getElementById('copy-contact-email-btn');
+      if (!copyBtn) return;
+      copyBtn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const email = 'ahmetihtiyar1453@gmail.com';
+        const label = copyBtn.querySelector('.copy-email-label');
+        try {
+          await navigator.clipboard.writeText(email);
+          if (label) label.textContent = 'Kopyalandı';
+          if (typeof window.showToast === 'function') {
+            window.showToast('E-posta panoya kopyalandı');
+          }
+          setTimeout(() => {
+            if (label) label.textContent = 'Kopyala';
+          }, 2000);
+        } catch (_) {
+          prompt('E-posta:', email);
         }
-        setTimeout(() => {
-          if (label) label.textContent = 'Kopyala';
-        }, 2000);
-      } catch (_) {
-        prompt('E-posta:', email);
-      }
-    });
+      };
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initContactCopy);
+    } else {
+      initContactCopy();
+    }
+    document.addEventListener('astro:page-load', initContactCopy);
   })();
 </script>

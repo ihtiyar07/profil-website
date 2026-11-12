@@ -78,7 +78,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   )}
 
   <!-- Diagram Content Area -->
-  <div class="mermaid-diagrams-wrap relative p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[220px] bg-[var(--bg-subtle)]/30">
+  <div class="mermaid-diagrams-wrap relative p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[120px] bg-[var(--bg-subtle)]/30">
     {isTabbed ? (
       tabs.map((tab, idx) => (
         <div
@@ -105,7 +105,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     ) : (
       <div 
         class="mermaid-diagram w-full flex justify-center" 
-        id={uniqueId} 
+        id={`${uniqueId}-diagram`} 
         data-code={code}
         role="img"
         aria-label={ariaLabel || title || "Mimari Şema"}
@@ -1123,6 +1123,10 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   } else {
     renderAllMermaid();
   }
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll('.mermaid-diagram').forEach(el => el.removeAttribute('data-processed'));
+    renderAllMermaid();
+  });
 
   // Re-render when theme changes
   const themeObserver = new MutationObserver((mutations) => {

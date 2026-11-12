@@ -1,0 +1,102 @@
+---
+title: "TimescaleDB Columnar Sıkıştırma (Hypercore) ve Retention Mimarisi"
+slug: "timescaledb-columnar-sikistirma-ve-retention"
+date: "2025-08-12"
+lang: "tr"
+summary: "Row-based chunk'ların 1000 satırlık columnar batch'lere sıkıştırılması, Gorilla ve Delta-of-Delta algoritmaları, compress_segmentby seçimi, backfill maliyeti ve drop_chunks() ile sıfır bloat."
+tags: ["PostgreSQL", "TimescaleDB", "Depolama", "Performans"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 2
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL standart olarak satır tabanlı (**Row-based Heap**) çalışır; her 8KB'lık sayfada farklı cihazlara ait farklı kolonlar yan yana saklanır. Bu düzen `INSERT` hızında avantajlıdır ancak milyonlarca eski kaydın saklanmasında hem yüksek disk alanı tüketir hem de analitik taramalarda gereksiz kolonları belleğe taşır.
+
+TimescaleDB'nin **Columnar Compression (Hypercore)** motoru, aktif yazma penceresinden çıkan Chunk'ları otomatik olarak sütun tabanlı sıkıştırılmış dizilere dönüştürür ve tipik telemetri iş yüklerinde **%90+ disk tasarrufu** sağlar.
+
+## 1. Row-to-Columnar Dönüşüm Mekanizması
+
+<Mermaid
+  title="Row-based Heap'ten Columnar Batch Dönüşümüne"
+  ariaLabel="Satır tabanlı chunk verisinin segmentby ve orderby kurallarıyla sütun dizilerine sıkıştırılması"
+  code={`
+flowchart LR
+    RowChunk["Aktif Chunk (Row Heap)"]
+    Segment["compress_segmentby (device_id)"]
+    Order["compress_orderby (time DESC)"]
+    ColBatch[("Columnar Batch (~1000 Satır/Dizi)")]
+
+    RowChunk -->|"1. Gruplama"| Segment
+    Segment -->|"2. Sıralama"| Order
+    Order -->|"3. Tip Bazlı Codec"| ColBatch
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Segment,Order process
+    class RowChunk memory
+    class ColBatch storage
+`}
+  summarySteps={[
+    "1. Aktif Chunk içindeki satırlar önce compress_segmentby ile belirtilen anahtara (ör. device_id) göre gruplanır.",
+    "2. Her grup kendi içinde compress_orderby (ör. time DESC) kuralına göre fiziksel olarak sıralanır.",
+    "3. Ardışık benzer tipteki değerler ~1000 satırlık tek bir sütun dizisi (Array) içine toplanır ve veri tipine özel codec ile sıkıştırılır."
+  ]}
+/>
+
+### Veri Tipine Göre Sıkıştırma Algoritmaları
+Her kolon türü için farklı bir sıkıştırma tekniği uygulanır:
+- **`TIMESTAMPTZ` / `INT`:** **Delta-of-Delta + Simple-8b** (Ardışık 5 saniyelik ölçümlerde farklar neredeyse sabit olduğundan birkaç bit ile temsil edilir).
+- **`DOUBLE PRECISION` / `FLOAT`:** **Gorilla** (Ardışık ondalıklı değerlerin XOR farkı kodlanır).
+- **Düşük Kardinaliteli Metin (`status`, `region`):** **Dictionary + RLE (Run-Length Encoding)**.
+- **Genel Metin / JSONB:** **Zstd / LZ** blok sıkıştırması.
+
+---
+
+## 2. `segmentby` ve `orderby` Seçim Kuralları
+
+Sıkıştırma performansı ve sorgu hızı doğrudan segment anahtarının kardinalitesine bağlıdır:
+
+```sql
+ALTER TABLE sensor_data_ts SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby   = 'time DESC'
+);
+
+-- 7 günden eski chunk'ları arka planda otomatik sıkıştır
+SELECT add_compression_policy('sensor_data_ts', INTERVAL '7 days');
+```
+
+- **Segment Başına Hedef (~1.000 Satır):** Bir sıkıştırılmış Chunk içinde tek bir `device_id` değerine ait yalnızca 5-10 satır varsa sıkıştırma verimi düşer ve metadata şişer. Aşırı yüksek kardinaliteli sütunları (`trace_id`, `uuid`) `segmentby` içine almayın; bunları `orderby` içine yerleştirin.
+- **Sıkıştırma Oranını Kontrol Etme:**
+
+```sql
+SELECT pg_size_pretty(before_compression_total_bytes) AS once,
+       pg_size_pretty(after_compression_total_bytes)  AS sonra
+FROM hypertable_compression_stats('sensor_data_ts');
+```
+
+---
+
+## 3. Sıkıştırılmış Chunk'a Yazma (Backfill) Maliyeti
+
+Güncel TimescaleDB sürümleri sıkıştırılmış Chunk'lara doğrudan `INSERT`, `UPDATE` ve `DELETE` yapılmasına izin verir. Ancak arka planda motor, gelen geç veriyi **Compressed + Uncompressed hibrit** bir katmanda tutar veya ilgili 1000 satırlık batch'i bellekte açıp yeniden sıkıştırır (**Recompression**).
+
+- Çok nadir geç gelen telemetri için bu esneklik güvenlidir.
+- Sıkıştırılmış geçmiş verilere sürekli yüksek hacimli `UPDATE` atılıyorsa compression penceresini (`compress_after`) daha ileriye (ör. `7 days` → `30 days`) çekmek CPU ve I/O maliyetini düşürür.
+
+---
+
+## 4. Sıfır Bloat Retention: `drop_chunks()`
+
+Standart PostgreSQL'de eski veriyi `DELETE FROM ... WHERE time < ...` ile silmek tüm satırları **Dead Tuple** haline getirir, WAL üretir ve ardından ağır bir `VACUUM` döngüsü gerektirir. TimescaleDB'de ise her zaman penceresi ayrı bir fiziksel dosya olduğundan tüm Chunk saniyeler içinde katalogdan ve diskten doğrudan silinir:
+
+```sql
+-- 90 günden eski tüm chunk'ları otomatik sil (Policy)
+SELECT add_retention_policy('sensor_data_ts', INTERVAL '90 days');
+
+-- Manuel tek seferlik silme (< 40 ms, sıfır Dead Tuple)
+SELECT drop_chunks('sensor_data_ts', older_than => INTERVAL '90 days');
+```

@@ -1,0 +1,165 @@
+---
+title: "PostgreSQL Extension Mimarisi: Katalog Güdümlü Çekirdek, Süreç Modeli ve C Hook'ları"
+slug: "postgresql-extension-mimarisi-ve-c-hooks"
+date: "2026-11-12"
+lang: "tr"
+summary: "MySQL, MSSQL ve Oracle'a kıyasla PostgreSQL'de eklentilerin neden çekirdek düzeyinde çalışabildiği; Backend Process, shared_preload_libraries, Background Worker ve C Hook mekanizması."
+tags: ["PostgreSQL", "Mimari", "Extension", "C Hooks"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 5
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL çekirdeğinin üçüncü parti eklentilerle yeni veri tiplerinden sorgu planlayıcıya, indeks motorlarından özel depolama katmanlarına kadar genişletilebilmesi iki mimari temele dayanır: **katalog güdümlü (Catalog-Driven) tasarım** ve **sorgu hattı boyunca açılmış C Hook noktaları**.
+
+Unix `postmaster` ve `fork()` tabanlı süreç modeli ise bu genişletilebilirliğin doğrudan sebebi değildir; dinamik kütüphanelerin (`.so`) hangi süreç bağlamında yükleneceğini, `Shared Memory` tahsisini ve oturum bazlı bellek izolasyonunu belirleyen çalışma zeminidir.
+
+---
+
+## 1. Katalog Güdümlü Çekirdek ve RDBMS Mimarilerinde Genişletilebilirlik
+
+PostgreSQL çekirdeğinde `+` veya `=` gibi operatörler ya da `btree`, `gin`, `gist` gibi indeks motorları C kodundaki sabit `switch-case` bloklarına gömülmemiştir. Veri tipleri (`pg_type`), operatörler (`pg_operator`), fonksiyonlar (`pg_proc`) ve indeks/tablo erişim metotları (`pg_am`) sistem kataloglarında satır olarak tanımlanır. Parser ve Planner karar verirken çekirdek koduna değil, bu katalog kayıtlarına bakar.
+
+Diğer yaygın ilişkisel veritabanı motorları da çeşitli genişletme arayüzleri sunar; ancak çekirdeğin iç katmanlarına erişim sınırları farklıdır:
+
+| Veritabanı | Genişletme Arayüzü | Desteklenen Kapsam | Çekirdek Sınırı |
+| :--- | :--- | :--- | :--- |
+| **PostgreSQL** | `CREATE EXTENSION`, `.so`, C Hooks, Access Method ABI | Veri tipi, operatör, AST/DDL/Planner/Executor kancaları, `IndexAM`, `TableAM`, `Background Worker` | Dahili C veri yapılarına (`Query`, `PlannedStmt`, `TupleTableSlot`) doğrudan erişen modüller yazılabilir. |
+| **Oracle DB** | Data Cartridge (`ODCIIndex`), `EXTPROC`, Java in DB | Domain Index, özel istatistik arayüzü ve harici C prosedürleri | Sözleşmeli API sınırları dışında `SGA`, Optimizer iç yapıları veya Redo akışına doğrudan C Hook bağlanamaz. |
+| **MySQL** | Storage Engine API, Plugin / Component API (8.0+), UDF | Depolama motoru (`InnoDB`, `MyRocks`), auth, audit, replication eklentisi | Parser, sistem kataloğu ve Optimizer C++ çekirdeğine gömülüdür; yeni indeks metodu veya veri tipi çekirdek değişmeden eklenemez. |
+| **MSSQL** | CLR Integration (.NET), Extended Stored Procedures | .NET tabanlı UDF, prosedür, özel tip ve aggregate tanımları | Kapalı kaynak ve sandboxed çalışma sınırı nedeniyle Query Optimizer, Transaction Manager veya Storage Engine döngüsüne girilemez. |
+
+---
+
+## 2. Süreç Yaşam Döngüsü: Backend İçi Yükleme, Preload ve Background Worker
+
+PostgreSQL eklentileri işletim sisteminde bağımsız bir arka plan servisi olarak değil, **PostgreSQL süreç ağacının içinde** üç farklı yaşam döngüsünden biriyle çalışır:
+
+1. **Oturum İçi Dinamik Yükleme (On-Demand / `Backend Process`):** Yalnızca yeni SQL fonksiyonu, veri tipi veya indeks motoru ekleyen eklentiler (`pgvector`, `PostGIS`, `pg_trgm`) instance yeniden başlatması gerektirmez. `CREATE EXTENSION` sonrası ilgili nesne ilk kez çağrıldığında `.so` dosyası yalnızca o **Client Backend Process** içine `dlopen()` ile yüklenir.
+2. **Başlangıçta Yükleme (`shared_preload_libraries` + `fork()` Mirası):** Sorgu hattındaki C Hook pointer'larını değiştirmesi veya tüm oturumların paylaşacağı global `Shared Memory` ayırması gereken eklentiler (`pg_stat_statements`, `TimescaleDB`), `postgresql.conf` üzerinden **`postmaster`** açılırken yüklenir. `_PG_init()` giriş noktası burada bir kez çalışır; bağlanan her Client için `fork()` edilen **Backend Process** ayarlanmış hook pointer'larını ve `Shared Memory` eşleşmesini doğrudan miras alır.
+3. **Arka Plan İşçisi (`RegisterBackgroundWorker`):** Zamanlanmış görev veya asenkron bakım yürüten eklentiler (`pg_cron`, `TimescaleDB`), `postmaster` gözetimi altında ek alt süreçler başlatır. Bu süreçler harici bir servis gibi değil, doğrudan PostgreSQL'in `Shared Memory`, `LWLock` ve `WAL` altyapısına bağlı şekilde çalışır.
+
+Oturum bazlı lokal bellek (`MemoryContext`) sızıntıları bağlantı sonlandığında işletim sistemi tarafından tamamen geri alınır; buna karşın `Shared Memory` bölgesini paylaşan bir eklentide `SEGFAULT` oluşursa veri bütünlüğünü korumak adına `postmaster` tüm aktif backend süreçlerini kontrollü biçimde yeniden başlatır.
+
+<Mermaid
+  title="1. PostgreSQL Eklenti Yükleme Modelleri (postmaster vs Backend Process)"
+  ariaLabel="PostgreSQL eklentilerinin shared_preload_libraries, Backend Process ve Background Worker olarak yüklenme akışı"
+  code={`
+flowchart LR
+    Conf["postgresql.conf"] -->|shared_preload_libraries| PM["postmaster (_PG_init)"]
+    PM -->|Tahsis| Shmem[("Shared Memory & LWLock")]
+    PM -->|Spawn| BGW["Background Worker"]
+    PM -->|"fork()"| BE["Backend Process"]
+    SO["On-Demand .so"] -.->|"dlopen() İlk Çağrıda"| BE
+    BE <-->|Ortak IPC| Shmem
+    BGW <-->|Ortak IPC| Shmem
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+
+    class BE,BGW process
+    class PM primary
+    class Shmem memory
+    class Conf,SO storage
+`}
+  summarySteps={[
+    "1. shared_preload_libraries içindeki .so kütüphaneleri instance açılışında postmaster içinde yüklenir ve _PG_init() çalıştırılır.",
+    "2. Eklenti bu aşamada Shared Memory, LWLock ve varsa Background Worker kayıtlarını oluşturur.",
+    "3. Her yeni Client bağlantısında postmaster fork() ile Backend Process üretir; hook pointer'ları miras alınır.",
+    "4. Preload gerektirmeyen eklentiler ise ilk SQL çağrısında doğrudan ilgili Backend Process içinde dlopen() edilir."
+  ]}
+/>
+
+---
+
+## 3. Sorgu Hattında C Hook Mekanizması ve Çekirdek ABI'leri
+
+PostgreSQL, sorgu işleme hattının kritik aşamalarında global C function pointer'ları barındırır. Bir eklenti mevcut pointer adresini yerel bir değişkende saklayıp (`prev_hook = target_hook`) kendi fonksiyonunu araya yerleştirdiğinde, tüm sorgu veya DDL trafiği bir **Middleware** zinciri gibi yönlendirilir.
+
+<Mermaid
+  title="2. Sorgu Hattında C Hook Noktaları ve Eklenti Eşleşmesi"
+  ariaLabel="PostgreSQL sorgu işleme hattındaki C hook noktaları ve popüler eklentilerin bağlandığı katmanlar"
+  code={`
+flowchart LR
+    Parse["Parser & Analyze"] --> Utility["Utility DDL"]
+    Utility --> Plan["Planner"]
+    Plan --> Exec["Executor"]
+    Exec --> AM["IndexAM / TableAM"]
+
+    PGSS["pg_stat_statements"] -.->|"post_parse_analyze"| Parse
+    PGSS -.->|"ExecutorEnd_hook"| Exec
+    TS["TimescaleDB"] -.->|"ProcessUtility_hook"| Utility
+    TS -.->|"planner_hook"| Plan
+    Vec["pgvector & PostGIS"] -.->|"IndexAmRoutine"| AM
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Parse,Utility,Exec process
+    class Plan primary
+    class PGSS,TS,Vec memory
+    class AM storage
+`}
+  summarySteps={[
+    "1. post_parse_analyze_hook: Query Tree oluştuktan hemen sonra sorgu normalize edilir (pg_stat_statements).",
+    "2. ProcessUtility_hook: CREATE TABLE ve ALTER gibi DDL komutları standart yol öncesi yakalanır (TimescaleDB).",
+    "3. planner_hook / set_rel_pathlist_hook: Maliyet modeline Chunk Pruning veya sanal indeksler eklenir.",
+    "4. ExecutorStart/Run/End_hook: Yürütme süresi veya satır limiti ölçülür; alt katmanda IndexAmRoutine devreye girer (pgvector, PostGIS)."
+  ]}
+/>
+
+Üretim ortamlarında yaygın kullanılan eklentilerin bağlandığı süreç modelleri ve çekirdek arayüzleri aşağıda özetlenmiştir:
+
+| Eklenti | Yükleme Modu | Hook / Çekirdek ABI | Mimari Rolü |
+| :--- | :--- | :--- | :--- |
+| **`pg_stat_statements`** | Preload (`postmaster`) | `post_parse_analyze_hook`, `ExecutorEnd_hook`, `Shared Memory` | Sorguları normalize edip ortak hash tablosunda süre ve `Buffer` sayaçlarını toplar. |
+| **`TimescaleDB`** | Preload + `BG Worker` | `ProcessUtility_hook`, `planner_hook`, `CustomScan` | DDL yakalar, sorgularda Chunk Pruning uygular; sıkıştırmayı worker ile yürütür. |
+| **`pgvector`** | On-Demand (`Backend`) | `pg_type`, `pg_operator`, `IndexAmRoutine` | `vector` tipi, `<->` operatörü ve HNSW/IVFFlat indeks motoru ekler; restart gerekmez. |
+| **`pg_cron`** | Preload + `BG Worker` | `RegisterBackgroundWorker` | Zamanlanmış SQL işlerini harici servis olmadan kendi PostgreSQL sürecinden çalıştırır. |
+| **`PostGIS`** | On-Demand (`Backend`) | `pg_type`, `GiST` OpClass, `LANGUAGE C` | Mekansal tipleri ve R-Tree tabanlı GiST operatör sınıflarını kataloğa bağlar. |
+
+---
+
+## 4. Paketleme Yapısı ve `ExecutorRun_hook` Zinciri
+
+Bir PostgreSQL eklentisi dağıtım ve bağımlılık takibi için üç bileşenden oluşur: metadata tanımı (`<ad>.control`), SQL nesnelerini kuran betik (`<ad>--1.0.sql`) ve derlenen shared library (`<ad>.so`). `CREATE EXTENSION` çalıştırıldığında nesneler `pg_extension` ve `pg_depend` kataloglarına kaydedilir; böylece `pg_dump` eklentinin içindeki nesneleri tek tek dışa aktarmak yerine yalnızca `CREATE EXTENSION` bildirimini üretir.
+
+Aşağıdaki yalın C örneği, `ExecutorRun_hook` zincirine bağlanarak çalışan `DELETE` ifadelerini yakalayan bir çekirdek modülünün temel yapısını gösterir:
+
+```c
+#include "postgres.h"
+#include "executor/executor.h"
+
+PG_MODULE_MAGIC; // PostgreSQL major ABI uyumluluk mührü
+
+static ExecutorRun_hook_type prev_ExecutorRun = NULL;
+
+void _PG_init(void);
+
+static void
+guard_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction,
+                  uint64 count, bool execute_once)
+{
+    if (queryDesc->operation == CMD_DELETE)
+        elog(NOTICE, "[pg_guard] DELETE yakalandi: %s", queryDesc->sourceText);
+
+    // Zincirdeki diger eklentileri bozmamak icin bir onceki hook'u cagir
+    if (prev_ExecutorRun)
+        prev_ExecutorRun(queryDesc, direction, count, execute_once);
+    else
+        standard_ExecutorRun(queryDesc, direction, count, execute_once);
+}
+
+void
+_PG_init(void)
+{
+    prev_ExecutorRun = ExecutorRun_hook;
+    ExecutorRun_hook = guard_ExecutorRun;
+}
+```
+
+Bu mekanizma sayesinde birden fazla eklenti (`TimescaleDB` + `pg_stat_statements` + özel audit hook'u) birbirini ezmeden aynı sorgu yaşam döngüsü üzerinde sırayla çalışabilir.

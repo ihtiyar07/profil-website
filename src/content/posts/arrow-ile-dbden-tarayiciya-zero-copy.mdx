@@ -19,20 +19,20 @@ Tipik bir REST uç noktası şu akışı izler:
 3. Payload sıkıştırılsa bile tarayıcıya ulaştığında ~25MB metin haline gelir.
 4. **En büyük darbe:** Tarayıcıda `const data = await response.json()` çağrıldığı an, JavaScript V8 motoru yüz binlerce nesne tahsis eder (memory allocation). Ana iş parçacığı (main thread) 800 milisaniye donar ve Garbage Collector (GC) dakikalarca nefes alamaz.
 
-## 2. Apache Arrow ve Sütunsal (Columnar) Hafıza Düzeni
+## 2. Apache Arrow ve Columnar Memory Düzeni
 
-Apache Arrow, veriyi satır satır değil; sütun sütun (columnar) bitişik bellek bloklarında tutar:
+Apache Arrow, veriyi satır satır değil; sütun sütun (columnar) bitişik memory bloklarında tutar:
 
-```
-Satırsal (JSON / Relational):
+```text
+Row-oriented (JSON / Relational):
  [ {t: 1, v: 22.4}, {t: 2, v: 22.5}, {t: 3, v: 22.8} ... ]
 
-Sütunsal (Apache Arrow RecordBatch):
- Timestamps: [ 1, 2, 3 ... ] -> bitişik 64-bit int bloğu
- Values:     [ 22.4, 22.5, 22.8 ... ] -> bitişik 64-bit double bloğu
+Columnar (Apache Arrow RecordBatch):
+ Timestamps: [ 1, 2, 3 ... ] -> contiguous 64-bit int block
+ Values:     [ 22.4, 22.5, 22.8 ... ] -> contiguous 64-bit double block
 ```
 
-Bu bellek düzeninin sunduğu devasa avantaj: **Kopyalamasız Aktarım (Zero-Copy Transfer).**
+Bu bellek düzeninin sunduğu temel avantaj: **Zero-Copy Transfer.**
 
 Veritabanından ikili (binary) akışla gelen Arrow IPC RecordBatch blokları, tarayıcıda string parse edilmez. `tableFromIPC(stream)` fonksiyonu doğrudan tarayıcının `ArrayBuffer` belleğindeki pointer'ları okur.
 

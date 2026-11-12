@@ -1,0 +1,111 @@
+---
+title: "TimescaleDB İç Mimarisi: Hypertable, Chunk Boyutlandırma ve Partition Pruning"
+slug: "timescaledb-hypertable-ve-chunk-mimarisi"
+date: "2025-08-12"
+lang: "tr"
+summary: "Hypertable soyutlaması altında fiziksel Chunk üretimi, shared_buffers oranına göre chunk_time_interval hesabı, Query Planner Chunk Exclusion akışı ve 10M satır tekrarlanabilir SQL benchmark'ı."
+tags: ["PostgreSQL", "TimescaleDB", "Mimari", "Performans"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 1
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Kullanıcı açısından tek bir SQL tablosu gibi görünen **Hypertable**, arka planda PostgreSQL'in doğal tablo miras/bölümleme altyapısını yöneten bir sanal soyutlamadır. Gelen her satır, zaman damgasına göre **`_timescaledb_internal`** şeması altında oluşturulan bağımsız fiziksel alt tablolara (**Chunk**) yönlendirilir.
+
+## 1. Chunk Exclusion (Partition Pruning) Akışı
+
+Bir sorguda `WHERE time >= ...` filtresi verildiğinde, TimescaleDB Planner uzantısı sorguyu çalıştırmadan önce ilgili zaman sınırlarıyla kesişmeyen tüm Chunk'ları yürütme planından eler:
+
+<Mermaid
+  title="Hypertable Sorgu Yönlendirme (Chunk Exclusion)"
+  ariaLabel="TimescaleDB Hypertable üzerinden yalnızca ilgili Chunk'a erişen Chunk Exclusion akışı"
+  code={`
+flowchart LR
+    Query["WHERE time >= ..."] --> Planner["Query Planner"]
+    Meta[("Chunk Metadata")] -.->|"Sınırlar"| Planner
+    Planner -.->|"Pruned"| C1[("Chunk 1 (Gün 1-7)")]
+    Planner -.->|"Pruned"| C2[("Chunk 2 (Gün 8-14)")]
+    Planner ==>|"Index Scan"| C3[("Chunk 3 (Bugün)")]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:2px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#57534E
+
+    class Query,Planner process
+    class C3 memory
+    class Meta,C1,C2 storage
+`}
+  summarySteps={[
+    "1. Client zaman filtreli sorguyu Hypertable üzerine gönderir.",
+    "2. Planner, _timescaledb_catalog.chunk metadata tablosundan her fiziksel Chunk'ın başlangıç ve bitiş zaman sınırlarını okur.",
+    "3. Zaman penceresi dışında kalan eski Chunk'lar (Chunk 1 ve Chunk 2) fiziksel olarak hiç açılmadan plandan çıkarılır.",
+    "4. Yalnızca hedef zaman aralığını tutan Chunk 3 içindeki küçük B-Tree indeksi taranır."
+  ]}
+/>
+
+---
+
+## 2. `chunk_time_interval` ve `shared_buffers` Dengesi
+
+Yanlış chunk aralığı seçimi TimescaleDB'nin temel avantajını ortadan kaldırır:
+- **Çok Büyük Chunk (ör. 1 milyar satırlık aylık chunk):** Aktif chunk'ın B-Tree indeksi RAM'e (`shared_buffers`) sığmaz, her `INSERT` indeks sayfası için disk I/O tetikler.
+- **Çok Küçük Chunk (ör. 1000 satırlık saatlik chunk):** Binlerce alt tablo oluşur; planlama süresi uzar ve `max_locks_per_transaction` sınırı aşılır.
+
+**Altın Kural:** En güncel (yazma yapılan) tek bir Chunk + indekslerinin toplam boyutu, sunucudaki **`shared_buffers` alanının yaklaşık %25'ini geçmemelidir**.
+
+```sql
+-- Chunk boyutlarını ham veri + indeks olarak izleme:
+SELECT chunk_name,
+       pg_size_pretty(table_bytes) AS data_boyut,
+       pg_size_pretty(index_bytes) AS index_boyut,
+       pg_size_pretty(total_bytes) AS toplam
+FROM chunks_detailed_size('sensor_data_ts')
+ORDER BY chunk_name DESC
+LIMIT 5;
+
+-- Trafik arttığında sonraki chunk'lar için aralığı küçültme:
+SELECT set_chunk_time_interval('sensor_data_ts', INTERVAL '12 hours');
+```
+
+### Space Partitioning Tuzağı
+`create_hypertable(..., partitioning_column => 'device_id', number_partitions => 4)` gibi ek boyut bölümü **yalnızca birden fazla fiziksel disk/tablespace varsa** veya dağıtık/paralel okuma gerekiyorsa anlamlıdır. Tek sunucuda aynı zaman aralığı için chunk sayısını 4'e çarpmak `shared_buffers` üzerindeki B-Tree cache baskısını artırır; çoğu senaryoda tek boyutlu zaman partitioning yeterlidir.
+
+---
+
+## 3. Tekrarlanabilir 10M Satır Benchmark Script'i
+
+`timescaledb-ha:pg16` konteyneri içinde standart PostgreSQL tablosu ile Hypertable davranışını aynı veri kümesinde doğrudan test edebilirsiniz:
+
+```sql
+-- 1. Standart PostgreSQL ve Hypertable Tanımları
+CREATE TABLE sensor_data_std (
+    time        TIMESTAMPTZ NOT NULL,
+    device_id   INT NOT NULL,
+    cpu_usage   DOUBLE PRECISION,
+    temperature DOUBLE PRECISION
+);
+CREATE INDEX idx_std_device_time ON sensor_data_std (device_id, time DESC);
+
+CREATE TABLE sensor_data_ts (LIKE sensor_data_std);
+SELECT create_hypertable('sensor_data_ts', 'time', chunk_time_interval => INTERVAL '1 day');
+CREATE INDEX idx_ts_device_time ON sensor_data_ts (device_id, time DESC);
+
+-- 2. 10.000.000 Satır Sentetik Veri Yükleme (~259ms aralıklarla 30 gün)
+INSERT INTO sensor_data_std (time, device_id, cpu_usage, temperature)
+SELECT t, (random() * 99 + 1)::INT, random() * 100.0, 20.0 + (random() * 45.0)
+FROM generate_series(NOW() - INTERVAL '30 days', NOW(), INTERVAL '259 milliseconds') AS t;
+
+INSERT INTO sensor_data_ts SELECT * FROM sensor_data_std;
+ANALYZE sensor_data_std;
+ANALYZE sensor_data_ts;
+
+-- 3. Chunk Exclusion ve Buffer Hit Doğrulaması
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT AVG(temperature), MAX(cpu_usage)
+FROM sensor_data_ts
+WHERE device_id = 42
+  AND time >= NOW() - INTERVAL '2 days'
+  AND time <  NOW() - INTERVAL '1 day';
+```
+
+Çıktıda `Custom Scan (ChunkAppend)` altında `Chunks excluded during startup` veya yalnızca 1–2 adet `_hyper_*_chunk` düğümünün tarandığı ve `shared read` değerinin minimumda kaldığı görülür.

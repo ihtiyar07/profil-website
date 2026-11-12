@@ -25,7 +25,7 @@ Bir JWT oluşturduğunuzda içine kullanıcının rollerini ve izinlerini yazars
 }
 ```
 
-Bu token istemciye teslim edildiğinde artık kendi başına bir pasaporttur. Downstream mikroservisler sadece public key (JWKS) ile imzayı kontrol eder ve isteği kabul eder.
+Bu token **client**'a teslim edildiğinde artık kendi başına bir pasaporttur. Downstream mikroservisler sadece public key (JWKS) ile imzayı kontrol eder ve isteği kabul eder.
 
 Fakat gerçek hayatta şu senaryo gerçekleşir:
 1. Saha teknisyeni işten ayrılır ya da cihazı çalınır.
@@ -51,7 +51,7 @@ Ulusal medya ödeme motoru ve Diventra projelerinde uyguladığım çözüm, JWT
 4. Mikroservis ara katmanı (middleware), kriptografik imza geçerli olsa bile Redis'teki sürümle token'daki sürümü karşılaştırır. İşlem süresi: `<0.3 milisaniye`.
 
 ```
-[İstemci] ──(Token: ver=3)──► [API Gateway]
+[Client] ──(Token: ver=3)──► [API Gateway]
                                     │
                        JWKS İmzası Geçerli mi? (Evet)
                                     │

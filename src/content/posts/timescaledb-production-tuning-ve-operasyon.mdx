@@ -1,0 +1,74 @@
+---
+title: "TimescaleDB Production Operasyon, Tuning ve Yazma Performansı"
+slug: "timescaledb-production-tuning-ve-operasyon"
+date: "2025-08-12"
+lang: "tr"
+summary: "Üretim ortamında timescaledb-tune ve max_locks_per_transaction ayarları, COPY ve batch INSERT ile yüksek frekanslı yazma optimizasyonu, background worker havuzu ve yedekleme."
+tags: ["PostgreSQL", "TimescaleDB", "Performans", "Operasyon"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 4
+---
+
+TimescaleDB'yi geliştirme ortamından üretim ortamına taşırken karşılaşılan hataların çoğu SQL sözdiziminden değil; varsayılan PostgreSQL kilit/bellek limitlerinden, tekil `INSERT` trafiğinden veya background worker havuzunun tıkanmasından kaynaklanır.
+
+## 1. `timescaledb-tune` ve Kritik `postgresql.conf` Ayarları
+
+Standart PostgreSQL varsayılanları tek tablolu küçük iş yüklerine göre ayarlanmıştır. `timescaledb-ha` konteynerlerinde hazır gelen **`timescaledb-tune`** aracı, sunucunun CPU ve RAM kapasitesini okuyarak başlangıç ayarlarını otomatik önerir.
+
+Üretim ortamında manuel doğrulanması gereken 4 kritik parametre vardır:
+
+| Parametre | Varsayılan | Üretim Önerisi | Neden Kritik? |
+| :--- | :--- | :--- | :--- |
+| **`max_locks_per_transaction`** | `64` | `512` – `4096` | Her Chunk ayrı bir tablo kilidi ister; düşük kalırsa `out of shared memory` hatası verir |
+| **`timescaledb.max_background_workers`** | `16` | `8` + CAgg/Policy sayısı | Sıkıştırma, retention ve CAgg job'ları aynı anda worker beklerse gecikir |
+| **`shared_buffers`** | `128MB` | Toplam RAM'in `%25`'i | Aktif Chunk B-Tree indekslerini bellekte tutmak için temel sınır |
+| **`synchronous_commit`** | `on` | Yüksek telemetride `off` (opsiyonel) | Telekom/IoT akışında son ~200ms kaybı tolere edilebiliyorsa IOPS yükünü ciddi düşürür |
+
+---
+
+## 2. Yüksek Frekanslı Yazma Performansı (`COPY` & Batch `INSERT`)
+
+Sensör başına saniyede tekil `INSERT` göndermek her satır için ayrı ağ gidiş-dönüşü, transaction başlatma ve WAL `fsync` maliyeti doğurur.
+
+1. **Batching (Toplu Yazım):** Uygulama veya mesaj kuyruğu (RabbitMQ / Kafka) katmanında kayıtları `500`–`5.000` satırlık paketler halinde toplayıp tek bir multi-row `INSERT` veya PostgreSQL ikili **`COPY ... FROM STDIN`** protokolüyle gönderin.
+2. **İndeks Sırası ve Sayısı:** Her ek indeks yazma hızını düşürür. Sorgular genellikle belirli bir cihazın son kayıtlarını çekiyorsa `(device_id, time DESC)` bileşik indeksi yeterlidir; fazladan gereksiz tekil `device_id` indeksi tanımlamayın.
+3. **Zaman Sıralı Yazma:** Veriler geçmişe dağınık değil zaman sırasıyla (`NOW()` yakını) aktığında yalnızca tek bir aktif Chunk ve o Chunk'ın son yaprak sayfaları bellekte sıcak kalır.
+
+---
+
+## 3. Arka Plan İşlerini İzleme (`timescaledb_information`)
+
+Compression, Retention ve Continuous Aggregate politikalarının hata verip vermediğini üretimde katalog görünümleriyle takip edin:
+
+```sql
+-- Çalışan tüm TimescaleDB policy job'ları ve başarı durumları:
+SELECT j.job_id,
+       j.proc_name,
+       j.hypertable_name,
+       j.schedule_interval,
+       s.last_run_status,
+       s.last_successful_finish,
+       s.total_failures
+FROM timescaledb_information.jobs j
+JOIN timescaledb_information.job_stats s ON j.job_id = s.job_id
+ORDER BY j.job_id;
+```
+
+---
+
+## 4. Yedekleme ve Geri Yükleme (`pg_dump` / `pg_restore`)
+
+Hypertable ve katalog metadata tutarlılığını korumak için mantıksal yedekten geri yükleme yaparken TimescaleDB kancalarını mutlaka çağırın:
+
+```bash
+# Yedek alma (Custom format, paralel restore uyumlu)
+pg_dump -U postgres -Fc -f telemetry_backup.dump telemetry_db
+
+# Geri yükleme adımları (Hedef boş veritabanında):
+psql -U postgres -d telemetry_db -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+psql -U postgres -d telemetry_db -c "SELECT timescaledb_pre_restore();"
+pg_restore -U postgres -d telemetry_db --no-owner telemetry_backup.dump
+psql -U postgres -d telemetry_db -c "SELECT timescaledb_post_restore();"
+```
+
+`timescaledb_pre_restore()` arka plan worker'larını ve trigger kilitlerini geçici olarak durdurur; `timescaledb_post_restore()` ise `_timescaledb_catalog` kimlik eşlemelerini yeniden bağlar.

@@ -1,325 +1,535 @@
 ---
 // DataPageAnatomy.astro
 // Systems Architecture Diagram: PostgreSQL 8KB Data Page & HeapTuple Physical Layout
-// Calm Architectural Palette: Muted tones, crisp 1px borders, semantic alignment, high readability.
+// Calm Architectural Blueprint Palette: Modular sections for seamless inline prose integration.
+
+interface Props {
+  section?: 'page-layout' | 'indirection' | 'tuple-header' | 'all';
+}
+
+const { section = 'all' } = Astro.props;
+
+const SECTION_META = {
+  all: {
+    title: 'PostgreSQL 8KB Data Page & HeapTuple Anatomisi',
+    badge: '8192 Bayt Fiziksel Blok',
+  },
+  'page-layout': {
+    title: '8KB Data Page Fiziksel Bellek Şeridi',
+    badge: '0B .. 8192B · Çift Yönlü Büyüme',
+  },
+  indirection: {
+    title: 'TID (Tuple ID) İki Aşamalı Dolaylı Adresleme',
+    badge: '(Block, Offset) → lp_off → Tuple',
+  },
+  'tuple-header': {
+    title: 'HeapTuple ve 23 Baytlık Başlık Anatomisi',
+    badge: '4 + 4 + 4 + 6 + 4 + 1 = 23 Bayt',
+  },
+} as const;
+
+const meta = SECTION_META[section];
+const showPageLayout = section === 'all' || section === 'page-layout';
+const showIndirection = section === 'all' || section === 'indirection';
+const showTupleHeader = section === 'all' || section === 'tuple-header';
+const isCombined = section === 'all';
 ---
 
-<figure class="data-page-container not-prose my-8 border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] overflow-hidden shadow-xs select-none" aria-label="PostgreSQL 8KB Data Page ve HeapTuple Fiziksel Bellek Düzeni">
-  <!-- Top Bar -->
-  <div class="px-4 py-2.5 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between gap-3 text-xs font-mono text-[var(--text-dim)]">
-    <span class="flex items-center gap-2 font-medium text-[var(--text)]">
-      <span class="w-2 h-2 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-      <span class="tracking-wide">POSTGRESQL 8KB DATA PAGE &amp; HEAPTUPLE ANATOMİSİ</span>
+<figure
+  class:list={[
+    'data-page-container not-prose border border-[var(--accent-border)] rounded-[4px] bg-[var(--bg-card)] shadow-[0_2px_12px_-3px_rgba(29,78,216,0.08)] dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.45)] overflow-hidden select-none',
+    isCombined ? 'my-8' : 'my-6',
+  ]}
+  aria-label={meta.title}
+>
+  <!-- Top Bar (Unified Blueprint Chrome) -->
+  <div class="px-4 py-2 border-b border-[var(--accent-border)] bg-[#EFF6FF]/75 dark:bg-[#131C2B] flex items-center justify-between gap-3 text-xs font-mono">
+    <span class="flex items-center gap-2 font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
+      <span class="w-2 h-2 shrink-0 rounded-[2px] bg-[var(--accent)]" aria-hidden="true"></span>
+      <span class="truncate">{meta.title}</span>
     </span>
-    <span class="text-[12px] text-[var(--text-dim)] font-mono hidden sm:inline-block">8192 Bayt Sabit Disk Bloğu</span>
+    <span class="text-[11px] text-[var(--text-accent)] font-mono hidden sm:inline-block shrink-0 tabular-nums">
+      {meta.badge}
+    </span>
   </div>
 
-  <div class="p-4 sm:p-6 space-y-7 text-[var(--text)]">
-    
-    <!-- ==================================================================== -->
-    <!-- 1. 8KB DATA PAGE ORANTILI BELLEK ŞERİDİ                                -->
-    <!-- ==================================================================== -->
-    <div>
-      <div class="flex items-center justify-between text-xs font-mono text-[var(--text-muted)] mb-2">
-        <span class="font-semibold uppercase tracking-wider text-[var(--text)] flex items-center gap-1.5">
-          <span class="text-[var(--accent)] font-bold">1.</span>
-          <span>8KB Data Page Fiziksel Bellek Şeridi</span>
+  <div class:list={['text-[var(--text)]', isCombined ? 'p-4 sm:p-6 space-y-7' : 'p-4 sm:p-5']}>
+
+    {showPageLayout && (
+    <section>
+      <div class:list={['flex flex-wrap items-baseline gap-2', isCombined ? 'justify-between mb-3' : 'justify-end mb-2']}>
+        {isCombined && (
+          <h3 class="font-serif text-[16px] font-semibold text-[var(--text)] flex items-center gap-2">
+            <span class="w-5 h-5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--text-accent)] font-mono text-[11px] font-semibold inline-flex items-center justify-center tabular-nums">1</span>
+            <span>8KB Data Page Fiziksel Düzeni</span>
+          </h3>
+        )}
+        <span class="text-[11.5px] text-[var(--text-dim)] font-sans">
+          Eşleşmeyi görmek için <strong class="font-mono font-semibold text-[var(--text)]">LP</strong> veya <strong class="font-mono font-semibold text-[var(--text)]">Tuple</strong> seçin
         </span>
-        <span class="text-[12px] text-[var(--text-dim)] font-mono">0B ──────────────► 8192B</span>
       </div>
 
-      <!-- Scrollable Container for Mobile -->
-      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] p-3 overflow-x-auto">
+      <!-- Horizontal Scroll Guard for Mobile -->
+      <div class="overflow-x-auto pb-1">
         <div class="min-w-[620px]">
-          
-          <!-- Byte Boundary Labels & Pointers Above Tape -->
-          <div class="flex items-end justify-between text-[12px] font-mono text-[var(--text-dim)] mb-1.5 px-0.5">
-            <div class="w-[9%] text-left">
+
+          <!-- Top SVG Pointer Arcs connecting LP[n] -> Tuple[n] -->
+          <div class="relative w-full h-11 mb-0.5" aria-hidden="true">
+            <svg viewBox="0 0 800 44" preserveAspectRatio="none" class="w-full h-full overflow-visible">
+              <!-- Coordinates match segment centers: LP1=12%, LP2=18%, LP3=24%; Tuple3=69%, Tuple2=81%, Tuple1=93% -->
+              <!-- LP3 (192) -> Tuple 3 (552) -->
+              <path
+                data-dpa-arc="3"
+                d="M 192 42 C 192 14, 552 14, 552 42"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-dasharray="4 3"
+                class="dpa-arc text-slate-300 dark:text-slate-700 transition-all duration-150"
+              />
+              <!-- LP2 (144) -> Tuple 2 (648) -->
+              <path
+                data-dpa-arc="2"
+                d="M 144 42 C 144 8, 648 8, 648 42"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-dasharray="4 3"
+                class="dpa-arc text-slate-300 dark:text-slate-700 transition-all duration-150"
+              />
+              <!-- LP1 (96) -> Tuple 1 (744) -->
+              <path
+                data-dpa-arc="1"
+                d="M 96 42 C 96 2, 744 2, 744 42"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="dpa-arc text-[var(--accent)] transition-all duration-150"
+              />
+              <!-- Active Dot Markers on Ends -->
+              <circle cx="96" cy="40" r="3" data-dpa-dot="1" class="dpa-dot fill-[var(--accent)] transition-opacity" />
+              <circle cx="744" cy="40" r="3" data-dpa-dot="1" class="dpa-dot fill-[var(--accent)] transition-opacity" />
+              <circle cx="144" cy="40" r="3" data-dpa-dot="2" class="dpa-dot fill-[var(--accent)] opacity-0 transition-opacity" />
+              <circle cx="648" cy="40" r="3" data-dpa-dot="2" class="dpa-dot fill-[var(--accent)] opacity-0 transition-opacity" />
+              <circle cx="192" cy="40" r="3" data-dpa-dot="3" class="dpa-dot fill-[var(--accent)] opacity-0 transition-opacity" />
+              <circle cx="552" cy="40" r="3" data-dpa-dot="3" class="dpa-dot fill-[var(--accent)] opacity-0 transition-opacity" />
+            </svg>
+            <span class="absolute top-0 left-1/2 -translate-x-1/2 bg-[var(--bg-card)] px-2 font-mono text-[10.5px] text-[var(--text-accent)] font-medium">
+              lp_off (sayfa içi bayt adresi)
+            </span>
+          </div>
+
+          <!-- Byte Offset Ruler Above Tape -->
+          <div class="flex items-center text-[11px] font-mono text-[var(--text-dim)] mb-1 tabular-nums">
+            <div class="w-[9%] flex justify-between pr-1">
               <span class="font-semibold text-[var(--text)]">0B</span>
-            </div>
-            <div class="w-[18%] flex items-center justify-between pl-1">
               <span>24B</span>
-              <span class="text-teal-700 dark:text-teal-300 font-semibold flex items-center gap-0.5" title="pd_lower: Line pointer dizisinin sonu">
-                <span>pd_lower</span>
-                <span class="text-xs">↓</span>
-              </span>
             </div>
-            <div class="w-[37%] text-center text-[var(--text-dim)] text-[12px] italic">
-              Serbest Bellek Alanı
+            <div class="w-[18%] text-right pr-1 text-teal-700 dark:text-teal-300 font-semibold">
+              pd_lower (36B) ↓
             </div>
-            <div class="w-[36%] flex items-center justify-between pr-0.5">
-              <span class="text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-0.5" title="pd_upper: En son yazılan tuple başlangıcı">
-                <span class="text-xs">↓</span>
-                <span>pd_upper</span>
-              </span>
+            <div class="w-[37%]"></div>
+            <div class="w-[36%] flex justify-between pl-1">
+              <span class="text-[var(--text-accent)] font-semibold">↓ pd_upper (7992B)</span>
               <span class="font-semibold text-[var(--text)]">8192B</span>
             </div>
           </div>
 
-          <!-- The Physical Tape (Proportional Slices with Calm Semantic Colors) -->
-          <div class="flex h-14 rounded-[2px] overflow-hidden border border-[var(--border-strong)] text-[12px] bg-[var(--bg-card)]">
-            
-            <!-- A. PageHeaderData (24B) ~9% -->
-            <div 
-              class="w-[9%] shrink-0 bg-slate-100 dark:bg-slate-800/50 border-r border-[var(--border)] flex flex-col items-center justify-center text-center p-1 text-[var(--text)]"
-              title="PageHeaderData (24 Bayt): LSN, Checksum, Bayraklar, pd_lower, pd_upper, pd_special"
+          <!-- The Clean Physical Tape -->
+          <div class="flex h-16 rounded-[3px] overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-card)]">
+            <!-- A. PageHeaderData (24B) -->
+            <div
+              class="w-[9%] shrink-0 bg-slate-100/90 dark:bg-slate-800/70 border-r border-[var(--border)] flex flex-col items-center justify-center text-center px-1"
+              title="PageHeaderData (24 Bayt): pd_lsn, pd_checksum, pd_lower, pd_upper, pd_special"
             >
-              <span class="font-mono font-bold text-[12px] leading-tight truncate">Header</span>
-              <span class="text-[11px] text-[var(--text-dim)] font-sans">24B</span>
+              <span class="font-mono font-semibold text-[11.5px] text-[var(--text)] leading-tight">Header</span>
+              <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">24B</span>
             </div>
 
-            <!-- B. Line Pointer Array (ItemIdData) ~18% -->
-            <div 
-              class="w-[18%] shrink-0 bg-[#F0FDF4] dark:bg-[#064E3B]/20 border-r-2 border-teal-500/70 dark:border-teal-400/70 p-1 flex items-center justify-between gap-1 text-[var(--text)]"
-              title="Line Pointer Array (ItemIdData): 4 Bayt / satır. Sayfa başından aşağıya doğru büyür."
-            >
-              <div class="flex-1 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700/60 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs">
-                <span class="font-mono font-bold text-[12px] text-teal-800 dark:text-teal-300">LP1</span>
-                <span class="text-[10px] text-[var(--text-dim)] font-sans">4B</span>
+            <!-- B. Line Pointer Array (ItemIdData: 4B each, grows ->) -->
+            <div class="w-[18%] shrink-0 bg-[#F0FDFA] dark:bg-[#0D3B38]/40 border-r-2 border-teal-500/80 dark:border-teal-400/80 flex divide-x divide-teal-200 dark:divide-teal-800/70">
+              <button
+                type="button"
+                data-dpa-pair="1"
+                aria-pressed="true"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors bg-[var(--accent-subtle)] text-[var(--text-accent)] focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">LP1</span>
+                <span class="font-mono text-[10px] opacity-80">4B</span>
+              </button>
+              <button
+                type="button"
+                data-dpa-pair="2"
+                aria-pressed="false"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors text-teal-800 dark:text-teal-200 hover:bg-teal-100/60 dark:hover:bg-teal-900/40 focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">LP2</span>
+                <span class="font-mono text-[10px] opacity-75">4B</span>
+              </button>
+              <button
+                type="button"
+                data-dpa-pair="3"
+                aria-pressed="false"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors text-teal-800 dark:text-teal-200 hover:bg-teal-100/60 dark:hover:bg-teal-900/40 focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">LP3</span>
+                <span class="font-mono text-[10px] opacity-75">4B</span>
+              </button>
+            </div>
+
+            <!-- C. Free Space (Calm Recessed Track - No Busy Stripes) -->
+            <div class="w-[37%] bg-slate-50/70 dark:bg-slate-900/40 border-r-2 border-[var(--accent)] flex flex-col items-center justify-center text-center px-3">
+              <div class="flex items-center gap-2 text-[12px] font-sans font-medium text-[var(--text-muted)]">
+                <span class="font-mono text-teal-600 dark:text-teal-400">→</span>
+                <span>Serbest Alan (Free Space)</span>
+                <span class="font-mono text-[var(--text-accent)]">←</span>
               </div>
-              <div class="flex-1 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700/60 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs">
-                <span class="font-mono font-bold text-[12px] text-teal-800 dark:text-teal-300">LP2</span>
-                <span class="text-[10px] text-[var(--text-dim)] font-sans">4B</span>
-              </div>
-              <div class="flex-1 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700/60 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs">
-                <span class="font-mono font-bold text-[12px] text-teal-800 dark:text-teal-300">LP3</span>
-                <span class="text-[10px] text-[var(--text-dim)] font-sans">4B</span>
-              </div>
+              <span class="text-[11px] text-[var(--text-dim)] font-sans mt-0.5 tabular-nums">7.956 Bayt boş alan</span>
             </div>
 
-            <!-- C. Free Space (Dynamic Gap) ~37% -->
-            <div 
-              class="w-[37%] bg-[var(--bg)] border-r-2 border-blue-500/70 dark:border-blue-400/70 flex flex-col items-center justify-center text-center px-2 relative"
-              style="background-image: repeating-linear-gradient(45deg, transparent, transparent 7px, var(--border) 7px, var(--border) 8px);"
-              title="Free Space: pd_lower ve pd_upper arasındaki dinamik serbest bellek alanı."
-            >
-              <div class="bg-[var(--bg-card)] px-2.5 py-0.5 rounded-[2px] border border-[var(--border)] shadow-2xs flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-muted)]">
-                <span class="text-teal-600 dark:text-teal-400 font-bold">→</span>
-                <span class="font-semibold font-sans">Free Space</span>
-                <span class="text-blue-600 dark:text-blue-400 font-bold">←</span>
-              </div>
-              <span class="text-[11.5px] text-[var(--text-dim)] font-sans mt-0.5">İki sınır birleştiğinde sayfa dolar</span>
-            </div>
-
-            <!-- D. Heap Tuples (Satırlar - Sağdan Sola Büyür) ~36% -->
-            <div 
-              class="w-[36%] shrink-0 bg-[#F0F7FF] dark:bg-[#1E3A8A]/15 p-1 flex items-center justify-between gap-1 text-[var(--text)]"
-              title="Heap Tuples: Sayfa sonundan (8192) geriye doğru yazılır. T1 en sağdadır."
-            >
-              <div class="flex-1 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs" title="Son Eklenen Satır (En Solda)">
-                <span class="font-mono font-bold text-[12px] text-blue-900 dark:text-blue-300">Tuple 3</span>
-                <span class="text-[10px] text-[var(--text-dim)] font-sans">En Son</span>
-              </div>
-              <div class="flex-1 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs">
-                <span class="font-mono font-bold text-[12px] text-blue-900 dark:text-blue-300">Tuple 2</span>
-                <span class="text-[10px] text-[var(--text-dim)] font-sans">Satır</span>
-              </div>
-              <div id="diagram-tuple-1" class="flex-1 bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-500 dark:border-blue-400 rounded-[2px] h-full flex flex-col items-center justify-center shadow-2xs ring-1 ring-blue-400/30" title="İlk Eklenen Satır (Sayfa Tabanında, En Sağda)">
-                <span class="font-mono font-bold text-[12px] text-blue-950 dark:text-blue-200">Tuple 1</span>
-                <span class="text-[10px] text-blue-700 dark:text-blue-300 font-sans font-medium">İlk Satır</span>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Bottom Growth Vectors & Indirect Pointer Arc -->
-          <div class="flex items-center justify-between text-[12px] font-sans pt-2 px-1">
-            <div class="text-teal-700 dark:text-teal-300 font-medium flex items-center gap-1">
-              <span class="font-mono font-bold">▲ pd_lower:</span>
-              <span>Soldan Sağa Büyür (Aşağı)</span>
-            </div>
-
-            <!-- In-tape Indirection Hint (LP1 -> Tuple 1) -->
-            <div class="text-[12px] font-mono text-[var(--accent)] font-medium flex items-center gap-1.5 bg-[var(--bg-subtle)] px-2.5 py-1 rounded-[2px] border border-[var(--border)] whitespace-nowrap shadow-2xs">
-              <span class="font-bold">LP1</span>
-              <span>──── lp_off ────►</span>
-              <span class="font-bold">Tuple 1</span>
-            </div>
-
-            <div class="text-blue-700 dark:text-blue-300 font-medium flex items-center gap-1">
-              <span>Sağdan Sola Büyür (Yukarı)</span>
-              <span class="font-mono font-bold">:pd_upper ▲</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================================================================== -->
-    <!-- 2. İKİ AŞAMALI DOLAYLI ADRESLEME (TID AKIŞI)                          -->
-    <!-- ==================================================================== -->
-    <div class="border-t border-[var(--border)] pt-5">
-      <div class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--text)] mb-2 flex items-center gap-1.5">
-        <span class="text-[var(--accent)] font-bold">2.</span>
-        <span>İki Aşamalı Dolaylı Adresleme (TID Indirection Akışı)</span>
-      </div>
-
-      <!-- Single-Row Compact Pipeline (TID -> LinePointer -> HeapTuple) -->
-      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] p-3 overflow-x-auto">
-        <div class="min-w-[540px]">
-          
-          <div class="flex items-center justify-between py-1">
-            <!-- Pill 1: TID -->
-            <div class="bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-[2px] px-3 py-1.5 shadow-2xs flex items-center gap-2">
-              <span class="w-5 h-5 rounded-[2px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--accent)] font-bold font-mono text-[11px] flex items-center justify-center shrink-0">1</span>
-              <span class="font-mono font-bold text-[13px] text-[var(--text)]">TID: (0, 1)</span>
-            </div>
-
-            <!-- Arrow 1 with label -->
-            <div class="flex items-center gap-1.5 px-1.5 text-[var(--text-dim)]">
-              <span class="text-[11.5px] font-sans font-medium text-[var(--text-muted)]">İndeks Araması</span>
-              <span class="text-base leading-none text-[var(--accent)] font-bold">──►</span>
-            </div>
-
-            <!-- Pill 2: LinePointer[1] -->
-            <div class="bg-[var(--bg-card)] border border-teal-400 dark:border-teal-600/70 rounded-[2px] px-3 py-1.5 shadow-2xs flex items-center gap-2">
-              <span class="w-5 h-5 rounded-[2px] bg-[#F0FDF4] dark:bg-[#064E3B]/40 border border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200 font-bold font-mono text-[11px] flex items-center justify-center shrink-0">2</span>
-              <span class="font-mono font-bold text-[13px] text-teal-800 dark:text-teal-300">LinePointer[1]</span>
-              <span class="text-[11px] font-sans text-[var(--text-dim)]">(4B)</span>
-            </div>
-
-            <!-- Arrow 2 with label -->
-            <div class="flex items-center gap-1.5 px-1.5 text-[var(--text-dim)]">
-              <span class="text-[11.5px] font-mono font-medium text-teal-700 dark:text-teal-300">lp_off</span>
-              <span class="text-base leading-none text-teal-600 dark:text-teal-400 font-bold">──►</span>
-            </div>
-
-            <!-- Pill 3: HeapTuple 1 -->
-            <div class="bg-[var(--bg-card)] border border-blue-400 dark:border-blue-600/70 rounded-[2px] px-3 py-1.5 shadow-2xs flex items-center gap-2">
-              <span class="w-5 h-5 rounded-[2px] bg-[#F0F7FF] dark:bg-[#1E3A8A]/40 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold font-mono text-[11px] flex items-center justify-center shrink-0">3</span>
-              <span class="font-mono font-bold text-[13px] text-blue-900 dark:text-blue-300">HeapTuple (T1)</span>
+            <!-- D. Heap Tuples (Grows <- from 8192B backwards) -->
+            <div class="w-[36%] shrink-0 bg-[#EFF6FF]/60 dark:bg-[#1E293B]/60 flex divide-x divide-blue-200 dark:divide-slate-700">
+              <button
+                type="button"
+                data-dpa-pair="3"
+                aria-pressed="false"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors text-[#1E293B] dark:text-[#E2E8F0] hover:bg-blue-100/50 dark:hover:bg-slate-800 focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">Tuple 3</span>
+                <span class="text-[10px] text-[var(--text-dim)] font-sans">Son eklenen</span>
+              </button>
+              <button
+                type="button"
+                data-dpa-pair="2"
+                aria-pressed="false"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors text-[#1E293B] dark:text-[#E2E8F0] hover:bg-blue-100/50 dark:hover:bg-slate-800 focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">Tuple 2</span>
+                <span class="text-[10px] text-[var(--text-dim)] font-sans">2. satır</span>
+              </button>
+              <button
+                type="button"
+                data-dpa-pair="1"
+                aria-pressed="true"
+                class="dpa-pair-btn flex-1 h-full flex flex-col items-center justify-center cursor-pointer transition-colors bg-[var(--accent-subtle)] text-[var(--text-accent)] focus:outline-none"
+              >
+                <span class="font-mono font-bold text-[11.5px]">Tuple 1</span>
+                <span class="text-[10px] opacity-85 font-sans font-medium">İlk satır</span>
+              </button>
             </div>
           </div>
 
-          <!-- Explanatory step sentence directly under the strip -->
-          <div class="flex items-center justify-between text-[12px] text-[var(--text-dim)] font-sans pt-2 px-1 border-t border-[var(--border)] mt-2">
-            <span>İndeksin işaret ettiği blok &amp; ofset</span>
-            <span class="text-teal-700 dark:text-teal-300 font-medium">Sayfa içi bayt ofseti (lp_off)</span>
-            <span>Diskteki fiziksel satır verisi</span>
+          <!-- Growth Direction Caption + Live Byte Coordinate Readout -->
+          <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11.5px] font-sans">
+            <span class="text-teal-700 dark:text-teal-300 font-medium">
+              <span class="font-mono font-semibold">pd_lower →</span> Baştan sona eklenir
+            </span>
+            <span
+              class="dpa-pair-readout font-mono text-[11.5px] text-[#0F172A] dark:text-[#F8FAFC] bg-[#F8FAFC] dark:bg-[#0D121B] border border-[var(--accent-border)] px-3 py-1 rounded-[3px] tabular-nums"
+            >
+              LP1 [24B..28B] → lp_off = 8128, lp_len = 64 → Tuple 1 [8128B..8192B]
+            </span>
+            <span class="text-[var(--text-accent)] font-medium">
+              Sondan başa yazılır <span class="font-mono font-semibold">← pd_upper</span>
+            </span>
           </div>
 
         </div>
       </div>
+    </section>
+    )}
 
-      <!-- Compact Technical Rationale Note Box -->
-      <div class="mt-2.5 border-l-3 border-[var(--accent)] bg-[var(--accent-subtle)] p-3 rounded-r-[2px] text-[12.5px] leading-relaxed">
-        <span class="font-semibold text-[var(--text)]">Neden Dolaylı Adresleme (Indirection)?</span>
-        <span class="text-[var(--text-muted)]">
-          B-Tree indeksler satırın bayt ofsetini değil, 4 baytlık Line Pointer indeksini saklar. <code>VACUUM</code> defragmentasyonu veya HOT (Heap-Only Tuple) güncellemesi satırı sayfa içinde kaydırdığında yalnızca line pointer'ın <code>lp_off</code> değeri güncellenir; devasa B-Tree indeks bloklarına tek bir bayt dahi kilit atılmaz.
+    {showIndirection && (
+    <section class:list={[isCombined && 'border-t border-[var(--border)] pt-6']}>
+      {isCombined && (
+        <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+          <h3 class="font-serif text-[16px] font-semibold text-[var(--text)] flex items-center gap-2">
+            <span class="w-5 h-5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--text-accent)] font-mono text-[11px] font-semibold inline-flex items-center justify-center tabular-nums">2</span>
+            <span>İndeksten Satıra Erişim: Neden Doğrudan Adres Tutulmaz?</span>
+          </h3>
+        </div>
+      )}
+
+      <!-- Clean Horizontal 3-Step Flow (Flat Architectural Rail) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
+        <div class="rounded-[3px] border border-[var(--border)] bg-[#F8FAFC] dark:bg-[#0D121B] px-3.5 py-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider">1. Adım · İndeks</span>
+            <span class="text-[var(--text-accent)] font-mono text-xs hidden sm:inline">→</span>
+          </div>
+          <div class="font-mono text-[13px] font-semibold text-[var(--text)] mt-1">TID = (0, 1)</div>
+          <p class="text-[12px] text-[var(--text-dim)] font-sans mt-1 leading-snug">
+            B-Tree yalnızca <code class="font-mono text-[11px]">(sayfa 0, slot 1)</code> bilgisini saklar; bayt ofsetini bilmez.
+          </p>
+        </div>
+
+        <div class="rounded-[3px] border border-teal-200 dark:border-teal-800/70 bg-[#F0FDFA]/70 dark:bg-[#0D3B38]/25 px-3.5 py-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-mono text-teal-800 dark:text-teal-300 uppercase tracking-wider">2. Adım · Yönlendirici</span>
+            <span class="text-teal-700 dark:text-teal-300 font-mono text-xs hidden sm:inline">→</span>
+          </div>
+          <div class="font-mono text-[13px] font-semibold text-teal-900 dark:text-teal-200 mt-1">LP1: lp_off = 8128</div>
+          <p class="text-[12px] text-teal-900/80 dark:text-teal-200/85 font-sans mt-1 leading-snug">
+            Sayfa başındaki 4 baytlık sabit slot, satırın o anki fiziksel yerini gösterir.
+          </p>
+        </div>
+
+        <div class="rounded-[3px] border border-[var(--accent-border)] bg-[#EFF6FF]/65 dark:bg-[#131C2B] px-3.5 py-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-mono text-[var(--text-accent)] uppercase tracking-wider">3. Adım · Satır</span>
+          </div>
+          <div class="font-mono text-[13px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] mt-1">Tuple 1 @ 8128B</div>
+          <p class="text-[12px] text-[#1E293B]/85 dark:text-[#E2E8F0]/85 font-sans mt-1 leading-snug">
+            <code class="font-mono text-[11px]">VACUUM</code> satırı sayfa içinde kaydırırsa yalnızca <code class="font-mono text-[11px]">lp_off</code> değişir; indeksler kilitlenmez.
+          </p>
+        </div>
+      </div>
+    </section>
+    )}
+
+    {showTupleHeader && (
+    <section class:list={[isCombined && 'border-t border-[var(--border)] pt-6']}>
+      <div class:list={['flex flex-wrap items-baseline gap-2', isCombined ? 'justify-between mb-3' : 'justify-end mb-2']}>
+        {isCombined && (
+          <h3 class="font-serif text-[16px] font-semibold text-[var(--text)] flex items-center gap-2">
+            <span class="w-5 h-5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--text-accent)] font-mono text-[11px] font-semibold inline-flex items-center justify-center tabular-nums">3</span>
+            <span>Bir Satırın (HeapTuple) İç Yapısı</span>
+          </h3>
+        )}
+        <span class="text-[11.5px] text-[var(--text-dim)] font-sans">
+          Başlık alanlarına tıklayarak görevini inceleyin
         </span>
       </div>
-    </div>
 
-    <!-- ==================================================================== -->
-    <!-- 3. HEAPTUPLE İÇ ANATOMİSİ (ZOOM HİSSİ & ORANTILI ALANLAR)             -->
-    <!-- ==================================================================== -->
-    <div class="border-t border-[var(--border)] pt-5">
-      <div class="flex items-center justify-between text-xs font-mono text-[var(--text-muted)] mb-2">
-        <span class="font-semibold uppercase tracking-wider text-[var(--text)] flex items-center gap-1.5">
-          <span class="text-[var(--accent)] font-bold">3.</span>
-          <span>HeapTuple (Satır) İç Anatomisi (Tuple 1 İç Görünümü)</span>
-        </span>
-        <span class="text-[12px] text-[var(--text-dim)]">Zoom: Fiziksel Satır Yapısı</span>
-      </div>
+      <div class="overflow-x-auto pb-1">
+        <div class="min-w-[600px] space-y-3">
 
-      <!-- Zoom Projection Indicator Lines -->
-      <div class="w-full flex items-center justify-center text-[12px] font-mono text-[var(--text-dim)] mb-1">
-        <span class="flex items-center gap-2">
-          <span class="text-base font-bold text-[var(--border-strong)]">╲</span>
-          <span class="px-2.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text)] font-sans font-medium text-[12px] shadow-2xs">
-            Yukarıdaki Tuple 1 Satırının Büyütülmüş İç Anatomisi
-          </span>
-          <span class="text-base font-bold text-[var(--border-strong)]">╱</span>
-        </span>
-      </div>
-
-      <!-- The Complete Tuple Tape Container -->
-      <div class="border border-[var(--border)] rounded-[2px] bg-[var(--bg)] p-3 overflow-x-auto">
-        <div class="min-w-[620px] space-y-3">
-          
-          <!-- Unified Tuple Tape: Header (23B) + Null Bitmap + User Data -->
+          <!-- Honest Row Tape: Header (23B) + Optional Null Bitmap + User Data -->
           <div>
-            <div class="text-[12px] font-sans font-medium text-[var(--text-dim)] mb-1 flex items-center justify-between px-0.5">
-              <span>Toplam Satır Şeridi (HeapTuple Yapısı)</span>
-              <span>Değişken Toplam Boyut</span>
+            <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] mb-1">
+              <span>HeapTuple Bölümleri (Örnek 76 Baytlık Satır)</span>
+              <span class="tabular-nums">Toplam = 23B Başlık + Bitmap + Kolonlar</span>
             </div>
 
-            <div class="flex h-12 rounded-[2px] overflow-hidden border border-[var(--border-strong)] text-[12px] bg-[var(--bg-card)]">
-              
-              <!-- 1. Header (23B) ~60% -->
-              <div class="w-[62%] shrink-0 bg-slate-100/90 dark:bg-slate-800/50 border-r border-[var(--border)] flex items-center justify-between px-3 text-[var(--text)]">
-                <span class="font-mono font-bold text-[13px]">HeapTupleHeaderData</span>
-                <span class="text-[11.5px] font-sans bg-[var(--bg-card)] px-2 py-0.5 rounded-[2px] border border-[var(--border)] text-[var(--text-dim)] shadow-2xs">23 Bayt Sabit Başlık</span>
+            <div class="flex h-12 rounded-[3px] overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-card)]">
+              <div class="w-[31%] shrink-0 bg-slate-100/90 dark:bg-slate-800/70 border-r border-[var(--border)] flex flex-col items-center justify-center px-2 text-center">
+                <span class="font-mono font-semibold text-[12px] text-[var(--text)] truncate">HeapTupleHeaderData</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">23 Bayt (Sabit)</span>
               </div>
 
-              <!-- 2. Null Bitmap ~15% -->
-              <div class="w-[15%] shrink-0 bg-[var(--bg-card)] border-r border-[var(--border)] flex flex-col items-center justify-center text-center p-1 text-[var(--text)]">
-                <span class="font-mono font-bold text-[12px]">Null Bitmap</span>
-                <span class="text-[11px] text-[var(--text-dim)] font-sans">1 bit / kolon</span>
+              <div class="w-[15%] shrink-0 bg-[var(--bg-card)] border-r border-[var(--border)] flex flex-col items-center justify-center px-1 text-center">
+                <span class="font-mono font-semibold text-[11.5px] text-[var(--text)]">Null Bitmap</span>
+                <span class="text-[10px] text-[var(--text-dim)] font-sans">1 bit / kolon</span>
               </div>
 
-              <!-- 3. User Data ~23% -->
-              <div class="w-[23%] shrink-0 bg-blue-50/70 dark:bg-blue-950/20 flex flex-col items-center justify-center text-center p-1 text-[var(--text)]">
-                <span class="font-mono font-bold text-[12px] text-blue-900 dark:text-blue-300">User Data</span>
-                <span class="text-[11px] text-[var(--text-dim)] font-sans">Kolon Değerleri (Payload)</span>
+              <div class="w-[54%] shrink-0 bg-[#EFF6FF]/70 dark:bg-[#1E293B]/60 flex flex-col items-center justify-center px-2 text-center">
+                <span class="font-mono font-semibold text-[12px] text-[var(--text-accent)]">User Data (Kolon Değerleri)</span>
+                <span class="text-[10.5px] text-[#1E293B]/80 dark:text-[#E2E8F0]/80 font-sans">Örn: id, device_id, created_at, payload...</span>
               </div>
-
             </div>
           </div>
 
-          <!-- Header Breakdown: Proportional Fields by Byte Size -->
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-[2px] p-2.5">
-            <div class="text-[12px] font-mono text-[var(--text-muted)] font-medium mb-1.5 flex items-center justify-between">
-              <span>┌── HeapTupleHeaderData (23 Bayt) Alt Alanları (Bayt Genişliğine Göre Orantılı)</span>
-              <span class="text-[var(--text-dim)]">23B Toplam</span>
+          <!-- Proportional 23B Header Breakdown: 4 + 4 + 4 + 6 + 4 + 1 = 23B Exact -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-dim)] mb-1">
+              <span>23 Baytlık HeapTupleHeaderData Dağılımı</span>
+              <span class="tabular-nums">4 + 4 + 4 + 6 + 4 + 1 = 23 Bayt</span>
             </div>
 
-            <!-- Proportional 23B Header Strip: 4B (18%), 4B (18%), 4B (18%), 6B (27%), 4B (19%) -->
-            <div class="flex h-16 rounded-[2px] overflow-hidden border border-[var(--border)] text-[12px] text-center bg-[var(--bg)]">
-              
-              <!-- t_xmin (4B) -->
-              <div class="w-[18%] bg-[var(--bg-card)] border-r border-[var(--border)] p-1 flex flex-col justify-center" title="t_xmin (4 Bayt): Bu satırı ekleyen Transaction ID">
-                <span class="font-mono font-bold text-[13px] text-[var(--text)]">t_xmin</span>
-                <span class="text-[11px] font-sans text-[var(--text-dim)]">4 Bayt</span>
-                <span class="text-[11.5px] font-sans text-[var(--text-muted)]">Ekleyen XID</span>
-              </div>
+            <div class="flex h-12 rounded-[3px] overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-card)] divide-x divide-[var(--border)]">
+              <button
+                type="button"
+                data-dpa-field="xmin"
+                aria-pressed="false"
+                class="dpa-field-btn w-[17.4%] flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-semibold text-[12px] text-[var(--text)]">t_xmin</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">4B</span>
+              </button>
 
-              <!-- t_xmax (4B) -->
-              <div class="w-[18%] bg-[var(--bg-card)] border-r border-[var(--border)] p-1 flex flex-col justify-center" title="t_xmax (4 Bayt): Bu satırı silen veya güncelleyen XID (Aktifse 0)">
-                <span class="font-mono font-bold text-[13px] text-[var(--text)]">t_xmax</span>
-                <span class="text-[11px] font-sans text-[var(--text-dim)]">4 Bayt</span>
-                <span class="text-[11.5px] font-sans text-[var(--text-muted)]">Silen XID</span>
-              </div>
+              <button
+                type="button"
+                data-dpa-field="xmax"
+                aria-pressed="false"
+                class="dpa-field-btn w-[17.4%] flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-semibold text-[12px] text-[var(--text)]">t_xmax</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">4B</span>
+              </button>
 
-              <!-- t_cid (4B) -->
-              <div class="w-[18%] bg-[var(--bg-card)] border-r border-[var(--border)] p-1 flex flex-col justify-center" title="t_cid (4 Bayt): Transaction içi SQL komut sırası (Command ID)">
-                <span class="font-mono font-bold text-[13px] text-[var(--text)]">t_cid</span>
-                <span class="text-[11px] font-sans text-[var(--text-dim)]">4 Bayt</span>
-                <span class="text-[11.5px] font-sans text-[var(--text-muted)]">Komut Sırası</span>
-              </div>
+              <button
+                type="button"
+                data-dpa-field="cid"
+                aria-pressed="false"
+                class="dpa-field-btn w-[17.4%] flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-semibold text-[12px] text-[var(--text)]">t_cid</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">4B</span>
+              </button>
 
-              <!-- t_ctid (6B) - Visibly wider! (27%) -->
-              <div class="w-[27%] bg-[var(--accent-subtle)] border-r border-[var(--accent-border)] p-1 flex flex-col justify-center ring-1 ring-inset ring-[var(--accent-border)]" title="t_ctid (6 Bayt): Satırın fiziksel TID'si (blok, ofset). Güncelleme yapıldıysa yeni versiyonun adresini işaret eder.">
-                <span class="font-mono font-bold text-[13px] text-[var(--text-accent)]">t_ctid</span>
-                <span class="text-[11px] font-sans text-[var(--text-accent)] font-medium">6 Bayt (Geniş)</span>
-                <span class="text-[11.5px] font-sans text-[var(--text-muted)] font-medium truncate">Fiziksel / Zincir</span>
-              </div>
+              <button
+                type="button"
+                data-dpa-field="ctid"
+                aria-pressed="true"
+                class="dpa-field-btn w-[25%] flex flex-col items-center justify-center cursor-pointer transition-colors bg-[var(--accent-subtle)] text-[var(--text-accent)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-bold text-[12px]">t_ctid</span>
+                <span class="font-mono text-[10px] opacity-85 tabular-nums">6B</span>
+              </button>
 
-              <!-- t_infomask (4B) ~19% -->
-              <div class="w-[19%] bg-[var(--bg-card)] p-1 flex flex-col justify-center" title="t_infomask / t_infomask2: MVCC durum bayrakları (COMMITTED, UPDATED) ve kolon sayısı">
-                <span class="font-mono font-bold text-[13px] text-[var(--text)] truncate">t_infomask</span>
-                <span class="text-[11px] font-sans text-[var(--text-dim)]">4 Bayt</span>
-                <span class="text-[11.5px] font-sans text-[var(--text-muted)]">Bayraklar</span>
-              </div>
+              <button
+                type="button"
+                data-dpa-field="infomask"
+                aria-pressed="false"
+                class="dpa-field-btn w-[16.8%] flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-semibold text-[11.5px] text-[var(--text)] truncate max-w-full">t_infomask</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">4B</span>
+              </button>
 
+              <button
+                type="button"
+                data-dpa-field="hoff"
+                aria-pressed="false"
+                class="dpa-field-btn min-w-[44px] w-[6%] flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none px-1"
+              >
+                <span class="font-mono font-semibold text-[11px] text-[var(--text)]">t_hoff</span>
+                <span class="font-mono text-[10px] text-[var(--text-dim)] tabular-nums">1B</span>
+              </button>
+            </div>
+
+            <!-- Live Field Detail Inspector Strip -->
+            <div class="dpa-field-readout mt-2 rounded-[3px] border border-[var(--accent-border)] bg-[#F8FAFC] dark:bg-[#0D121B] px-3 py-2 text-[12.5px] font-sans text-[#1E293B] dark:text-[#E2E8F0] flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span class="dpa-field-name font-mono font-semibold text-[var(--text-accent)]">t_ctid (6 Bayt):</span>
+              <span class="dpa-field-desc">Satırın kendi fiziksel (blok, slot) adresi. Satır UPDATE edildiğinde yeni versiyonun TID adresini işaret ederek MVCC zinciri kurar.</span>
             </div>
           </div>
 
         </div>
       </div>
-
-    </div>
+    </section>
+    )}
 
   </div>
 </figure>
+
+<script>
+  const PAIR_INFO: Record<string, string> = {
+    '1': 'LP1 [24B..28B] → lp_off = 8128, lp_len = 64 → Tuple 1 [8128B..8192B]',
+    '2': 'LP2 [28B..32B] → lp_off = 8056, lp_len = 72 → Tuple 2 [8056B..8128B]',
+    '3': 'LP3 [32B..36B] → lp_off = 7992, lp_len = 64 → Tuple 3 [7992B..8056B]',
+  };
+
+  const FIELD_INFO: Record<string, { label: string; desc: string }> = {
+    xmin: {
+      label: 't_xmin (4 Bayt):',
+      desc: 'Bu tuple versiyonunu INSERT eden veya UPDATE ile oluşturan Transaction ID. Snapshot görünürlük kontrolünde başlangıç sınırıdır.',
+    },
+    xmax: {
+      label: 't_xmax (4 Bayt):',
+      desc: 'Satırı DELETE eden veya UPDATE ile geçersiz kılan Transaction ID. Satır aktifse değeri 0 kalır.',
+    },
+    cid: {
+      label: 't_cid (4 Bayt):',
+      desc: 'Aynı transaction içindeki SQL komut sırası (Command ID). Aynı transaction içi cursor/alt sorgu tutarlılığını sağlar.',
+    },
+    ctid: {
+      label: 't_ctid (6 Bayt):',
+      desc: 'Satırın kendi fiziksel (blok, slot) adresi. Satır UPDATE edildiğinde yeni versiyonun TID adresini işaret ederek MVCC zinciri kurar.',
+    },
+    infomask: {
+      label: 't_infomask + t_infomask2 (2B + 2B = 4 Bayt):',
+      desc: 'Commit/abort ipucu bitleri (HINT BITS), NULL bitmap varlığı ve satırdaki kolon sayısını tutan durum bayrakları.',
+    },
+    hoff: {
+      label: 't_hoff (1 Bayt):',
+      desc: 'Başlık ve hizalama (alignment padding) sonrasında gerçek User Data verisinin kaçıncı bayttan başladığını gösterir.',
+    },
+  };
+
+  function setupDataPageAnatomy() {
+    document.querySelectorAll('.data-page-container').forEach((container) => {
+      const root = container as HTMLElement;
+      if (root.dataset.bound === 'true') return;
+      root.dataset.bound = 'true';
+
+      const pairBtns = Array.from(root.querySelectorAll('.dpa-pair-btn')) as HTMLButtonElement[];
+      const arcs = Array.from(root.querySelectorAll('.dpa-arc')) as SVGPathElement[];
+      const dots = Array.from(root.querySelectorAll('.dpa-dot')) as SVGCircleElement[];
+      const pairReadout = root.querySelector('.dpa-pair-readout');
+
+      function selectPair(pairId: string) {
+        pairBtns.forEach((btn) => {
+          const active = btn.dataset.dpaPair === pairId;
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+          btn.classList.toggle('bg-[var(--accent-subtle)]', active);
+          btn.classList.toggle('text-[var(--text-accent)]', active);
+        });
+
+        arcs.forEach((arc) => {
+          const active = arc.dataset.dpaArc === pairId;
+          arc.setAttribute('stroke-width', active ? '2.2' : '1.5');
+          if (active) {
+            arc.removeAttribute('stroke-dasharray');
+            arc.classList.remove('text-slate-300', 'dark:text-slate-700');
+            arc.classList.add('text-[var(--accent)]');
+          } else {
+            arc.setAttribute('stroke-dasharray', '4 3');
+            arc.classList.remove('text-[var(--accent)]');
+            arc.classList.add('text-slate-300', 'dark:text-slate-700');
+          }
+        });
+
+        dots.forEach((dot) => {
+          const active = dot.dataset.dpaDot === pairId;
+          dot.classList.toggle('opacity-0', !active);
+        });
+
+        if (pairReadout && PAIR_INFO[pairId]) {
+          pairReadout.textContent = PAIR_INFO[pairId];
+        }
+      }
+
+      pairBtns.forEach((btn) => {
+        const pairId = btn.dataset.dpaPair;
+        if (!pairId) return;
+        btn.addEventListener('click', () => selectPair(pairId));
+        btn.addEventListener('mouseenter', () => selectPair(pairId));
+      });
+
+      const fieldBtns = Array.from(root.querySelectorAll('.dpa-field-btn')) as HTMLButtonElement[];
+      const fieldNameEl = root.querySelector('.dpa-field-name');
+      const fieldDescEl = root.querySelector('.dpa-field-desc');
+
+      function selectField(fieldId: string) {
+        const info = FIELD_INFO[fieldId];
+        if (!info) return;
+
+        fieldBtns.forEach((btn) => {
+          const active = btn.dataset.dpaField === fieldId;
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+          btn.classList.toggle('bg-[var(--accent-subtle)]', active);
+          btn.classList.toggle('text-[var(--text-accent)]', active);
+          btn.classList.toggle('font-bold', active);
+        });
+
+        if (fieldNameEl) fieldNameEl.textContent = info.label;
+        if (fieldDescEl) fieldDescEl.textContent = info.desc;
+      }
+
+      fieldBtns.forEach((btn) => {
+        const fieldId = btn.dataset.dpaField;
+        if (!fieldId) return;
+        btn.addEventListener('click', () => selectField(fieldId));
+        btn.addEventListener('mouseenter', () => selectField(fieldId));
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupDataPageAnatomy);
+  } else {
+    setupDataPageAnatomy();
+  }
+  document.addEventListener('astro:page-load', setupDataPageAnatomy);
+</script>

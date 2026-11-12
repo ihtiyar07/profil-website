@@ -39,6 +39,10 @@ const navSections: NavSection[] = [
           {
             title: 'Sorgu İşleme: Parser, Planner & Executor',
             href: '/posts/postgresql-sorgu-yasam-dongusu'
+          },
+          {
+            title: 'Extension Mimarisi & C Hook Yapısı',
+            href: '/posts/postgresql-extension-mimarisi-ve-c-hooks'
           }
         ]
       },
@@ -49,10 +53,35 @@ const navSections: NavSection[] = [
       {
         title: 'PostgREST: Sıfır Kodla REST API',
         href: '/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api'
-      },
+      }
+    ]
+  },
+  {
+    id: 'pg-extensions',
+    title: 'PostgreSQL Eklentileri',
+    overviewHref: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
+    items: [
       {
-        title: 'TimescaleDB: Kurulum, Benchmark ve Analitik',
-        href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi'
+        title: 'TimescaleDB: Kurulum & Genel Bakış',
+        href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
+        children: [
+          {
+            title: 'Hypertable & Chunk Boyutlandırma',
+            href: '/posts/timescaledb-hypertable-ve-chunk-mimarisi'
+          },
+          {
+            title: 'Columnar Sıkıştırma & Retention',
+            href: '/posts/timescaledb-columnar-sikistirma-ve-retention'
+          },
+          {
+            title: 'Continuous Aggs & Hyperfunctions',
+            href: '/posts/timescaledb-continuous-aggregates-ve-analitik'
+          },
+          {
+            title: 'Production Tuning & Operasyon',
+            href: '/posts/timescaledb-production-tuning-ve-operasyon'
+          }
+        ]
       }
     ]
   },
@@ -121,43 +150,104 @@ const navSections: NavSection[] = [
 
 const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 
-function sectionTotal(section: NavSection): number {
-  return section.items.reduce((acc, it) => acc + 1 + (it.children?.length || 0), 0);
+interface SectionColorRole {
+  dot: string;
+  headerBg: string;
+  headerText: string;
+  toggleText: string;
+  treeBorder: string;
+  groupBorder: string;
+}
+
+const sectionThemes: Record<string, SectionColorRole> = {
+  postgresql: {
+    dot: 'bg-blue-600 dark:bg-blue-400',
+    headerBg: 'bg-blue-50/75 hover:bg-blue-100/80 dark:bg-blue-950/35 dark:hover:bg-blue-900/45',
+    headerText: 'text-blue-950 dark:text-blue-100',
+    toggleText: 'text-blue-700 group-hover:text-blue-900 dark:text-blue-300 dark:group-hover:text-blue-100',
+    treeBorder: 'border-blue-300/80 dark:border-blue-700/60',
+    groupBorder: 'border-blue-200/70 dark:border-blue-900/40'
+  },
+  'pg-extensions': {
+    dot: 'bg-teal-600 dark:bg-teal-400',
+    headerBg: 'bg-teal-50/75 hover:bg-teal-100/80 dark:bg-teal-950/35 dark:hover:bg-teal-900/45',
+    headerText: 'text-teal-950 dark:text-teal-100',
+    toggleText: 'text-teal-700 group-hover:text-teal-900 dark:text-teal-300 dark:group-hover:text-teal-100',
+    treeBorder: 'border-teal-300/80 dark:border-teal-700/60',
+    groupBorder: 'border-teal-200/70 dark:border-teal-900/40'
+  },
+  oracle: {
+    dot: 'bg-amber-600 dark:bg-amber-400',
+    headerBg: 'bg-amber-50/75 hover:bg-amber-100/80 dark:bg-amber-950/30 dark:hover:bg-amber-900/40',
+    headerText: 'text-amber-950 dark:text-amber-100',
+    toggleText: 'text-amber-700 group-hover:text-amber-900 dark:text-amber-300 dark:group-hover:text-amber-100',
+    treeBorder: 'border-amber-300/80 dark:border-amber-700/60',
+    groupBorder: 'border-amber-200/70 dark:border-amber-900/40'
+  },
+  storage: {
+    dot: 'bg-indigo-600 dark:bg-indigo-400',
+    headerBg: 'bg-indigo-50/75 hover:bg-indigo-100/80 dark:bg-indigo-950/35 dark:hover:bg-indigo-900/45',
+    headerText: 'text-indigo-950 dark:text-indigo-100',
+    toggleText: 'text-indigo-700 group-hover:text-indigo-900 dark:text-indigo-300 dark:group-hover:text-indigo-100',
+    treeBorder: 'border-indigo-300/80 dark:border-indigo-700/60',
+    groupBorder: 'border-indigo-200/70 dark:border-indigo-900/40'
+  },
+  general: {
+    dot: 'bg-slate-500 dark:bg-slate-400',
+    headerBg: 'bg-[var(--bg-subtle)]/80 hover:bg-[var(--bg-subtle)]',
+    headerText: 'text-[var(--text-muted)]',
+    toggleText: 'text-[var(--text-dim)] group-hover:text-[var(--text)]',
+    treeBorder: 'border-[var(--border)]',
+    groupBorder: 'border-[var(--border)]/60'
+  }
+};
+
+function getSectionTheme(id: string): SectionColorRole {
+  return sectionThemes[id] || sectionThemes.general;
 }
 ---
 
 <!-- Desktop Sticky Sidebar (Left Column: docking at >=768px) -->
-<aside transition:persist="sidebar-desktop" class="hidden md:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg)] overflow-y-auto select-none transition-colors z-30">
+<aside transition:persist="sidebar-desktop" style="view-transition-name: sidebar-desktop;" class="hidden md:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg-card)]/90 dark:bg-[#0D1118] overflow-y-auto select-none z-30">
   <div class="p-5 flex flex-col justify-between min-h-full">
     <!-- Top: Identity & Collapsible Topic Tree -->
-    <div class="space-y-6">
+    <div class="space-y-5">
       <!-- Identity & Brand Header -->
-      <a href="/" class="flex flex-col group focus:outline-none pb-3 border-b border-[var(--border)]/50" aria-label="Ahmet İhtiyar — Ana Sayfa">
+      <a href="/" class="flex flex-col group focus:outline-none px-3 py-2.5 rounded-[2px] border border-[var(--border)]/80 bg-[var(--bg-subtle)]/65 hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors" aria-label="Ahmet İhtiyar — Ana Sayfa">
         <div class="flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
+          <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
           <span class="font-sans text-[13px] font-semibold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
             Ahmet İhtiyar
           </span>
         </div>
-        <p class="font-mono text-[11px] text-[var(--text-dim)] mt-0.5 pl-3.5">
+        <p class="font-mono text-[11px] text-[var(--text-dim)] mt-0.5 pl-4">
           Veritabanı & Depolama
         </p>
       </a>
 
       <!-- Collapsible Topic Tree Navigation -->
-      <nav aria-label="Konu ve Yazı Ağacı" class="space-y-3">
-        {navSections.map((section) => (
-            <div class="sidebar-accordion-group border-b border-[var(--border)]/60 pb-2.5 last:border-b-0">
+      <nav aria-label="Konu ve Yazı Ağacı" class="space-y-2.5">
+        {navSections.map((section) => {
+          const theme = getSectionTheme(section.id);
+          return (
+            <div class:list={['sidebar-accordion-group border-b pb-2.5 last:border-b-0', theme.groupBorder]}>
               <!-- Full-row Accordion Toggle Button with Right-aligned +/- icon -->
               <button
                 type="button"
-                class="sidebar-accordion-btn w-full flex items-center justify-between px-1.5 py-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] cursor-pointer focus:outline-none group"
+                class:list={[
+                  'sidebar-accordion-btn w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider transition-colors rounded-[2px] cursor-pointer focus:outline-none group',
+                  theme.headerBg,
+                  theme.headerText
+                ]}
                 aria-label={`${section.title} alt başlıklarını aç veya kapat`}
                 aria-expanded="true"
                 data-section-id={section.id}
               >
-                <span class="font-medium truncate min-w-0 text-left">{section.title}</span>
-                <span class="w-5 h-5 flex items-center justify-center text-[var(--text-dim)] group-hover:text-[var(--text)] shrink-0">
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class:list={['w-1.5 h-1.5 rounded-[1px] shrink-0', theme.dot]} aria-hidden="true"></span>
+                  <span class="font-semibold truncate min-w-0 text-left">{section.title}</span>
+                </span>
+                <span class:list={['w-5 h-5 flex items-center justify-center shrink-0 transition-colors', theme.toggleText]}>
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
@@ -168,7 +258,7 @@ function sectionTotal(section: NavSection): number {
               <!-- Animated Collapsible Article Links List -->
               <div class="sidebar-accordion-wrapper">
                 <div>
-                  <div class="space-y-1 pl-2 pt-1">
+                  <div class="space-y-1 pl-1.5 pt-1.5">
                   {section.items.map((item) => {
                     const cleanHref = item.href.replace(/\/+$/, '') || '/';
                     const isActive = cleanHref === currentPath;
@@ -219,7 +309,7 @@ function sectionTotal(section: NavSection): number {
                             !isExpandedDefault && 'collapsed'
                           ]}>
                             <div>
-                              <div class="pl-3 ml-2.5 border-l border-[var(--border)]/70 space-y-0.5 my-0.5">
+                              <div class:list={['pl-3 ml-2.5 border-l space-y-0.5 my-0.5', theme.treeBorder]}>
                                 {item.children.map((child) => {
                                   const cleanChildHref = child.href.replace(/\/+$/, '') || '/';
                                   const isChildActive = cleanChildHref === currentPath;
@@ -272,7 +362,8 @@ function sectionTotal(section: NavSection): number {
                 </div>
               </div>
             </div>
-        ))}
+          );
+        })}
       </nav>
     </div>
 
@@ -284,7 +375,7 @@ function sectionTotal(section: NavSection): number {
           href={SITE_META.github}
           target="_blank"
           rel="noopener noreferrer"
-          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/70 border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
           title="GitHub"
           aria-label="GitHub Profilini Aç"
         >
@@ -296,7 +387,7 @@ function sectionTotal(section: NavSection): number {
           href={SITE_META.linkedin}
           target="_blank"
           rel="noopener noreferrer"
-          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/80 dark:hover:bg-blue-950/45 border border-transparent hover:border-blue-200/70 dark:hover:border-blue-800/50 transition-colors tactile-btn"
           title="LinkedIn"
           aria-label="LinkedIn Profilini Aç"
         >
@@ -306,7 +397,7 @@ function sectionTotal(section: NavSection): number {
         </a>
         <a
           href={`mailto:${SITE_META.email}`}
-          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] border border-transparent hover:border-[var(--border)] transition-colors tactile-btn"
+          class="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--text-dim)] hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50/80 dark:hover:bg-teal-950/45 border border-transparent hover:border-teal-200/70 dark:hover:border-teal-800/50 transition-colors tactile-btn"
           title="E-posta"
           aria-label="E-posta Gönder"
         >
@@ -345,7 +436,7 @@ function sectionTotal(section: NavSection): number {
 </aside>
 
 <!-- Mobile Sticky Topbar (< 768px) -->
-<div transition:persist="sidebar-mobile-topbar" class="md:hidden sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md transition-colors">
+<div transition:persist="sidebar-mobile-topbar" style="view-transition-name: sidebar-mobile-topbar;" class="md:hidden sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md">
   <div class="px-4 h-14 flex items-center justify-between">
     <!-- Brand with Photo -->
     <a href="/" class="flex items-center gap-2.5 focus:outline-none" aria-label="Ahmet İhtiyar — Ana Sayfa">
@@ -425,20 +516,29 @@ function sectionTotal(section: NavSection): number {
   role="dialog"
   aria-modal="true"
   aria-label="Mobil Navigasyon Menüsü"
-  class="fixed top-14 left-0 right-0 bottom-0 z-50 bg-[var(--bg)] border-t border-[var(--border)] px-4 py-4 space-y-4 overflow-y-auto hidden md:hidden shadow-2xl"
+  class="fixed top-14 left-0 right-0 bottom-0 z-50 bg-[var(--bg-card)]/95 dark:bg-[#0D1118] border-t border-[var(--border)] px-4 py-4 space-y-4 overflow-y-auto hidden md:hidden shadow-2xl"
 >
   <nav aria-label="Mobil Konu ve Yazı Ağacı" class="space-y-3">
-    {navSections.map((section) => (
-        <div class="mobile-accordion-group border-b border-[var(--border)]/60 pb-3 last:border-b-0 space-y-1">
+    {navSections.map((section) => {
+      const theme = getSectionTheme(section.id);
+      return (
+        <div class:list={['mobile-accordion-group border-b pb-3 last:border-b-0 space-y-1', theme.groupBorder]}>
           <button
             type="button"
-            class="mobile-accordion-btn w-full flex items-center justify-between px-1.5 py-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors rounded-[2px] cursor-pointer focus:outline-none group"
+            class:list={[
+              'mobile-accordion-btn w-full flex items-center justify-between px-2 py-1.5 text-xs font-mono font-semibold uppercase tracking-wider transition-colors rounded-[2px] cursor-pointer focus:outline-none group',
+              theme.headerBg,
+              theme.headerText
+            ]}
             aria-label={`${section.title} alt başlıklarını aç veya kapat`}
             aria-expanded="true"
             data-section-id={section.id}
           >
-            <span class="font-medium truncate min-w-0 text-left">{section.title}</span>
-            <span class="w-6 h-6 flex items-center justify-center text-[var(--text-dim)] group-hover:text-[var(--text)] shrink-0">
+            <span class="flex items-center gap-2 min-w-0">
+              <span class:list={['w-1.5 h-1.5 rounded-[1px] shrink-0', theme.dot]} aria-hidden="true"></span>
+              <span class="font-semibold truncate min-w-0 text-left">{section.title}</span>
+            </span>
+            <span class:list={['w-6 h-6 flex items-center justify-center shrink-0 transition-colors', theme.toggleText]}>
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <line x1="12" y1="5" x2="12" y2="19" class="toggle-vert transition-all duration-150" />
@@ -448,7 +548,7 @@ function sectionTotal(section: NavSection): number {
 
           <div class="mobile-accordion-wrapper">
             <div>
-              <div class="space-y-1 pl-2.5 pt-1">
+              <div class="space-y-1 pl-2 pt-1.5">
               {section.items.map((item) => {
                 const cleanHref = item.href.replace(/\/+$/, '') || '/';
                 const isActive = cleanHref === currentPath;
@@ -497,7 +597,7 @@ function sectionTotal(section: NavSection): number {
                         !isExpandedDefault && 'collapsed'
                       ]}>
                         <div>
-                          <div class="pl-3 ml-2.5 border-l border-[var(--border)]/70 space-y-0.5 my-0.5">
+                          <div class:list={['pl-3 ml-2.5 border-l space-y-0.5 my-0.5', theme.treeBorder]}>
                             {item.children.map((child) => {
                               const cleanChildHref = child.href.replace(/\/+$/, '') || '/';
                               const isChildActive = cleanChildHref === currentPath;
@@ -548,7 +648,8 @@ function sectionTotal(section: NavSection): number {
             </div>
           </div>
         </div>
-    ))}
+      );
+    })}
   </nav>
 
   <!-- Mobile Drawer Social Channels (Horizontal Icon Row) -->
@@ -559,7 +660,7 @@ function sectionTotal(section: NavSection): number {
         href={SITE_META.github}
         target="_blank"
         rel="noopener noreferrer"
-        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/70 transition-colors tactile-btn"
         title="GitHub"
         aria-label="GitHub Profilini Aç"
       >
@@ -571,7 +672,7 @@ function sectionTotal(section: NavSection): number {
         href={SITE_META.linkedin}
         target="_blank"
         rel="noopener noreferrer"
-        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/80 dark:hover:bg-blue-950/45 hover:border-blue-200/70 dark:hover:border-blue-800/50 transition-colors tactile-btn"
         title="LinkedIn"
         aria-label="LinkedIn Profilini Aç"
       >
@@ -581,7 +682,7 @@ function sectionTotal(section: NavSection): number {
       </a>
       <a
         href={`mailto:${SITE_META.email}`}
-        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors tactile-btn"
+        class="w-8 h-8 flex items-center justify-center rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50/80 dark:hover:bg-teal-950/45 hover:border-teal-200/70 dark:hover:border-teal-800/50 transition-colors tactile-btn"
         title="E-posta"
         aria-label="E-posta Gönder"
       >
@@ -756,6 +857,17 @@ function sectionTotal(section: NavSection): number {
         return;
       }
 
+      // B2. Clicking a Parent Overview Link auto-expands its sub-items
+      const parentArticleLink = target.closest('.has-subitems-group > div > .sidebar-article-link, .has-subitems-group > div > .mobile-article-link');
+      if (parentArticleLink) {
+        const isDesktop = parentArticleLink.classList.contains('sidebar-article-link');
+        const parentGroup = parentArticleLink.closest('.has-subitems-group');
+        const subWrapper = parentGroup?.querySelector(isDesktop ? '.sidebar-subitems-wrapper' : '.mobile-subitems-wrapper');
+        const subToggle = parentGroup?.querySelector(isDesktop ? '.sidebar-subitem-toggle' : '.mobile-subitem-toggle');
+        subWrapper?.classList.remove('collapsed');
+        subToggle?.setAttribute('aria-expanded', 'true');
+      }
+
       // C. Theme Switcher
       if (target.closest('.theme-toggle-btn')) {
         const active = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
@@ -833,6 +945,10 @@ function sectionTotal(section: NavSection): number {
             if (parentRow) {
               parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors group bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]';
             }
+            const subWrapper = parentGroup.querySelector('.sidebar-subitems-wrapper');
+            const subToggle = parentGroup.querySelector('.sidebar-subitem-toggle');
+            subWrapper?.classList.remove('collapsed');
+            subToggle?.setAttribute('aria-expanded', 'true');
           } else {
             link.className = 'sidebar-article-link flex items-center justify-between py-1.5 rounded-[2px] text-xs font-sans transition-colors group bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2';
           }
@@ -899,6 +1015,10 @@ function sectionTotal(section: NavSection): number {
             if (parentRow) {
               parentRow.className = 'flex items-center justify-between rounded-[2px] transition-colors bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)]';
             }
+            const subWrapper = parentGroup.querySelector('.mobile-subitems-wrapper');
+            const subToggle = parentGroup.querySelector('.mobile-subitem-toggle');
+            subWrapper?.classList.remove('collapsed');
+            subToggle?.setAttribute('aria-expanded', 'true');
           } else {
             link.className = 'mobile-article-link block py-1.5 rounded-[2px] text-xs font-sans transition-colors bg-[var(--accent-subtle)] text-[var(--accent)] font-medium border-l border-[var(--accent)] pl-2 pr-2.5';
           }
@@ -935,6 +1055,7 @@ function sectionTotal(section: NavSection): number {
       closeDrawer(false);
     }
 
+    document.addEventListener('astro:after-swap', updateActiveSidebarLinks);
     document.addEventListener('astro:page-load', updateActiveSidebarLinks);
   })();
 </script>

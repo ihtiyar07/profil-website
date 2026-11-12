@@ -19,7 +19,7 @@ export default defineConfig({
       syntaxHighlight: 'shiki',
       shikiConfig: {
         theme: 'github-dark-dimmed',
-        wrap: true,
+        wrap: false,
       },
     }),
     sitemap(),

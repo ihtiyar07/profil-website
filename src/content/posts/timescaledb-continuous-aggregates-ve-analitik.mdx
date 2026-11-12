@@ -1,0 +1,122 @@
+---
+title: "TimescaleDB Continuous Aggregates ve İleri Analitik (Hyperfunctions)"
+slug: "timescaledb-continuous-aggregates-ve-analitik"
+date: "2025-08-12"
+lang: "tr"
+summary: "Artımlı Continuous Aggregates ve hiyerarşik rollup mimarisi, Real-Time vs Materialized-Only ayrımı, time_bucket_gapfill, locf, interpolate, lttb() ve counter_agg() kullanımı."
+tags: ["PostgreSQL", "TimescaleDB", "Analitik", "Performans"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 3
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Aylık veya yıllık dashboard grafiklerini çizerken her istekte on milyonlarca ham sensör satırını `GROUP BY` ile toplamak CPU ve RAM tüketimini hızla doyuma ulaştırır. Standart PostgreSQL `MATERIALIZED VIEW` nesneleri ise `REFRESH` sırasında tüm tabloyu baştan hesapladığı için zaman serisi akışlarında pratik değildir.
+
+TimescaleDB **Continuous Aggregates (CAggs)**, yalnızca değişen zaman pencerelerini arka planda artımlı olarak hesaplar ve sonuçları kendi dahili Hypertable'ında saklar.
+
+## 1. Real-Time Materialization ve Hiyerarşik Rollup
+
+Varsayılan olarak Continuous Aggregates **Real-Time** modunda çalışır: Sorgu anında önceden hesaplanmış saatlik özet ile henüz materyalize edilmemiş son dakikaların ham verisini şeffaf biçimde birleştirir. Daha büyük tarih aralıkları içinse **Hierarchical Continuous Aggregates** (1dk → 1saat → 1gün) kurulur:
+
+<Mermaid
+  title="Hierarchical Rollup ve Real-Time Sorgu Akışı"
+  ariaLabel="Ham Hypertable'dan 1 dakikalık, 1 saatlik ve 1 günlük Continuous Aggregate zinciri"
+  code={`
+flowchart LR
+    Raw[("Ham Hypertable (Saniyelik)")]
+    Agg1m["CAgg 1 Dakika"]
+    Agg1h["CAgg 1 Saat"]
+    Agg1d["CAgg 1 Gün"]
+    Query["Dashboard Sorgusu (Real-Time UNION)"]
+
+    Raw -->|"Policy (1 dk)"| Agg1m
+    Agg1m -->|"Rollup (15 dk)"| Agg1h
+    Agg1h -->|"Rollup (1 saat)"| Agg1d
+    Agg1h ==>|"Materyalize Özet"| Query
+    Raw -.->|"Son Henüz İşlenmemiş Veri"| Query
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Agg1m,Agg1h,Agg1d,Query process
+    class Raw storage
+`}
+  summarySteps={[
+    "1. Ham Hypertable verileri arka plan policy'si ile önce 1 dakikalık (CAgg 1 Dakika) özete indirgenir.",
+    "2. 1 saatlik ve 1 günlük özet görünümler ham tabloyu tekrar okumak yerine bir önceki CAgg üzerinden hiyerarşik rollup yapar.",
+    "3. Real-Time açıkken sorgu, materyalize edilmiş özet ile son penceredeki ham satırları anında birleştirerek sıfır gecikmeli güncel sonuç döndürür."
+  ]}
+/>
+
+```sql
+CREATE MATERIALIZED VIEW sensor_hourly_summary
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    device_id,
+    AVG(temperature) AS avg_temp,
+    MAX(cpu_usage)   AS max_cpu,
+    COUNT(*)         AS sample_count
+FROM sensor_data_ts
+GROUP BY bucket, device_id;
+
+SELECT add_continuous_aggregate_policy('sensor_hourly_summary',
+    start_offset      => INTERVAL '3 days',
+    end_offset        => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '15 minutes');
+```
+
+*(Not: Ham veriyi 30 gün tutup özet tabloyu 3 yıl saklayabilirsiniz; ham tabloda çalışan `retention_policy`, yalnızca ham chunk'ları siler, `CAgg` özetleri `end_offset` sınırıyla korunur.)*
+
+---
+
+## 2. Eksik Veri Tamamlama: `time_bucket_gapfill`, `locf`, `interpolate`
+
+Ağ kesintisi veya cihaz yeniden başlatma anlarında zaman serisinde boş aralıklar (gaps) oluşur. `time_bucket_gapfill()` eksik zaman dilimlerini otomatik üretir; `locf()` son geçerli ölçümü taşır, `interpolate()` ise iki nokta arasında doğrusal ara değer hesaplar:
+
+```sql
+SELECT
+    time_bucket_gapfill('10 minutes', time) AS bucket,
+    device_id,
+    AVG(temperature)              AS raw_avg,
+    locf(AVG(temperature))        AS temp_locf,
+    interpolate(AVG(temperature)) AS temp_linear
+FROM sensor_data_ts
+WHERE time >= NOW() - INTERVAL '6 hours'
+  AND time <= NOW()
+  AND device_id = 42
+GROUP BY bucket, device_id
+ORDER BY bucket;
+```
+
+---
+
+## 3. `timescaledb_toolkit` Hyperfunctions
+
+`timescaledb-ha` imajıyla birlikte gelen `timescaledb_toolkit` eklentisi, standart SQL'de pahalı olan ileri analitik işlemler için tek geçişli (single-pass) C/Rust agregasyonları sunar:
+
+| Fonksiyon | Çözülen Problem | Kullanım Alanı |
+| :--- | :--- | :--- |
+| **`first(val, time)` / `last(val, time)`** | Zaman sırasına göre penceredeki ilk/son değeri alma | Son cihaz durumu, OHLC açılış/kapanış |
+| **`lttb(time, val, N)`** | Görsel şekli bozmadan binlerce noktayı `N` noktaya indirme | Frontend grafik çiziminde payload azaltma |
+| **`counter_agg(time, val)`** | Cihaz resetlendiğinde sıfırlanan sayaçlarda doğru artış | Enerji sayaçları, ağ byte `rate()` / `delta()` |
+| **`percentile_agg(val)`** | Bellek şişirmeden akıştan `approx_percentile(0.95)` alma | p95/p99 gecikme ve SLA takibi |
+
+```sql
+-- 1. Grafik için son 24 saatlik milyon noktayı görsel şekli koruyarak 200 noktaya indirge (LTTB):
+SELECT (unnest(lttb(time, temperature, 200))).*
+FROM sensor_data_ts
+WHERE device_id = 42 AND time >= NOW() - INTERVAL '24 hours';
+
+-- 2. Sıfırlanabilen sayaç üzerinden gerçek artış (delta) ve p95 sıcaklık hesabı:
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    first(temperature, time)    AS acilis_sicaklik,
+    last(temperature, time)     AS kapanis_sicaklik,
+    approx_percentile(0.95, percentile_agg(temperature)) AS p95_temp
+FROM sensor_data_ts
+WHERE device_id = 42 AND time >= NOW() - INTERVAL '24 hours'
+GROUP BY bucket
+ORDER BY bucket DESC;
+```

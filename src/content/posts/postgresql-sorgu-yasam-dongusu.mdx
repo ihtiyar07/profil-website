@@ -56,7 +56,7 @@ flowchart LR
     "2. Parser sözdizimini doğrular; Analyze aşaması System Catalog üzerinden tablo ve sütun tiplerini çözerek Query Tree üretir.",
     "3. Rewriter, pg_rewrite katalog kurallarını (VIEW tanımları ve RULE'lar) uygulayarak Query Tree'yi genişletir.",
     "4. Cost-Based Planner (Optimizer), pg_statistic istatistikleriyle alternatif erişim yollarının maliyetini hesaplar ve en düşük maliyetli Plan Tree'yi seçer.",
-    "5. Executor, Plan Tree düğümlerini yukarıdan aşağıya pull-based (Volcano) modeliyle çalıştırır; Sort/Hash için work_mem, veri sayfaları için shared_buffers kullanır."
+    "5. Executor, Plan Tree düğümlerini yukarıdan aşağıya pull-based (Volcano) modeliyle çalıştırır; Sort/Hash için work_mem, data page'ler için shared_buffers kullanır."
   ]}
 />
 

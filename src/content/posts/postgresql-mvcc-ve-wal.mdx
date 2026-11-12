@@ -22,17 +22,17 @@ Bunu sağlamak için PostgreSQL satırları disk üzerinde yerinde (in-place) ez
 1. Bir `UPDATE` komutu çalıştığında, eski satır silinmiş olarak işaretlenir (`t_xmax` alanına işlemi yürüten transaction ID yazılır).
 2. Yeni satır, data page içine yeni bir satır (tuple) olarak **fiziksel olarak yeniden yazılır**.
 3. Eski tuple'ın `t_ctid` değeri, yeni tuple'ın fiziksel data page adresini gösterecek şekilde güncellenir (Tuple Versiyon Zinciri).
-4. Transaction `COMMIT` ettiğinde eski satır "ölü satır" (**Dead Tuple**) haline gelir.
+4. Transaction `COMMIT` ettiğinde eski satır **Dead Tuple** haline gelir.
 
-### Tablo Şişmesi (Table Bloat)
-Ölü satırların diskte yer kaplamaya devam etmesine **tablo şişmesi (bloat)** denir. Bir tabloda ölü satırların birikmesi, disk I/O operasyonlarının ve `Seq Scan` sürelerinin uzamasına neden olur.
+### Table Bloat (Tablo Şişmesi)
+Dead tuple'ların diskte yer kaplamaya devam etmesine **Table Bloat** denir. Bir tabloda dead tuple'ların birikmesi, disk I/O operasyonlarının ve `Seq Scan` sürelerinin uzamasına neden olur.
 
 ```sql
--- Bir tablodaki ölü satır (dead tuple) oranını ve autovacuum durumunu izleme:
+-- Bir tablodaki dead tuple oranını ve autovacuum durumunu izleme:
 SELECT relname,
-       n_live_tup AS canli_satir,
-       n_dead_tup AS olu_satir,
-       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS olu_yuzde,
+       n_live_tup AS live_tuples,
+       n_dead_tup AS dead_tuples,
+       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct,
        last_autovacuum
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC
@@ -43,9 +43,9 @@ LIMIT 5;
 
 ## 2. Autovacuum ve HOT (Heap-Only Tuple) Optimizasyonu
 
-Ölü satırların kapladığı alanı geri kazanmak ve data page içindeki `Free Space` alanını genişletmek için **`autovacuum`** arka plan süreci çalışır:
+Dead tuple'ların kapladığı alanı geri kazanmak ve data page içindeki `Free Space` alanını genişletmek için **`autovacuum`** arka plan süreci çalışır:
 
-1. Data page içindeki ölü tuple alanlarını boşaltır ve line pointer'ları temizler.
+1. Data page içindeki dead tuple alanlarını boşaltır ve line pointer'ları temizler.
 2. Sayfadaki boş alan miktarını **FSM (Free Space Map)** içine kaydeder, böylece yeni `INSERT` işlemleri bu boşlukları tekrar kullanabilir.
 3. Tüm satırları donmuş veya görünür olan sayfaları **VM (Visibility Map)** üzerinde işaretler; bu da `Index-Only Scan` sorgularının heap sayfalarına hiç gitmeden çalışmasını sağlar.
 
@@ -54,19 +54,19 @@ Eğer güncellenen sütunlar üzerinde herhangi bir indeks tanımlı değilse ve
 
 - Bu durumda tablonun indekslerine dokunulmaz; indeks hala orijinal line pointer'ı işaret eder.
 - Eski line pointer, yeni tuple'ın line pointer'ına dahili olarak zincirlenir (`LP_REDIRECT`).
-- HOT, yüksek güncelleme alan tablolarda indeks şişmesini (index bloat) ve gereksiz I/O harcamasını önleyen en kritik çekirdek optimizasyonudur.
+- HOT, yüksek güncelleme alan tablolarda index bloat'u ve gereksiz I/O harcamasını önleyen en kritik çekirdek optimizasyonudur.
 
 ---
 
-## 3. WAL (Write-Ahead Logging) ve Çarpışma Güvenliği
+## 3. WAL (Write-Ahead Logging) ve Crash Recovery
 
-Bir transaction `COMMIT` ettiğinde PostgreSQL, değiştirilen tüm 8KB'lık kirli data page'leri anında data file'lara yazmaz. Çünkü diske dağınık (random) 8KB bloklar yazmak depolama motorunda ciddi bir I/O darboğazı yaratır.
+Bir transaction `COMMIT` ettiğinde PostgreSQL, değiştirilen tüm 8KB'lık **dirty data page**'leri anında data file'lara yazmaz. Çünkü diske rastgele (random) 8KB bloklar yazmak depolama motorunda ciddi bir I/O darboğazı yaratır.
 
 Bunun yerine:
 
 1. Değişikliğin bayt seviyesindeki özeti **WAL (Write-Ahead Log)** dosyasına ardışık (sequential) olarak yazılır ve diske senkron `fsync` edilir.
-2. Ardışık I/O diskin en hızlı gerçekleştirdiği işlemdir; veri anında kalıcı depolamaya güvenceye alınır ve istemciye "COMMIT OK" cevabı döner.
-3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (`checkpoint_timeout` veya `max_wal_size` dolduğunda) bellekteki kirli sayfaları topluca diske basar (Checkpoint).
+2. Sequential I/O diskin en hızlı gerçekleştirdiği işlemdir; veri anında kalıcı depolamaya güvenceye alınır ve client'a `"COMMIT OK"` cevabı döner.
+3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (`checkpoint_timeout` veya `max_wal_size` dolduğunda) bellekteki **dirty page**'leri topluca diske flush eder (**Checkpoint**).
 
 ### Crash Recovery (Çökme Sonrası Kurtarma)
 Eğer sunucunun gücü aniden kesilirse, PostgreSQL yeniden başladığında:

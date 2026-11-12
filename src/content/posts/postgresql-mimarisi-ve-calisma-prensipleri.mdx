@@ -10,14 +10,14 @@ import Mermaid from '../../components/Mermaid.astro';
 
 PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
-Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
+Bu tasarım tercihi, bir client hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
   <a href="/posts/postgresql-bellek-yonetimi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
     <div>
       <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Bellek</span>
       <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">shared_buffers & Local Memory</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">4 katmanlı tampon havuzu, Clock Sweep tahliyesi ve work_mem disk taşması.</p>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">4 katmanlı buffer pool, Clock Sweep eviction ve work_mem spill-to-disk.</p>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
   </a>
@@ -33,7 +33,7 @@ Bu tasarım tercihi, bir istemci hatasının ya da bellek sızıntısının tüm
     <div>
       <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Eşzamanlılık</span>
       <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">MVCC & WAL Mekanizması</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Dead Tuples, Autovacuum, HOT zincirleri ve Append-Only çökme kurtarma.</p>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Dead Tuples, Autovacuum, HOT zincirleri ve Append-Only crash recovery.</p>
     </div>
     <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
   </a>
@@ -65,19 +65,19 @@ flowchart LR
     "1. Client uygulama, TCP 5432 portu üzerinden PostgreSQL sunucusuna bağlanır.",
     "2. Postmaster ana süreci isteği doğrular ve işletim sisteminin fork() çağrısıyla bağımsız bir Backend Process (postgres) türetir.",
     "3. Backend Process, her oturum için yalıtılmış Local Memory (work_mem, temp_buffers) alanını özel olarak kullanır.",
-    "4. Backend Process, ortak tampon havuzu ve kilitler için IPC üzerinden Shared Memory'ye erişir."
+    "4. Backend Process, ortak buffer pool ve kilitler için IPC üzerinden Shared Memory'ye erişir."
   ]}
 />
 
-- **İzolasyon:** Her istemci oturumu kendi izole bellek alanında koşar. Bir backend çökerse, işletim sistemi seviyesinde temizlenir; diğer oturumlar çalışmaya devam eder.
+- **İzolasyon:** Her client oturumu kendi izole bellek alanında koşar. Bir backend çökerse, işletim sistemi seviyesinde temizlenir; diğer oturumlar çalışmaya devam eder.
 - **Maliyet:** Her yeni OS süreci Linux üzerinde ~5–10MB temel bellek tüketir. 1000 aktif bağlantı açmak, veritabanına sorgu gelmese dahi 5–10GB RAM'in sırf süreç yönetimine harcanması demektir.
-- **Kural:** PostgreSQL doğrudan binlerce doğrudan istemci bağlantısına açılmamalıdır; önünde mutlaka bağlantı açma/kapama maliyetini sıfırlayan **PgBouncer** gibi hafif bir bağlantı havuzlayıcı (connection pooler) bulunmalıdır.
+- **Kural:** PostgreSQL doğrudan binlerce doğrudan client bağlantısına açılmamalıdır; önünde mutlaka bağlantı açma/kapama maliyetini sıfırlayan **PgBouncer** gibi hafif bir **Connection Pooler** bulunmalıdır.
 
 ---
 
 ## 2. Bellek Mimarisi: Local Memory ve Shared Memory
 
-PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Paylaşılan Bellek (Shared Memory)** ve **Her istemci sürecine özel tahsis edilen Yerel Bellek (Local Memory)**.
+PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Shared Memory** ve **Her client sürecine özel tahsis edilen Local Memory**.
 
 <Mermaid 
   title="2. Bellek Yapısı (Local ve Shared Memory)" 
@@ -96,11 +96,11 @@ flowchart TB
 
     subgraph SharedMemGroup["Shared Memory (Global ve IPC)"]
         direction TB
-        subgraph SB["shared_buffers (Veri Tamponu)"]
+        subgraph SB["shared_buffers (Data Buffer Pool)"]
             direction LR
             BufHash["Buffer Mapping Hash Table"] --> DescHead["Buffer Descriptors"]
-            DescHead --> PoolFrames["Buffer Pool (8KB Sayfalar)"]
-            ClockSweep["Clock Sweep"] -.->|Tahliye İbresi| DescHead
+            DescHead --> PoolFrames["Buffer Pool (8KB Data Pages)"]
+            ClockSweep["Clock Sweep"] -.->|Eviction İbresi| DescHead
         end
         subgraph OtherShared["Diğer Ortak Alanlar"]
             direction LR
@@ -124,34 +124,34 @@ flowchart TB
     "1. Backend Process iki ana bellek kümesine bağlanır: Oturuma Özel Yerel Bellek (Local Memory) ve Ortak Bellek (Shared Memory).",
     "2. Local Memory içinde work_mem (sıralama/hash), maintenance_work_mem (bakım/DDL), temp_buffers (geçici tablolar) ve Catalog/Plan Cache izole çalışır.",
     "3. Shared Memory'nin kalbi olan shared_buffers; Buffer Mapping Hash Table -> Buffer Descriptors -> Buffer Pool (8KB Sayfalar) katmanlarından oluşur.",
-    "4. Boş tampon kalmadığında Clock Sweep algoritması Buffer Descriptors dizisini dairesel tarayarak sayfa tahliyesi yapar.",
+    "4. Boş buffer kalmadığında Clock Sweep algoritması Buffer Descriptors dizisini dairesel tarayarak page eviction yapar.",
     "5. wal_buffers ve Lock & ProcArray alanları tüm oturumlar tarafından IPC üzerinden ortaklaşa kullanılır."
   ]}
 />
 
 - **Local Memory:** Sorgu operatörü başına dinamik ayrılan `work_mem`, bakım işlemlerini üstlenen `maintenance_work_mem`, geçici tablolar için `temp_buffers` ve katalog önbelleklerini (`syscache`/`relcache`) kapsar.
-- **Shared Memory:** Tüm backend'lerin ortak veri tamponu olan `shared_buffers`, işlem günlüklerini tutan `wal_buffers` ve kilit yöneticisini (`ProcArray`) içerir.
+- **Shared Memory:** Tüm backend'lerin ortak buffer pool'u olan `shared_buffers`, WAL kayıtlarını tutan `wal_buffers` ve kilit yöneticisini (`ProcArray`) içerir.
 
 ---
 
-## 3. Yazma Yolu: Kirli Sayfalar ve Kalıcı Depolama
+## 3. Yazma Yolu: Dirty Pages ve Kalıcı Depolama
 
-PostgreSQL'de bir veri değişikliği (`INSERT`, `UPDATE`, `DELETE`) gerçekleştiğinde, disk blokları anında diske yazılmaz. Değişiklik bellek üzerinde yapılır ve eşzamanlı olarak WAL tamponuna yazılır:
+PostgreSQL'de bir veri değişikliği (`INSERT`, `UPDATE`, `DELETE`) gerçekleştiğinde, disk blokları anında diske yazılmaz. Değişiklik bellek üzerinde yapılır ve eşzamanlı olarak `wal_buffers`'a yazılır:
 
 <Mermaid 
-  title="3. Yazma Yolu (Write Path & Arka Plan Süreçleri)" 
+  title="3. Yazma Yolu (Write Path & Background Processes)" 
   ariaLabel="PostgreSQL Veri Değişikliği ve Kalıcı Depolama Yazma Döngüsü Şeması"
   code={`
 flowchart LR
     Backend["Backend Process"]
 
-    subgraph Memory["Bellek Tamponları"]
+    subgraph Memory["Memory Buffers"]
         direction TB
         SharedBuffers["shared_buffers"]
         WALBuffers["wal_buffers"]
     end
 
-    subgraph BgWorkers["Yazıcı Süreçler"]
+    subgraph BgWorkers["Background Writers"]
         direction TB
         BGWriter["BGWriter"]
         Checkpointer["Checkpointer"]
@@ -162,13 +162,13 @@ flowchart LR
     subgraph StorageFiles["Kalıcı Depolama (Disk)"]
         direction TB
         DataFiles[("Data Files (Heap & Index)")]
-        WALFiles[("pg_wal (WAL Dosyaları)")]
+        WALFiles[("pg_wal (WAL Files)")]
     end
 
-    Backend -->|1. Kirli Sayfa| SharedBuffers
+    Backend -->|1. Dirty Page| SharedBuffers
     Backend -->|2. WAL Kaydı| WALBuffers
 
-    SharedBuffers -->|4. Proaktif| BGWriter
+    SharedBuffers -->|4. Proaktif Flush| BGWriter
     BGWriter --> DataFiles
 
     SharedBuffers -->|5. Checkpoint| Checkpointer
@@ -177,7 +177,7 @@ flowchart LR
     WALBuffers -->|3. Senkron Flush| WALWriter
     WALWriter --> WALFiles
 
-    Autovacuum -.->|6. Temizlik| DataFiles
+    Autovacuum -.->|6. Dead Tuple Temizliği| DataFiles
 
     classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
     classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
@@ -192,12 +192,12 @@ flowchart LR
     class WALFiles,DataFiles storage
 `}
   summarySteps={[
-    "1. Backend Process, hedef data page'i shared_buffers içinde günceller (sayfa kirli / dirty duruma geçer).",
-    "2. Değişikliğin WAL kaydı eşzamanlı olarak wal_buffers tamponuna yazılır.",
+    "1. Backend Process, hedef data page'i shared_buffers içinde günceller (sayfa dirty duruma geçer).",
+    "2. Değişikliğin WAL kaydı eşzamanlı olarak wal_buffers alanına yazılır.",
     "3. WAL Writer süreci, wal_buffers içeriğini diske (pg_wal) flush eder.",
-    "4. BGWriter süreci, dirty sayfaları shared_buffers'tan yavaşça ve proaktif olarak Data Files'a yazar.",
-    "5. Checkpointer süreci, checkpoint anında kalan tüm dirty sayfaları topluca Data Files'a yazar ve kurtarma başlangıç noktasını ilerletir.",
-    "6. Autovacuum süreci, ölü satırları (dead tuples) Data Files üzerinden temizler ve boş alanları tekrar kullanıma açar."
+    "4. BGWriter süreci, dirty page'leri shared_buffers'tan küçük partiler halinde proaktif olarak Data Files'a flush eder.",
+    "5. Checkpointer süreci, checkpoint anında kalan tüm dirty page'leri topluca Data Files'a yazar ve recovery başlangıç noktasını ilerletir.",
+    "6. Autovacuum süreci, dead tuple'ları Data Files üzerinden temizler ve Free Space alanını tekrar kullanıma açar."
   ]}
 />
 
@@ -208,16 +208,19 @@ flowchart LR
 PostgreSQL mimarisinin kritik alt bileşenleri ayrı teknik dökümanlar halinde ele alınmıştır:
 
 1. **[PostgreSQL Bellek Yönetimi: Local Memory, shared_buffers ve Clock Sweep](/posts/postgresql-bellek-yonetimi)**  
-   *work_mem dinamikleri, spill-to-disk operasyonları, shared_buffers 4 katmanı, Clock Sweep tahliyesi ve BGWriter vs Checkpointer görev dağılımı.*
+   *work_mem dinamikleri, spill-to-disk operasyonları, shared_buffers 4 katmanı, Clock Sweep eviction ve BGWriter vs Checkpointer görev dağılımı.*
 
 2. **[PostgreSQL Fiziksel Depolama: 8KB Data Page ve Tuple Anatomisi](/posts/postgresql-data-page-ve-tuple)**  
-   *8KB bellek şeridi düzeni, TID dolaylı adresleme, Free Space iki yönlü büyümesi, HeapTupleHeaderData ve TOAST mimarisi.*
+   *8KB bellek şeridi düzeni, TID indirection, Free Space iki yönlü büyümesi, HeapTupleHeaderData ve TOAST mimarisi.*
 
 3. **[PostgreSQL Eşzamanlılık ve Güvenlik: MVCC, Autovacuum ve WAL Mekanizması](/posts/postgresql-mvcc-ve-wal)**  
-   *MVCC çoklu sürüm prensibi, ölü satırlar (dead tuples), tablo şişmesi (bloat) tespiti, autovacuum döngüsü, HOT optimizasyonu ve crash recovery adımları.*
+   *MVCC çoklu sürüm prensibi, dead tuples, table bloat tespiti, autovacuum döngüsü, HOT optimizasyonu ve crash recovery adımları.*
 
 4. **[PostgreSQL Sorgu İşleme: Parser, Planner ve Executor Yaşam Döngüsü](/posts/postgresql-sorgu-yasam-dongusu)**  
    *Parser/Analyze, Rewriter, Cost-Based Optimizer maliyet hesabı, Volcano Executor yürütme modeli ve EXPLAIN (ANALYZE, BUFFERS) teşhisi.*
+
+5. **[PostgreSQL Extension Mimarisi: Katalog Güdümlü Çekirdek, Süreç Modeli ve C Hook'ları](/posts/postgresql-extension-mimarisi-ve-c-hooks)**  
+   *MySQL/MSSQL/Oracle karşılaştırması, Backend Process vs shared_preload_libraries yükleme modelleri, Background Worker ve C Hook mekanizması.*
 
 ---
 

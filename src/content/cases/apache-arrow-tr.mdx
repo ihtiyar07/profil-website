@@ -1,17 +1,17 @@
 ---
-title: "Apache Arrow: DB'den İstemciye Sıfır Kopyalama (Zero-Copy) Veri Akışı"
+title: "Apache Arrow: DB'den Client'a Zero-Copy Veri Akışı"
 fileNumber: "Dosya 02"
 slug: "apache-arrow"
-tagline: "Yüz binlerce satırlık DB sonucunu JSON darboğazından kurtarıp doğrudan Arrow RecordBatch IPC tamponlarıyla istemci belleğine eşleme"
+tagline: "Yüz binlerce satırlık DB sonucunu JSON darboğazından kurtarıp doğrudan Arrow RecordBatch IPC buffer'larıyla client belleğine eşleme"
 date: "2024–2025"
 lang: "tr"
-testedScale: "250.000+ Satırlık Veri Seti · Sıfır Serileştirme Kopyası · <15ms Render"
-summary: "Veritabanından çekilen yüz binlerce satırlık analitik sonuçları geleneksel JSON serileştirme darboğazından kurtaran, Apache Arrow ikili sütunsal RecordBatch formatıyla DB'den tarayıcıya sıfır kopyalama (zero-copy) aktaran yüksek performanslı veri akış hattı."
+testedScale: "250.000+ Satırlık Veri Seti · Zero-Copy Serileştirme · <15ms Render"
+summary: "Veritabanından çekilen yüz binlerce satırlık analitik sonuçları geleneksel JSON serileştirme darboğazından kurtaran, Apache Arrow ikili columnar RecordBatch formatıyla DB'den tarayıcıya zero-copy aktaran yüksek performanslı veri akış hattı."
 stack: ["Apache Arrow (IPC Stream)", "TimescaleDB", "C# .NET 10", "TypeScript", "WebGL", "HTTP/2"]
 metrics:
   - label: "Ağ Tasarrufu"
     value: "%87 Boyut Düşüşü (Arrow IPC)"
-  - label: "İstemci UI Gecikmesi"
+  - label: "Client UI Gecikmesi"
     value: "< 15ms (Float64Array)"
   - label: "Bellek Transfer Modeli"
     value: "Zero-Copy IPC Stream"
@@ -22,23 +22,23 @@ metrics:
 ## 1. Bağlam
 Büyük ölçekli analitik ve telemetri platformlarında kullanıcılar; 30 günlük yüksek frekanslı sensör geçmişini, borsa emir defterlerini veya makine telemetrisini yüksek çözünürlüklü grafikler üzerinde anlık olarak incelemek ister. 
 
-Böyle bir sorgu veritabanından çekildiğinde istemciye yüz binlerce veri satırının (timestamp, double değerler, durum flag'leri) transfer edilmesi gerekir. Bu proje; veritabanından istemci tarayıcısına kadar olan veri hattındaki serileştirme (serialization) ve parse maliyetini sıfıra indirmek amacıyla kurgulandı.
+Böyle bir sorgu veritabanından çekildiğinde **client**'a yüz binlerce veri satırının (timestamp, double değerler, durum flag'leri) transfer edilmesi gerekir. Bu proje; veritabanından client tarayıcısına kadar olan veri hattındaki serialization ve parse maliyetini sıfıra indirmek amacıyla kurgulandı.
 
-## 2. Problem: JSON Darboğazı ve Ana İş Parçacığı Kilitlenmesi
+## 2. Problem: JSON Darboğazı ve Main Thread Kilitlenmesi
 
 Geleneksel web mimarilerinde veritabanı sorgu sonucu API katmanında JSON formatına çevrilir ve HTTP üzerinden gönderilir. 250.000 satırlık bir veri seti transfer edildiğinde:
 1. **Sunucu Tarafında Yüksek CPU ve GC Baskısı:** C# veya Node.js tarafında yüz binlerce nesne türetilir; string serileştirme sunucu CPU'sunu yakar ve Garbage Collector (GC) duraklamalarına yol açar.
-2. **25MB Şişmiş Veri Yükü (Payload):** JSON'un metin tabanlı anahtar-değer yapısı (`{"timestamp": 1714521000, "temperature": 4.12}`) tekrarlayan string'ler yüzünden ~24.8MB ağ boyutu üretir.
-3. **Tarayıcı Arayüzünün Donması (UI Freeze):** İstemci tarafında `JSON.parse()` çalıştırıldığında tarayıcının tek iş parçacıklı (single-threaded) JavaScript motoru 850 milisaniye boyunca kilitlenir; sayfa donar ve kullanıcı etkileşimi kesilir.
+2. **25MB Şişmiş Payload:** JSON'un metin tabanlı anahtar-değer yapısı (`{"timestamp": 1714521000, "temperature": 4.12}`) tekrarlayan string'ler yüzünden ~24.8MB ağ boyutu üretir.
+3. **Tarayıcı Arayüzünün Donması (UI Freeze):** Client tarafında `JSON.parse()` çalıştırıldığında tarayıcının single-threaded JavaScript motoru 850 milisaniye boyunca kilitlenir; sayfa donar ve kullanıcı etkileşimi kesilir.
 
-## 3. Mimari ve Sıfır Kopyalama (Zero-Copy) İkili Akış
+## 3. Mimari ve Zero-Copy İkili Akış
 
 import Mermaid from '../../components/Mermaid.astro';
 
-Çözüm, veriyi sunucudan istemciye sütunsal (columnar) **Apache Arrow IPC Stream** formatında taşımak oldu:
+Çözüm, veriyi sunucudan **client**'a **columnar** **Apache Arrow IPC Stream** formatında taşımak oldu:
 
 <Mermaid 
-  title="Apache Arrow Sıfır Kopyalama (Zero-Copy) Veri Akış Hattı" 
+  title="Apache Arrow Zero-Copy Veri Akış Hattı" 
   code={`
 flowchart TD
     DB[("Veritabanı: TimescaleDB")] -->|ADO.NET Npgsql DataReader| BE["C# .NET Backend: Arrow RecordBatch Builder"]
@@ -46,14 +46,14 @@ flowchart TD
     Browser -->|Zero-Copy Bellek Eşleme| Canvas["Float64Array / WebGL Canvas (< 15ms Kesintisiz 60 FPS)"]
 `} />
 
-### A. Veritabanından Doğrudan Sütunsal RecordBatch Üretimi
-Backend servisi, veritabanından satır satır nesne oluşturmak yerine PostgreSQL akışını doğrudan ikili sütunsal bellek tamponlarına (contiguous memory buffers) doldurur. Değerler satır satır değil; sütun dizileri (Timestamp Array, Float64 Array) halinde organize edilir.
+### A. Veritabanından Doğrudan Columnar RecordBatch Üretimi
+Backend servisi, veritabanından satır satır nesne oluşturmak yerine PostgreSQL akışını doğrudan ikili columnar **memory buffer**'lara (contiguous memory buffers) doldurur. Değerler satır satır değil; sütun dizileri (Timestamp Array, Float64 Array) halinde organize edilir.
 
 ### B. HTTP/2 IPC Streaming
-Oluşturulan Apache Arrow `RecordBatch` blokları `application/vnd.apache.arrow.stream` MIME tipiyle istemciye akıtılır. Veri tüm sorgu bitmeden ilk blok hazır olduğu anda akmaya başlar (chunked streaming).
+Oluşturulan Apache Arrow `RecordBatch` blokları `application/vnd.apache.arrow.stream` MIME tipiyle **client**'a akıtılır. Veri tüm sorgu bitmeden ilk blok hazır olduğu anda akmaya başlar (chunked streaming).
 
-### C. Sıfır Kopyalama (Zero-Copy) Tarayıcı Eşleme
-Gelen ikili akış tarayıcıda bir `ArrayBuffer` olarak karşılanır. JavaScript tarafında Apache Arrow kütüphanesi bu tamponun üzerine doğrudan bir bellek görünümü (memory view) açar:
+### C. Zero-Copy Tarayıcı Eşleme
+Gelen ikili akış tarayıcıda bir `ArrayBuffer` olarak karşılanır. JavaScript tarafında Apache Arrow kütüphanesi bu buffer'ın üzerine doğrudan bir memory view açar:
 - `JSON.parse` veya nesne kopyalama adımı yoktur.
 - 250.000 adet `Float64` sıcaklık değeri doğrudan WebGL grafik kütüphanesine veya Canvas render fonksiyonuna bellek adresi olarak verilir.
 
@@ -62,6 +62,6 @@ Gelen ikili akış tarayıcıda bir `ArrayBuffer` olarak karşılanır. JavaScri
 | Metrik | Geleneksel JSON REST | Apache Arrow IPC | Elde Edilen Kazanç |
 | :--- | :--- | :--- | :--- |
 | **Ağ Veri Boyutu (250K Satır)** | 24.8 MB | 3.1 MB | **%87 Bant Genişliği Tasarrufu** |
-| **İstemci UI Donması** | 850 ms (kilitli ekran) | < 15 ms (kesintisiz 60 FPS) | **56 Kat Hızlanma** |
-| **Sunucu GC Tahsisi** | 250.000 heap nesnesi | 1 adet bitişik tampon | **%95 GC Rahatlaması** |
+| **Client UI Donması** | 850 ms (kilitli ekran) | < 15 ms (kesintisiz 60 FPS) | **56 Kat Hızlanma** |
+| **Sunucu GC Tahsisi** | 250.000 heap nesnesi | 1 adet contiguous buffer | **%95 GC Rahatlaması** |
 | **Serileştirme Yükü** | Ağır string dönüşümü | Saf ikili bellek kopyası | **8 Kat CPU Tasarrufu** |

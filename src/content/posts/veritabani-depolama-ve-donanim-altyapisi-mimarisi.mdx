@@ -1,9 +1,9 @@
 ---
-title: "Veritabanı Altyapısı: ZFS Blok Düzeni, Disk I/O ve Sıfır Kopyalama İlkeleri"
+title: "Veritabanı Altyapısı: ZFS Blok Düzeni, Disk I/O ve Zero-Copy İlkeleri"
 slug: "veritabani-depolama-ve-donanim-altyapisi-mimarisi"
 date: "2025-10-10"
 lang: "tr"
-summary: "Veritabanı motorlarının dosya sisteminden beklentileri, ZFS recordsize ve ARC önbellek optimizasyonu, direct I/O dengesi ve sıfır kopyalama mimarisi."
+summary: "Veritabanı motorlarının dosya sisteminden beklentileri, ZFS recordsize ve ARC cache optimizasyonu, direct I/O dengesi ve Zero-Copy mimarisi."
 tags: ["Altyapı", "ZFS", "Depolama", "Performans"]
 ---
 
@@ -11,7 +11,7 @@ Veritabanı mimarisini sorgu ve SQL seviyesinden ayıran en kritik eşik; verini
 
 import Mermaid from '../../components/Mermaid.astro';
 
-Bir veritabanı motoru ne kadar kusursuz indekslenmiş olursa olsun; altındaki depolama düzeni doğru blok boyutlarıyla yapılandırılmamışsa, sistem kaçınılmaz olarak **Write Amplification (Yazma Şişmesi)** ve **Çift Önbellekleme (Double Buffering)** darboğazlarına kurban gider.
+Bir veritabanı motoru ne kadar iyi indekslenmiş olursa olsun; altındaki depolama düzeni doğru blok boyutlarıyla yapılandırılmamışsa, sistem **Write Amplification** ve **Double Buffering** darboğazlarına takılır.
 
 <Mermaid 
   title="Veritabanı, ZFS Dosya Sistemi ve Blok Depolama Hiyerarşisi" 
@@ -19,7 +19,7 @@ Bir veritabanı motoru ne kadar kusursuz indekslenmiş olursa olsun; altındaki 
 flowchart TD
     subgraph DB ["VERİTABANI KATMANI (PostgreSQL / Oracle)"]
         direction TB
-        BC["Shared Buffers / Buffer Cache (8KB Sayfa Boyutu)"]
+        BC["Shared Buffers / Buffer Cache (8KB Data Page)"]
     end
 
     BC -->|Direct I/O & fsync: 8KB Bloklar| ZFS
@@ -28,8 +28,8 @@ flowchart TD
         direction TB
         subgraph Sizing ["ZFS Blok Hizalama & Recordsize"]
             direction LR
-            Bad["Varsayılan 128KB ➔ 16x Yazma Şişmesi (Kötü)"]
-            Good["recordsize=8K ➔ 1:1 Blok Eşleşmesi (Doğru)"]
+            Bad["Varsayılan 128KB ➔ 16x Write Amplification"]
+            Good["recordsize=8K ➔ 1:1 Blok Eşleşmesi"]
         end
         CoW["CoW (Copy-on-Write) & Fletcher4 Checksum"]
         ARC["ZFS ARC (Bellek Tavanı Sınırı: arc_max)"]
@@ -41,18 +41,18 @@ flowchart TD
 
 ## 1. Veritabanı Motoru Dosya Sisteminden Ne Bekler?
 
-PostgreSQL ve Oracle gibi ilişkisel veritabanları, kendi bellek tamponlarını (Buffer Cache / Shared Buffers) kendileri yönetir. Bu motorların bir dosya sisteminden üç katı beklentisi vardır:
+PostgreSQL ve Oracle gibi ilişkisel veritabanları, kendi memory buffer'larını (`Buffer Cache` / `Shared Buffers`) kendileri yönetir. Bu motorların bir dosya sisteminden üç katı beklentisi vardır:
 
-1. **Katı Flush (`fsync` / `fdatasync`) Doğruluğu:** Motor diske "bu WAL veya Redo bloğunu yaz" dediğinde, denetleyici işletim sistemine "yazdım" yalanı söylememelidir. Veri kalıcı uçucu olmayan belleğe (non-volatile) inmelidir.
-2. **Öngörülebilir 8KB Rastgele I/O:** Çoğu ilişkisel veritabanının temel I/O birimi 8KB'dır (Oracle'da bazen 16KB). Dosya sistemi bu küçük blokları gecikme (latency) dalgalanması olmadan karşılamalıdır.
-3. **Sessiz Veri Bozulmasına (Bit Rot) Karşı Koruma:** Disk üzerindeki manyetik veya elektriksel bozulmalar sessizce veri sayfalarını bozabilir. Standart bir ext4 dosya sistemi veriyi okurken bozulduğunu anlayamaz; ZFS her bloğu Fletcher4 veya SHA-256 ile checksum'lar ve aynalanmış diskten anında kendi kendini onarır.
+1. **Katı Flush (`fsync` / `fdatasync`) Doğruluğu:** Motor diske "bu WAL veya Redo bloğunu yaz" dediğinde, denetleyici işletim sistemine erken onay dönmemelidir. Veri kalıcı non-volatile depolamaya inmelidir.
+2. **Öngörülebilir 8KB Rastgele I/O:** Çoğu ilişkisel veritabanının temel I/O birimi 8KB'dır (Oracle'da bazen 16KB). Dosya sistemi bu küçük blokları latency dalgalanması olmadan karşılamalıdır.
+3. **Silent Bit Rot Koruması:** Disk üzerindeki manyetik veya elektriksel bozulmalar sessizce **data page**'leri bozabilir. Standart bir ext4 dosya sistemi veriyi okurken bozulduğunu anlayamaz; ZFS her bloğu Fletcher4 veya SHA-256 ile checksum'lar ve aynalanmış diskten kendi kendini onarır.
 
 ## 2. ZFS Recordsize Tuzağı: 16 Kat Write Amplification
 
-ZFS dosya sistemi varsayılan olarak **`recordsize=128K`** ile gelir. Bu, video akışı veya büyük dosyalar için harikadır; ancak bir veritabanı için felakettir:
+ZFS dosya sistemi varsayılan olarak **`recordsize=128K`** ile gelir. Bu, video akışı veya büyük dosyalar için uygundur; ancak bir veritabanı için ciddi darboğaz yaratır:
 
-- PostgreSQL 8KB'lık bir veri sayfasında tek bir satırı güncellediğinde, ZFS o 8KB'ı yazmak için 128KB'lık bloğun tamamını diskten okur, içine 8KB'ı yamalar ve yeni bir 128KB olarak diske yazar (Copy-on-Write).
-- **Sonuç:** 8KB yazmak için diske 128KB yazılır! Bu durum SSD'lerin ömrünü hızla tüketir ve diskin I/O kanalını kilitler.
+- PostgreSQL 8KB'lık bir **data page**'de tek bir satırı güncellediğinde, ZFS o 8KB'ı yazmak için 128KB'lık bloğun tamamını diskten okur, içine 8KB'ı yamalar ve yeni bir 128KB olarak diske yazar (Copy-on-Write).
+- **Sonuç:** 8KB yazmak için diske 128KB yazılır; SSD ömrü kısalır ve I/O kanalı doyuma ulaşır.
 
 ```bash
 # Doğru Mühendislik Yapılandırması:
@@ -63,27 +63,27 @@ zfs create -o recordsize=8k -o logbias=latency -o atime=off rpool/data/postgres
 zfs create -o recordsize=64k -o logbias=throughput -o atime=off rpool/data/postgres-wal
 ```
 
-Veri dizininde `recordsize=8k` kullanıldığında, veritabanının 8KB'lık sayfası ile ZFS'in blok boyutu birebir örtüşür; yazma şişmesi (write amplification) 1:1 seviyesine iner.
+Veri dizininde `recordsize=8k` kullanıldığında, veritabanının 8KB'lık sayfası ile ZFS'in blok boyutu birebir örtüşür; write amplification 1:1 seviyesine iner.
 
-## 3. Çift Önbellekleme (Double Buffering) ve RAM Yönetimi
+## 3. Double Buffering ve RAM Yönetimi
 
-Linux çekirdeği diskten okunan blokları kendi sayfa önbelleğinde (Page Cache / Buffer Cache) tutar. ZFS ise bunu **ARC (Adaptive Replacement Cache)** havuzunda tutar.
+Linux çekirdeği diskten okunan blokları **OS Page Cache** içinde tutar. ZFS ise bunu **ARC (Adaptive Replacement Cache)** havuzunda tutar.
 
 Eğer PostgreSQL'e 32GB RAM'in 8GB'ını `shared_buffers` olarak verirseniz ve ZFS ARC havuzunu sınırlamazsanız:
-- Aynı 8KB'lık veri bloğu hem `shared_buffers` içinde hem de `ZFS ARC` içinde kopyalanır.
-- 32GB RAM'in yarısı mükerrer veri bloklarıyla dolar ve işletim sistemi bellek baskısı altında swap yapmaya başlar.
+- Aynı 8KB'lık **data block** hem `shared_buffers` içinde hem de `ZFS ARC` içinde kopyalanır.
+- 32GB RAM'in yarısı mükerrer bloklarla dolar ve işletim sistemi bellek baskısı altında swap yapmaya başlar.
 
-**Çözüm:** ZFS ARC maksimum boyutu işletim sistemi seviyesinde sınırlandırılmalı (`/etc/modprobe.d/zfs.conf` içinde `zfs_arc_max`), veritabanı önbelleği ile dosya sistemi önbelleği arasında net bir sınır çekilmelidir.
+**Çözüm:** ZFS ARC maksimum boyutu işletim sistemi seviyesinde sınırlandırılmalı (`/etc/modprobe.d/zfs.conf` içinde `zfs_arc_max`), veritabanı cache'i ile dosya sistemi cache'i arasında net bir sınır çekilmelidir.
 
-## 4. Sıfır Kopyalama (Zero-Copy) Prensibi
+## 4. Zero-Copy Prensibi
 
-Veritabanından çekilen büyük hacimli bir analitik veri (milyonlarca telemetri veya finans satırı), geleneksel yollarla istemciye gönderildiğinde üç ayrı bellek kopyalamasından geçer:
+Veritabanından çekilen büyük hacimli bir analitik veri (milyonlarca telemetri veya finans satırı), geleneksel yollarla **client**'a gönderildiğinde üç ayrı bellek kopyalamasından geçer:
 
-1. Diskten çekirdek alanına (Kernel Buffer).
-2. Çekirdek alanından veritabanı sürecine (User Space).
+1. Diskten çekirdek alanına (`Kernel Buffer`).
+2. Çekirdek alanından veritabanı sürecine (`User Space`).
 3. Veritabanından JSON serileştirme döngüsüne ve oradan ağ soketine.
 
-**Sıfır Kopyalama (Zero-Copy)** mimarisinde, veriler JSON yerine **Apache Arrow RecordBatch** formatında bellekte kolon bazlı olarak dizilir ve `sendfile` / bellek eşleme (`mmap`) sistem çağrılarıyla doğrudan ağ soketine aktarılır. CPU tek bir satırı bile bellekte nesneye (object) dönüştürmez; yüz binlerce satırlık veri mikro saniyeler içinde istemcinin tarayıcısına ulaşır.
+**Zero-Copy** mimarisinde, veriler JSON yerine **Apache Arrow RecordBatch** formatında bellekte **columnar** olarak dizilir ve `sendfile` / `mmap` sistem çağrılarıyla doğrudan ağ soketine aktarılır. CPU tek bir satırı bile bellekte nesneye dönüştürmez; yüz binlerce satırlık veri mikrosaniyeler içinde client tarayıcısına ulaşır.
 
 ## Mimari Özet
 

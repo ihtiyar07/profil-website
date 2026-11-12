@@ -13,13 +13,13 @@ PostgreSQL disk üzerinde verileri hiçbir zaman tekil satırlar halinde saklama
 
 import DataPageAnatomy from '../../components/DataPageAnatomy.astro';
 
-Bir data page'in fiziksel düzeni; yüksek eşzamanlılıkta kilit çekişmelerini önlemek, defragmentasyon esnasında indeksleri korumak ve parçalanmayı engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır:
-
-<DataPageAnatomy />
+Bir data page'in fiziksel düzeni; yüksek eşzamanlılıkta kilit çekişmelerini önlemek, defragmentasyon esnasında indeksleri korumak ve parçalanmayı engellemek amacıyla iki zıt uçtan merkeze doğru büyüyecek şekilde tasarlanmıştır.
 
 ## 1. 8KB Data Page Mimarisi
 
-Bir data page baştan sona şu 4 temel katmandan oluşur:
+Bir data page baştan sona 4 temel katmandan oluşur:
+
+<DataPageAnatomy section="page-layout" />
 
 ### A. `PageHeaderData` (24 Bayt Sabit Başlık)
 Sayfanın ilk 24 baytı, sayfanın durumunu ve sınır ofsetlerini tanımlayan çekirdek başlıktır:
@@ -41,6 +41,8 @@ Sayfa başından aşağı doğru (`pd_lower` yönünde) büyür. Her eleman 32-b
 >
 > Bu mimari tercih sayesinde `VACUUM` veya sayfa defragmentasyonu satırları sayfa içinde kaydırdığında, indeksleri güncellemeye gerek kalmaz; sadece 4 baytlık line pointer'ın `lp_off` değeri güncellenir.
 
+<DataPageAnatomy section="indirection" />
+
 ### C. `Free Space` (Dinamik Serbest Alan)
 `pd_lower` ile `pd_upper` arasında kalan boş alandır. Yeni satırlar eklendikçe line pointer dizisi aşağı doğru (`pd_lower++`), satır gövdeleri ise sayfa sonundan yukarı doğru (`pd_upper--`) genişler. İki sınır birbirine değdiğinde data page dolmuş kabul edilir.
 
@@ -53,12 +55,15 @@ Satırların fiziksel gövdeleri sayfanın en sonundan (8192. bayttan) başlanar
 
 Tabloya eklenen her bir satır versiyonu, data page içinde bir **HeapTuple** olarak saklanır. Bir tuple üç ana parçadan oluşur:
 
+<DataPageAnatomy section="tuple-header" />
+
 ### A. `HeapTupleHeaderData` (23 Bayt Sabit Başlık)
 - **`t_xmin` (4 bayt):** Bu tuple versiyonunu `INSERT` eden veya `UPDATE` ile oluşturan transaction kimliği (XID).
 - **`t_xmax` (4 bayt):** Bu tuple versiyonunu silen (`DELETE`) veya güncelleyen (`UPDATE`) transaction kimliği. Satır güncel ve aktifse değeri `0`'dır.
 - **`t_cid` (4 bayt):** Aynı transaction içerisindeki SQL komut sırası (Command ID).
 - **`t_ctid` (6 bayt — ItemPointer):** Bu tuple'ın kendi fiziksel adresi `(block, offset)`. Eğer satır `UPDATE` edildiyse, `t_ctid` güncellenen **yeni satır versiyonunun fiziksel adresini** işaret eder (Tuple Versiyon Zinciri).
 - **`t_infomask` & `t_infomask2` (4 bayt):** Satırın MVCC durum bayrakları (`HEAP_XMIN_COMMITTED`, `HEAP_XMAX_INVALID`, `HEAP_HOT_UPDATED`) ve tablodaki sütun sayısı (`t_natts`).
+- **`t_hoff` (1 bayt):** Başlık ve bellek hizalaması (`alignment padding`) sonrasında gerçek **User Data** bölümünün kaçıncı bayttan başladığını belirtir.
 
 ### B. Null Bitmap (Değişken Boyut)
 Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik bir varlık haritası tutulur. Sütun değeri `NULL` ise kullanıcı veri alanında o sütun için hiç bayt harcanmaz.

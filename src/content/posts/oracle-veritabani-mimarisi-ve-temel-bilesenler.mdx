@@ -46,7 +46,7 @@ flowchart TD
         ARC[("Archived Redo (*.arc)")]
     end
 
-    DBWn -->|Kirli Bloklar| DF
+    DBWn -->|Dirty Blocks| DF
     LGWR -->|Redo Kayıtları| ORL
     CKPT -->|Kontrol Güncelleme| CF
     ORL -.->|Arşivleme| ARC
@@ -68,21 +68,21 @@ Oracle bellek yönetimi iki ana bölgeden oluşur:
 
 ### A. SGA (System Global Area)
 Tüm veritabanı kullanıcılarının ve arka plan süreçlerinin paylaştığı devasa ortak bellek havuzudur:
-- **`Database Buffer Cache`:** Diskten okunan veri bloklarının (genelde 8KB) tutulduğu yerdir. Kirli (dirty) bloklar diske yazılana kadar burada bekler.
-- **`Shared Pool`:** Çalıştırılan SQL sorgularının derlenmiş yürütme planları (`Library Cache`) ve veri sözlüğü tabloları (`Data Dictionary Cache`) burada saklanır. Bind variable (parametre) kullanımı Shared Pool'un CPU yakarak sürekli hard parse yapmasını engeller.
-- **`Redo Log Buffer`:** Veritabanında yapılan her değişikliğin bayt bayt yazıldığı dairesel (circular) tampon bellektir.
+- **`Database Buffer Cache`:** Diskten okunan data block'ların (genelde 8KB) tutulduğu yerdir. **Dirty block**'lar diske yazılana kadar burada bekler.
+- **`Shared Pool`:** Çalıştırılan SQL sorgularının derlenmiş yürütme planları (`Library Cache`) ve `Data Dictionary Cache` bilgileri burada saklanır. Bind variable kullanımı Shared Pool'un CPU yakarak sürekli hard parse yapmasını engeller.
+- **`Redo Log Buffer`:** Veritabanında yapılan her değişikliğin bayt bayt yazıldığı dairesel (circular) buffer alanıdır.
 
 ### B. PGA (Program Global Area)
-Her bir sunucu sürecine (Server Process) özel olarak ayrılan paylaşımsız bellektir. Oturumun sıralama (`Sort Area`), karma birleştirme (`Hash Area`) ve imleç (cursor) durumları PGA içinde yürütülür. `PGA_AGGREGATE_TARGET` parametresiyle sınırlandırılır.
+Her bir sunucu sürecine (Server Process) özel olarak ayrılan paylaşımsız bellektir. Oturumun sıralama (`Sort Area`), hash join (`Hash Area`) ve cursor durumları PGA içinde yürütülür. `PGA_AGGREGATE_TARGET` parametresiyle sınırlandırılır.
 
 ## 3. Çekirdek Arka Plan Süreçleri
 
 Oracle'ın kararlılığını sağlayan temel süreçler şunlardır:
 
-1. **`LGWR (Log Writer)`:** Redo Log Buffer içeriğini diskteki Online Redo Log dosyalarına yazar. Bir kullanıcı `COMMIT` dediğinde, LGWR o işlemi diske basana kadar oturum kilitlenir. LGWR, sistemin en kritik ve hızlı olması gereken sürecidir.
-2. **`DBWn (Database Writer)`:** Buffer Cache'teki kirli blokları Datafile'lara yazar. Bu işlem asenkrondur; COMMIT anında DBWn diske yazmak zorunda değildir (bunu LGWR üstlenir).
-3. **`CKPT (Checkpoint)`:** Belirli aralıklarla DBWn'e kirli blokları yazdırır ve veri dosyalarının başlıklarına checkpoint bilgisini (SCN) işler.
-4. **`PMON (Process Monitor)`:** Bir istemci bağlantısı aniden koptuğunda (örn. ağ kesintisi), o istemcinin tuttuğu kilitleri çözer ve PGA kaynaklarını sisteme iade eder.
+1. **`LGWR (Log Writer)`:** Redo Log Buffer içeriğini diskteki Online Redo Log dosyalarına yazar. Bir kullanıcı `COMMIT` dediğinde, LGWR o işlemi diske flush edene kadar oturum bekler. LGWR, sistemin en kritik ve hızlı olması gereken sürecidir.
+2. **`DBWn (Database Writer)`:** Buffer Cache'teki **dirty block**'ları Datafile'lara yazar. Bu işlem asenkrondur; COMMIT anında DBWn diske yazmak zorunda değildir (bunu LGWR üstlenir).
+3. **`CKPT (Checkpoint)`:** Belirli aralıklarla DBWn'e **dirty block**'ları yazdırır ve datafile başlıklarına checkpoint bilgisini (SCN) işler.
+4. **`PMON (Process Monitor)`:** Bir **client** bağlantısı aniden koptuğunda (örn. ağ kesintisi), o client'ın tuttuğu kilitleri çözer ve PGA kaynaklarını sisteme iade eder.
 5. **`SMON (System Monitor)`:** Sunucu aniden kapandığında, açılışta instance recovery (kurtarma) sürecini otomatik yürütür.
 
 ## 4. Oracle'ın İmza Özelliği: ITL ve Kilitleme Mekanizması

@@ -18,18 +18,27 @@ interface Props {
 const { code, title, tabs, ariaLabel, summarySteps } = Astro.props;
 const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
 const isTabbed = Array.isArray(tabs) && tabs.length > 0;
+const formatStep = (step: string) => step.replace(/^\d+\.\s*/, '');
+const summaryGroups = isTabbed
+  ? tabs
+      .filter((t) => Array.isArray(t.summarySteps) && t.summarySteps.length > 0)
+      .map((t, idx) => ({ id: t.id, visible: idx === 0, steps: t.summarySteps! }))
+  : Array.isArray(summarySteps) && summarySteps.length > 0
+    ? [{ id: null as string | null, visible: true, steps: summarySteps }]
+    : [];
+const hasSummary = summaryGroups.length > 0;
 ---
 
-<figure class="mermaid-container relative my-6 not-prose border border-[var(--border)] rounded-[2px] bg-[var(--bg-card)] shadow-xs" id={uniqueId}>
+<figure class="mermaid-container relative my-6 not-prose border border-[var(--accent-border)] rounded-[4px] bg-[var(--bg-card)] shadow-[0_2px_12px_-3px_rgba(29,78,216,0.08)] dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.45)] overflow-hidden" id={uniqueId}>
   <!-- Top Bar -->
-  <div class="px-3 sm:px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-between gap-2 text-xs font-mono text-[var(--text-dim)] select-none">
-    <span class="flex items-center gap-2 font-medium text-[var(--text)] truncate">
-      <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+  <div class="px-3.5 sm:px-4 py-2.5 border-b border-[var(--accent-border)] bg-[#EFF6FF]/75 dark:bg-[#131C2B] flex items-center justify-between gap-2 text-xs font-mono select-none">
+    <span class="flex items-center gap-2 font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
+      <span class="w-2 h-2 shrink-0 rounded-[2px] bg-[var(--accent)]" aria-hidden="true"></span>
       <span class="mermaid-container-title truncate">{title || 'Mimari Şema'}</span>
     </span>
 
-    <div class="flex items-center gap-1.5 shrink-0">
-      <span class="text-[10px] text-[var(--text-dim)] border border-[var(--border)] px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] hidden sm:flex items-center gap-1.5">
+    <div class="flex items-center gap-2 shrink-0">
+      <span class="text-[10px] text-[var(--text-accent)] border border-[var(--accent-border)] px-2 py-0.5 rounded-[2px] bg-[var(--bg-card)] hidden sm:flex items-center gap-1.5 font-medium">
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
         <span>Bileşen detayları için tıkla</span>
       </span>
@@ -37,11 +46,11 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       <!-- Fullscreen / Zoom Button -->
       <button 
         type="button" 
-        class="mermaid-fullscreen-btn flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-2 py-0.5 rounded-[2px] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer shrink-0"
+        class="mermaid-fullscreen-btn flex items-center gap-1.5 text-[11px] font-mono text-[#1E293B] dark:text-[#E2E8F0] hover:text-[var(--text-accent)] border border-[var(--accent-border)] px-2.5 py-0.5 rounded-[2px] bg-[var(--bg-card)] hover:bg-[var(--accent-subtle)] transition-colors cursor-pointer shrink-0"
         aria-label="Şemayı tam ekran aç"
         title="Tam ekran aç (ESC ile kapat)"
       >
-        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <svg class="w-3 h-3 text-[var(--text-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
         </svg>
         <span>Tam Ekran</span>
@@ -54,7 +63,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     <div 
       role="tablist" 
       aria-label="Mimari Şema Sekmeleri" 
-      class="mermaid-tablist flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--bg)]/60 overflow-x-auto scrollbar-none text-xs font-mono select-none"
+      class="mermaid-tablist flex items-center gap-1 px-3 py-1.5 border-b border-[var(--accent-border)] bg-[var(--bg)]/70 overflow-x-auto scrollbar-none text-xs font-mono select-none"
     >
       {tabs.map((tab, idx) => (
         <button
@@ -67,7 +76,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
           data-tab-id={tab.id}
           class={`mermaid-tab-btn px-3 py-1.5 rounded-[2px] transition-all cursor-pointer border whitespace-nowrap text-xs ${
             idx === 0
-              ? "bg-[var(--bg-card)] text-[var(--accent)] font-semibold border-[var(--border)] shadow-xs"
+              ? "bg-[var(--bg-card)] text-[var(--accent)] font-semibold border-[var(--accent-border)] shadow-xs"
               : "text-[var(--text-dim)] hover:text-[var(--text)] border-transparent hover:bg-[var(--bg-subtle)]"
           }`}
         >
@@ -78,7 +87,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   )}
 
   <!-- Diagram Content Area -->
-  <div class="mermaid-diagrams-wrap relative p-3 sm:p-5 overflow-x-auto flex justify-center items-center min-h-[120px] bg-[var(--bg-subtle)]/30">
+  <div class="mermaid-diagrams-wrap relative p-4 sm:p-6 overflow-x-auto flex justify-center items-center min-h-[120px] bg-[var(--bg-card)]">
     {isTabbed ? (
       tabs.map((tab, idx) => (
         <div
@@ -118,73 +127,58 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     )}
   </div>
 
-  <!-- Fixed Component Details Panel (Underneath the diagram) -->
-  <div class="mermaid-details-panel border-t border-[var(--border)] bg-[var(--bg-card)] p-3.5 sm:p-4 text-left transition-colors">
-    <div class="details-default-view flex items-center justify-between text-xs font-mono text-[var(--text-dim)]">
-      <div class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-        <span class="font-medium text-[var(--text)]">Bileşen Detayı:</span>
-        <span class="text-[var(--text-dim)]">Bir bileşene tıklayın</span>
-      </div>
-      <span class="text-[10px] text-[var(--text-dim)] hidden sm:inline">Enter/Tıkla: Detay Göster · ESC: Temizle</span>
-    </div>
-
-    <div class="details-active-view hidden space-y-2">
-      <div class="flex items-start justify-between gap-3 border-b border-[var(--border)] pb-2">
+  <!-- Component Details Panel (shown only when a node is selected) -->
+  <div class="mermaid-details-panel hidden border-t border-[var(--accent-border)] bg-[#EFF6FF]/45 dark:bg-[#131C2B]/80 p-3.5 sm:p-4 text-left transition-colors">
+    <div class="details-active-view space-y-2">
+      <div class="flex items-start justify-between gap-3 border-b border-[var(--accent-border)] pb-2">
         <div>
           <span class="details-role font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block"></span>
           <h4 class="details-title font-serif text-base font-semibold text-[var(--text)] leading-tight"></h4>
         </div>
         <button 
           type="button" 
-          class="details-reset-btn text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-1.5 py-0.5 rounded-[2px] text-[10px] font-mono cursor-pointer transition-colors bg-[var(--bg-subtle)]"
-          aria-label="Detay panelini sıfırla"
+          class="details-reset-btn text-[#1E293B] dark:text-[#E2E8F0] hover:text-[var(--text-accent)] border border-[var(--accent-border)] px-2 py-0.5 rounded-[2px] text-[10px] font-mono cursor-pointer transition-colors bg-[var(--bg-card)]"
+          aria-label="Detay panelini kapat"
         >
-          Temizle
+          Kapat
         </button>
       </div>
       <p class="details-desc text-xs sm:text-[13px] text-[var(--text-muted)] leading-relaxed font-sans"></p>
-      <div class="details-extra text-[11px] font-mono text-[var(--text-dim)] bg-[var(--bg-subtle)] p-2 rounded-[2px] border border-[var(--border)] hidden"></div>
+      <div class="details-extra text-[11px] font-mono text-[var(--text-dim)] bg-[var(--bg-card)] p-2 rounded-[2px] border border-[var(--border)] hidden"></div>
     </div>
   </div>
 
-  <!-- Collapsible Textual Summary (Accessibility details/summary) -->
-  <div class="mermaid-text-summaries border-t border-[var(--border)] bg-[var(--bg-subtle)]/40 text-xs font-mono">
-    {isTabbed ? (
-      tabs.map((tab, idx) => (
-        tab.summarySteps && tab.summarySteps.length > 0 ? (
-          <details 
-            class={`mermaid-text-summary px-4 py-2 text-[var(--text-dim)] ${idx === 0 ? "block" : "hidden"}`} 
-            data-summary-for={tab.id}
-          >
-            <summary class="cursor-pointer hover:text-[var(--text)] transition-colors select-none font-medium flex items-center gap-1.5">
-              <span>Metin olarak oku: {tab.label} adımları</span>
-            </summary>
-            <ol class="mt-2.5 space-y-1.5 list-decimal pl-5 text-[var(--text-muted)] font-sans leading-relaxed text-xs">
-              {tab.summarySteps.map((step) => (
-                <li>{step}</li>
-              ))}
-            </ol>
-          </details>
-        ) : null
-      ))
-    ) : summarySteps && summarySteps.length > 0 ? (
-      <details class="mermaid-text-summary px-4 py-2 text-[var(--text-dim)]">
-        <summary class="cursor-pointer hover:text-[var(--text)] transition-colors select-none font-medium flex items-center gap-1.5">
-          <span>Metin olarak oku (Şema Adımları)</span>
-        </summary>
-        <ol class="mt-2.5 space-y-1.5 list-decimal pl-5 text-[var(--text-muted)] font-sans leading-relaxed text-xs">
-          {summarySteps.map((step) => (
-            <li>{step}</li>
-          ))}
-        </ol>
-      </details>
-    ) : null}
-  </div>
+  <!-- Always-Visible Diagram Steps Summary -->
+  {hasSummary && (
+    <div class="mermaid-text-summaries border-t border-[var(--accent-border)] bg-[#F8FAFC] dark:bg-[#0D121B] px-4 sm:px-5 py-3.5">
+      {summaryGroups.map((group) => (
+        <div
+          class={`mermaid-text-summary ${group.visible ? "block" : "hidden"}`}
+          data-summary-for={group.id ?? undefined}
+        >
+          <ol class="list-none p-0 m-0 space-y-2">
+            {group.steps.map((step, stepIdx) => (
+              <li class="grid grid-cols-[1.35rem_1fr] gap-2.5 items-start">
+                <span
+                  aria-hidden="true"
+                  class="w-[1.35rem] h-[1.35rem] mt-0.5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--text-accent)] font-mono text-[11px] font-semibold flex items-center justify-center tabular-nums"
+                >
+                  {stepIdx + 1}
+                </span>
+                <span class="text-[13px] sm:text-[13.5px] leading-relaxed text-[#1E293B] dark:text-[#E2E8F0] font-sans">
+                  {formatStep(step)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
+  )}
 
   <!-- Fullscreen Modal Container -->
   <div 
-    class="mermaid-modal fixed inset-0 z-[200] hidden bg-[var(--bg)]/95 backdrop-blur-md flex flex-col p-4 sm:p-6"
+    class="mermaid-modal fixed inset-0 z-[999] hidden bg-[var(--bg)]/98 backdrop-blur-md flex flex-col p-4 sm:p-6"
     role="dialog"
     aria-modal="true"
     aria-label="Tam Ekran Mimari Şema"
@@ -217,7 +211,6 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   }
   .mermaid-diagram svg {
     width: 100% !important;
-    max-width: 100% !important;
     height: auto !important;
     min-width: 0 !important;
     display: block;
@@ -360,40 +353,40 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       detail: 'Kritik Parametre: max_connections. Gereksiz OS süreç yükünü önlemek için önünde PgBouncer önerilir.'
     },
     'client': {
-      title: 'İstemci Uygulamaları',
-      role: 'Ağ İstemcisi',
+      title: 'Client Uygulamaları',
+      role: 'Client Bağlantısı',
       desc: 'Veritabanına TCP/IP soketi üzerinden bağlanan web uygulamaları, ORM servisleri, mikroservisler veya psql CLI oturumları.',
-      detail: 'Her istemci PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
+      detail: 'Her client PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
     },
     'istemci': {
-      title: 'İstemci Uygulamaları',
-      role: 'Ağ İstemcisi',
+      title: 'Client Uygulamaları',
+      role: 'Client Bağlantısı',
       desc: 'Veritabanına TCP/IP soketi üzerinden bağlanan web uygulamaları, ORM servisleri, mikroservisler veya psql CLI oturumları.',
-      detail: 'Her istemci PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
+      detail: 'Her client PostgreSQL tarafında ayrı bir işletim sistemi sürecine eşlenir.'
     },
     'pooler': {
-      title: 'PgBouncer (Bağlantı Havuzlayıcı)',
+      title: 'PgBouncer (Connection Pooler)',
       role: 'Yüksek Performanslı Connection Pooler',
-      desc: 'Binlerce istemci bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
+      desc: 'Binlerce client bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
       detail: 'PostgreSQL\'in her bağlantı için OS süreci çatallama (fork) maliyetini ve bellek yükünü ortadan kaldırır.'
     },
     'pgbouncer': {
-      title: 'PgBouncer (Bağlantı Havuzlayıcı)',
+      title: 'PgBouncer (Connection Pooler)',
       role: 'Yüksek Performanslı Connection Pooler',
-      desc: 'Binlerce istemci bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
+      desc: 'Binlerce client bağlantısını karşılayarak veritabanı motoru tarafında sabit sayıda (örn. 50-100) backend process açılmasını sağlar.',
       detail: 'PostgreSQL\'in her bağlantı için OS süreci çatallama (fork) maliyetini ve bellek yükünü ortadan kaldırır.'
     },
     'backend process': {
       title: 'Backend Process (postgres)',
       role: 'Oturum Süreci (Dedicated Process)',
-      desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
-      detail: 'Her backend kendi yerel belleğini (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+      desc: 'Postmaster tarafından çatallanan ve client\'ın SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
+      detail: 'Her backend kendi Local Memory alanını (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
     },
     'backend': {
       title: 'Backend Process (postgres)',
       role: 'Oturum Süreci (Dedicated Process)',
-      desc: 'Postmaster tarafından çatallanan ve istemcinin SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
-      detail: 'Her backend kendi yerel belleğini (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
+      desc: 'Postmaster tarafından çatallanan ve client\'ın SQL sorgularını parse eden, planlayan ve yürüten bağımsız Unix sürecidir.',
+      detail: 'Her backend kendi Local Memory alanını (work_mem, temp_buffers) kullanır; birinin çökmesi diğer oturumları etkilemez.'
     },
     'work_mem': {
       title: 'work_mem',
@@ -421,159 +414,159 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     },
     'temp_buffers': {
       title: 'temp_buffers',
-      role: 'Geçici Tablo Tamponu (RAM)',
+      role: 'Geçici Tablo Buffer Alanı (RAM)',
       desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık data page\'lerini tutar.',
-      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
+      detail: 'shared_buffers\'a girmez, lock contention ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
     },
     'tempbuf': {
       title: 'temp_buffers',
-      role: 'Geçici Tablo Tamponu (RAM)',
+      role: 'Geçici Tablo Buffer Alanı (RAM)',
       desc: 'CREATE TEMP TABLE ile açılan oturuma özel geçici tabloların 8KB\'lık data page\'lerini tutar.',
-      detail: 'shared_buffers\'a girmez, kilit (lock) ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
+      detail: 'shared_buffers\'a girmez, lock contention ve WAL yazma masrafı oluşturmaz. Oturum kapandığında anında bellekten boşaltılır. Varsayılan: 8MB.'
     },
     'localcache': {
       title: 'Catalog & Plan Cache (syscache / relcache)',
-      role: 'Backend Özel Önbelleği',
+      role: 'Backend Özel Cache Alanı',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'catalog': {
       title: 'Catalog & Plan Cache (syscache / relcache)',
-      role: 'Backend Özel Önbelleği',
+      role: 'Backend Özel Cache Alanı',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'plan cache': {
       title: 'Catalog & Plan Cache (syscache / relcache)',
-      role: 'Backend Özel Önbelleği',
+      role: 'Backend Özel Cache Alanı',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'plan & katalog': {
-      title: 'Plan & Katalog Önbelleği',
-      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      title: 'Plan & Catalog Cache',
+      role: 'Backend Özel Cache Alanı (syscache / relcache)',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog satırları (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'local plan': {
-      title: 'Plan & Katalog Önbelleği',
-      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      title: 'Plan & Catalog Cache',
+      role: 'Backend Özel Cache Alanı (syscache / relcache)',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi (lock contention) olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'syscache': {
-      title: 'Plan & Katalog Önbelleği',
-      role: 'Backend Özel Önbelleği (syscache / relcache)',
+      title: 'Plan & Catalog Cache',
+      role: 'Backend Özel Cache Alanı (syscache / relcache)',
       desc: 'Backend sürecinin oturum boyunca tekrar tekrar kullandığı tablo metaverileri (relcache), sistem katalog verileri (syscache) ve hazırlanmış sorguların (prepared statements) yürütme planları burada saklanır.',
-      detail: 'Her backend için izoledir; paylaşımlı kilit çekişmesi olmadan ultra hızlı planlama sağlar.'
+      detail: 'Her backend için izoledir; lock contention olmadan ultra hızlı planlama sağlar.'
     },
     'bufhash': {
       title: 'Buffer Mapping Hash Table',
       role: 'Paylaşımlı O(1) Adresleme Tablosu',
       desc: 'shared_buffers içindeki 8KB data page\'lerini BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
-      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
+      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa buffer üzerinden okur (Buffer Hit), bulamazsa disk I/O tetikler.'
     },
     'buffer mapping': {
       title: 'Buffer Mapping Hash Table',
       role: 'Paylaşımlı O(1) Adresleme Tablosu',
       desc: 'shared_buffers içindeki 8KB data page\'lerini BufferTag (RelFileNode + ForkNum + BlockNum) bilgisi üzerinden Buffer ID (0..N-1) slotuna eşleyen paylaşımlı hash tablosudur.',
-      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa tampondan okur (Buffer Hit), bulamazsa disk I/O tetikler.'
+      detail: 'Backend bir blok okumak istediğinde önce buraya bakar. Bulursa buffer üzerinden okur (Buffer Hit), bulamazsa disk I/O tetikler.'
     },
     'deschead': {
-      title: 'Buffer Descriptors (Başlık Dizisi)',
-      role: 'Tampon Metadata & Durum Yönetimi (Array)',
-      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
-      detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
+      title: 'Buffer Descriptors (Header Array)',
+      role: 'Buffer Metadata & State Array',
+      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (dirty), BM_VALID, refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 clock hand sayacı) tutulur.',
+      detail: 'İçerik okuma/yazma eşzamanlılığı için her descriptor üzerinde LWLock (content_lock) bulunur.'
     },
     'buffer descriptors': {
-      title: 'Buffer Descriptors (Başlık Dizisi)',
-      role: 'Tampon Metadata & Durum Yönetimi (Array)',
-      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (kirli), BM_VALID (geçerli), refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 saat ibresi sayacı) tutulur.',
-      detail: 'İçerik okuma/yazma eşzamanlılığı için her tanımlayıcıda hafif kilitler (content_lock LWLock) bulunur.'
+      title: 'Buffer Descriptors (Header Array)',
+      role: 'Buffer Metadata & State Array',
+      desc: 'Her bir 8KB data page çerçevesine denk gelen BufferDesc yapısıdır. 32-bit atomic durumda BM_DIRTY (dirty), BM_VALID, refcount (aktif okuyucu pin sayısı) ve usage_count (0-5 clock hand sayacı) tutulur.',
+      detail: 'İçerik okuma/yazma eşzamanlılığı için her descriptor üzerinde LWLock (content_lock) bulunur.'
     },
     'poolframes': {
       title: 'Buffer Pool (8KB Data Page Slotları)',
-      role: 'Paylaşılan Veri Havuzu (RAM)',
+      role: 'Shared Data Buffer Pool (RAM)',
       desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel data page slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks data page\'leri birebir bu bloklara yerleşir.',
-      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
+      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM OS Page Cache ile dengelenir.'
     },
     'buffer pool': {
       title: 'Buffer Pool (8KB Data Page Slotları)',
-      role: 'Paylaşılan Veri Havuzu (RAM)',
+      role: 'Shared Data Buffer Pool (RAM)',
       desc: 'Sunucu RAM\'inde bitişik olarak ayrılmış 8KB boyutundaki fiziksel data page slotları dizisidir. Diskten okunan heap tabloları ve B-Tree indeks data page\'leri birebir bu bloklara yerleşir.',
-      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM işletim sistemi sayfa tamponu (OS Page Cache) ile dengelenir.'
+      detail: 'Tipik olarak toplam fiziksel RAM\'in %25\'i verilir. Kalan RAM OS Page Cache ile dengelenir.'
     },
     'clocksweep': {
       title: 'Clock Sweep Algoritması',
-      role: 'Dairesel Sayfa Tahliye Mekanizması',
-      desc: 'Boş tampon kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni sayfa için kurban (victim) seçer.',
+      role: 'Dairesel Page Eviction Mekanizması',
+      desc: 'Boş buffer slotu kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni page için victim buffer seçer.',
       detail: 'LRU kuyruklarının lock contention sorununu ortadan kaldırarak yüksek eşzamanlılıkta üstün ölçeklenme sunar.'
     },
     'clock sweep': {
       title: 'Clock Sweep Algoritması',
-      role: 'Dairesel Sayfa Tahliye Mekanizması',
-      desc: 'Boş tampon kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni sayfa için kurban (victim) seçer.',
+      role: 'Dairesel Page Eviction Mekanizması',
+      desc: 'Boş buffer slotu kalmadığında Buffer Descriptors dizisini dairesel bir saat ibresi gibi tarar. Pinli olmayan (refcount=0) sayfaların usage_count değerini 1 azaltır. usage_count=0 olan ilk slotu yeni page için victim buffer seçer.',
       detail: 'LRU kuyruklarının lock contention sorununu ortadan kaldırarak yüksek eşzamanlılıkta üstün ölçeklenme sunar.'
     },
     'shared_buffers': {
       title: 'shared_buffers',
-      role: 'Paylaşılan Veri Havuzu (RAM)',
-      desc: 'Tablolardan ve indekslerden diskten okunan 8KB boyutundaki data page\'lerin tüm backend\'ler tarafından ortak paylaşıldığı ana bellek önbelleğidir.',
-      detail: 'Boyutlandırma: Sunucu RAM\'inin %25\'i. Kalan RAM işletim sistemi disk tamponuna (OS Page Cache) bırakılır.'
+      role: 'Shared Data Buffer Pool (RAM)',
+      desc: 'Tablolardan ve indekslerden diskten okunan 8KB boyutundaki data page\'lerin tüm backend\'ler tarafından ortak paylaşıldığı ana bellek havuzudur.',
+      detail: 'Boyutlandırma: Sunucu RAM\'inin %25\'i. Kalan RAM OS Page Cache\'e bırakılır.'
     },
     'wal_buffers': {
       title: 'wal_buffers',
-      role: 'İşlem Günlüğü Tamponu (RAM)',
-      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske yazılmadan önce geçici olarak tutulduğu dairesel bellek alanıdır.',
+      role: 'WAL Buffer Alanı (RAM)',
+      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske flush edilmeden önce geçici olarak tutulduğu dairesel bellek alanıdır.',
       detail: 'Boyut: Genellikle 16MB–64MB. COMMIT anında WAL Writer veya backend tarafından diske senkronize edilir.'
     },
     'walbuf': {
       title: 'wal_buffers',
-      role: 'İşlem Günlüğü Tamponu (RAM)',
-      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske yazılmadan önce geçici olarak tutulduğu dairesel bellek alanıdır.',
+      role: 'WAL Buffer Alanı (RAM)',
+      desc: 'Veritabanında yapılan değişikliklerin (WAL kayıtları) diske flush edilmeden önce geçici olarak tutulduğu dairesel bellek alanıdır.',
       detail: 'Boyut: Genellikle 16MB–64MB. COMMIT anında WAL Writer veya backend tarafından diske senkronize edilir.'
     },
     'procarray': {
-      title: 'Kilit Havuzu & ProcArray',
+      title: 'Lock Manager & ProcArray',
       role: 'Eşzamanlılık & MVCC Koordinasyonu',
       desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
       detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
     },
     'kilit': {
-      title: 'Kilit Havuzu & ProcArray',
+      title: 'Lock Manager & ProcArray',
       role: 'Eşzamanlılık & MVCC Koordinasyonu',
       desc: 'Tüm aktif backend süreçlerinin o anki transaction durumunu (XID), satır/tablo kilitlerini (Lock Manager) ve snapshot görünürlüğünü saklayan ortak bellek yapısıdır.',
       detail: 'PostgreSQL MVCC modelinin kalbidir; okuyucuların yazıcıları kilitlememesini sağlar.'
     },
     'bgwriter': {
       title: 'Background Writer (BGWriter)',
-      role: 'Proaktif Kirli Sayfa Yazıcısı',
-      desc: 'shared_buffers havuzunu sürekli tarar ve kirli sayfaları proaktif olarak diske yazar. Amacı, istemci backend süreçleri yeni veri okurken boş/temiz sayfa bulamayıp disk yazımı beklemek zorunda kalmasını önlemektir.',
+      role: 'Proaktif Dirty Page Yazıcısı',
+      desc: 'shared_buffers havuzunu sürekli tarar ve dirty page\'leri proaktif olarak diske yazar. Amacı, backend process\'lerinin yeni veri okurken temiz buffer slotu bulamayıp disk yazımı beklemek zorunda kalmasını önlemektir.',
       detail: 'bgwriter_delay, bgwriter_lru_maxpages ve bgwriter_lru_multiplier parametreleriyle optimize edilir.'
     },
     'checkpointer': {
       title: 'Checkpointer Süreci',
-      role: 'Arka Plan Disk Yazıcısı',
-      desc: 'shared_buffers içerisindeki kirli (değiştirilmiş) 8KB veri sayfalarını belirli aralıklarla diske kalıcı olarak yazar ve kontrol noktası (checkpoint) oluşturur.',
+      role: 'Checkpoint & Batch Disk Writer',
+      desc: 'shared_buffers içerisindeki dirty 8KB data page\'leri belirli aralıklarla diske kalıcı olarak flush eder ve checkpoint oluşturur.',
       detail: 'Kaza anında kurtarma süresini (MTTR) sınırlar. checkpoint_timeout ve max_wal_size ile yönetilir.'
     },
     'walwriter': {
       title: 'WAL Writer',
-      role: 'İşlem Günlüğü Yazıcısı',
-      desc: 'wal_buffers tamponunda biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sıralı (sequential) olarak yazar.',
-      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını sıfırlamak için fsync ile diske basar.'
+      role: 'WAL Disk Writer',
+      desc: 'wal_buffers üzerinde biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sequential olarak yazar.',
+      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını önlemek için fsync ile diske flush eder.'
     },
     'wal writer': {
       title: 'WAL Writer',
-      role: 'İşlem Günlüğü Yazıcısı',
-      desc: 'wal_buffers tamponunda biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sıralı (sequential) olarak yazar.',
-      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını sıfırlamak için fsync ile diske basar.'
+      role: 'WAL Disk Writer',
+      desc: 'wal_buffers üzerinde biriken log kayıtlarını fiziksel pg_wal disk segmentlerine (16MB) sequential olarak yazar.',
+      detail: 'ACID garantisinin Durability (Kalıcılık) ayağını sağlar; veri kaybını önlemek için fsync ile diske flush eder.'
     },
     'autovacuum': {
       title: 'Autovacuum Launcher & Workers',
-      role: 'Ölü Tuple Temizliği & Freeze Bakımı',
-      desc: 'UPDATE ve DELETE işlemlerinin geride bıraktığı ölü satırları (dead tuples) temizler, sayfa boşluklarını yeni satırlara açar ve işlem kimliği devir (TXID wraparound) riskine karşı freeze yapar.',
-      detail: 'Tablo bloat\'unu önler, katalog istatistiklerini (ANALYZE) güncel tutarak sorgu planlayıcının (planner) doğru çalışmasını sağlar.'
+      role: 'Dead Tuple Temizliği & Freeze Bakımı',
+      desc: 'UPDATE ve DELETE işlemlerinin geride bıraktığı dead tuple\'ları temizler, data page içindeki Free Space\'i yeni satırlara açar ve TXID wraparound riskine karşı freeze yapar.',
+      detail: 'Table bloat\'u önler, katalog istatistiklerini (ANALYZE) güncel tutarak planner\'ın doğru plan üretmesini sağlar.'
     },
     'diskheap': {
       title: 'Heap & İndeks Dosyaları ($PGDATA/base)',
@@ -589,25 +582,25 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     },
     'diskwal': {
       title: 'WAL Segmentleri ($PGDATA/pg_wal)',
-      role: 'Kalıcı Ön-Yazma Günlükleri',
+      role: 'Write-Ahead Log Segments',
       desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
-      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+      detail: 'Sequential I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
     },
     'wal segment': {
       title: 'WAL Segmentleri ($PGDATA/pg_wal)',
-      role: 'Kalıcı Ön-Yazma Günlükleri',
+      role: 'Write-Ahead Log Segments',
       desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
-      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+      detail: 'Sequential I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
     },
     'pg_wal': {
       title: 'WAL Segmentleri ($PGDATA/pg_wal)',
-      role: 'Kalıcı Ön-Yazma Günlükleri',
+      role: 'Write-Ahead Log Segments',
       desc: 'Tüm veri değişikliklerinin sırayla yazıldığı 16MB boyutundaki ikili WAL dosyalarıdır.',
-      detail: 'Sıralı (sequential) I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
+      detail: 'Sequential I/O yapar. Replikasyon (Streaming Replication) bu dosyaların standby düğüme aktarımıyla gerçekleşir.'
     },
     'disktemp': {
       title: 'Geçici Disk Depolaması ($PGDATA/base/pgsql_tmp)',
-      role: 'work_mem Taşma Alanı (Disk Spill)',
+      role: 'work_mem Spill-to-Disk Alanı',
       desc: 'Karmaşık sıralama veya hash join operasyonları kendilerine ayrılan work_mem sınırını aştığında, veriler diske geçici dosya olarak yazılır ($PGDATA/base/pgsql_tmp).',
       detail: 'EXPLAIN ANALYZE çıktısında "Sort Method: external merge Disk" görünüyorsa sorgu buraya taşmıştır; work_mem gözden geçirilmelidir.'
     },
@@ -627,19 +620,19 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     },
     'line pointer': {
       title: 'ItemIdData (Line Pointer Array)',
-      role: 'Dolaylı Tuple Adresleme (4B / tuple)',
+      role: 'Tuple Indirection (4B / tuple)',
       desc: 'Sayfanın başından aşağı doğru (pd_lower) büyüyen 32-bit işaretçiler dizisidir. Tuple\'ın fiziksel bayt ofsetini (lp_off), uzunluğunu (lp_len) ve durum bayraklarını (lp_flags) tutar.',
-      detail: 'İndeksler doğrudan tuple fiziksel bayt adresini değil, bu line pointer numarasını (TID: Block + Offset) işaret eder. Sayfa içi vakum indeksleri bozmaz.'
+      detail: 'İndeksler doğrudan tuple fiziksel bayt adresini değil, bu line pointer numarasını (TID: Block + Offset) işaret eder. Sayfa içi VACUUM indeksleri bozmaz.'
     },
     'itempointer': {
       title: 'ItemIdData (Line Pointer Array)',
-      role: 'Dolaylı Tuple Adresleme (4B / tuple)',
+      role: 'Tuple Indirection (4B / tuple)',
       desc: 'Sayfanın başından aşağı doğru (pd_lower) büyüyen 32-bit işaretçiler dizisidir. Tuple\'ın fiziksel bayt ofsetini (lp_off), uzunluğunu (lp_len) ve durum bayraklarını (lp_flags) tutar.',
       detail: 'İndeksler doğrudan tuple fiziksel bayt adresini değil, bu line pointer numarasını (TID: Block + Offset) işaret eder.'
     },
     'free space': {
-      title: 'Free Space (Boş Alan)',
-      role: 'Dinamik Sayfa İçi Boşluk',
+      title: 'Free Space',
+      role: 'Dinamik Data Page Boşluğu',
       desc: 'pd_lower (aşağı büyüyen line pointer dizisi) ile pd_upper (yukarı büyüyen tuple alanı) arasında kalan kullanılabilir boş alandır.',
       detail: 'Yeni tuple eklendikçe pd_upper küçülür, pd_lower büyür. İkisi çakıştığında data page dolmuş kabul edilir.'
     },
@@ -665,7 +658,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       title: 't_xmax (4 Bytes)',
       role: 'Silici / Güncelleyici Transaction ID',
       desc: 'Bu tuple versiyonunu silen (DELETE) veya güncelleyen (UPDATE) transaction\'ın kimlik numarasıdır. Satır aktif ve geçerliyse değeri 0\'dır.',
-      detail: 'Satır güncellendiğinde veya silindiğinde t_xmax atanarak satır "ölü tuple" (dead tuple) adayına dönüşür.'
+      detail: 'Satır güncellendiğinde veya silindiğinde t_xmax atanarak satır dead tuple adayına dönüşür.'
     },
     't_ctid': {
       title: 't_ctid (6 Bytes - ItemPointer)',
@@ -696,44 +689,44 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     'buffer cache': {
       title: 'Database Buffer Cache',
       role: 'Oracle SGA Belleği',
-      desc: 'Veri dosyalarından okunan veri bloklarının (genelde 8KB) tutulduğu ve tüm sunucu süreçlerinin paylaştığı ana önbellektir.',
-      detail: 'LRU (Least Recently Used) algoritması ile yönetilir; DBWn kirli blokları buradan diske yazar.'
+      desc: 'Datafile\'lardan okunan data block\'ların (genelde 8KB) tutulduğu ve tüm sunucu süreçlerinin paylaştığı ana memory cache\'tir.',
+      detail: 'LRU (Least Recently Used) algoritması ile yönetilir; DBWn dirty block\'ları buradan diske yazar.'
     },
     'shared pool': {
       title: 'Shared Pool',
       role: 'Oracle SGA Belleği',
-      desc: 'Parse edilmiş SQL ifadelerini, yürütme planlarını (Library Cache) ve veri sözlüğü (Data Dictionary Cache) bilgilerini saklar.',
+      desc: 'Parse edilmiş SQL ifadelerini, yürütme planlarını (Library Cache) ve Data Dictionary Cache bilgilerini saklar.',
       detail: 'Hard parse maliyetini önler; bind variable kullanımı buradaki planların yeniden kullanılmasını sağlar.'
     },
     'redo log buffer': {
       title: 'Redo Log Buffer',
       role: 'Oracle SGA Belleği',
-      desc: 'Veritabanında yapılan tüm DML ve DDL değişikliklerinin disk öncesi tutulduğu dairesel bellek tamponudur.',
-      detail: 'LGWR süreci COMMIT anında bu tamponu diske Online Redo Log dosyalarına boşaltır.'
+      desc: 'Veritabanında yapılan tüm DML ve DDL değişikliklerinin disk öncesi tutulduğu dairesel (circular) buffer alanıdır.',
+      detail: 'LGWR süreci COMMIT anında bu buffer içeriğini Online Redo Log dosyalarına flush eder.'
     },
     'dbwn': {
       title: 'DBWn (Database Writer)',
       role: 'Oracle Arka Plan Süreci',
-      desc: 'Buffer Cache\'teki kirli (dirty) blokları diskteki Datafile (*.dbf) dosyalarına topluca ve asenkron yazar.',
+      desc: 'Buffer Cache\'teki dirty block\'ları diskteki Datafile (*.dbf) dosyalarına topluca ve asenkron yazar.',
       detail: 'COMMIT anında diske yazmak zorunda değildir; bu sayede I/O darboğazı oluşmasını engeller.'
     },
     'lgwr': {
       title: 'LGWR (Log Writer)',
       role: 'Oracle Arka Plan Süreci',
       desc: 'Redo Log Buffer içeriğini diskteki Online Redo Log (*.rdo) dosyalarına yazar.',
-      detail: 'Sistemin en kritik sürecidir; COMMIT işlemi LGWR diske yazana kadar tamamlanmaz.'
+      detail: 'Sistemin en kritik sürecidir; COMMIT işlemi LGWR diske flush edene kadar tamamlanmaz.'
     },
     'ckpt': {
       title: 'CKPT (Checkpoint)',
       role: 'Oracle Arka Plan Süreci',
-      desc: 'Belirli aralıklarla DBWn\'e kirli blokları yazdırır ve veri dosyalarının başlıklarına checkpoint bilgisini (SCN) işler.',
+      desc: 'Belirli aralıklarla DBWn\'e dirty block\'ları yazdırır ve datafile başlıklarına checkpoint bilgisini (SCN) işler.',
       detail: 'Kurtarma süresini (MTTR) sınırlar.'
     },
     'smon': {
       title: 'SMON / PMON',
-      role: 'Oracle Kurtarma & İzleme Süreçleri',
-      desc: 'SMON kaza sonrası açılışta instance recovery yürütür; PMON ise çöken istemci oturumlarının kaynaklarını ve kilitlerini temizler.',
-      detail: 'Sistem kararlılığı için vazgeçilmez iki temel süreçtir.'
+      role: 'Oracle Recovery & Monitor Processes',
+      desc: 'SMON kaza sonrası açılışta instance recovery yürütür; PMON ise çöken client oturumlarının kaynaklarını ve kilitlerini temizler.',
+      detail: 'Sistem kararlılığı için temel iki arka plan sürecidir.'
     },
     'datafiles': {
       title: 'Datafiles (*.dbf)',
@@ -743,13 +736,13 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     },
     'online redo': {
       title: 'Online Redo Logs (*.rdo)',
-      role: 'Oracle İşlem Günlükleri',
+      role: 'Oracle Redo Logs',
       desc: 'Tüm veritabanı değişikliklerinin acil kurtarma için dairesel olarak yazıldığı log dosyalarıdır.',
       detail: 'En az 3 grup halinde aynalanmış (multiplexed) olarak tutulması önerilir.'
     },
     'control files': {
       title: 'Control Files (*.ctl)',
-      role: 'Oracle Veritabanı Üstverisi',
+      role: 'Oracle Metadata Files',
       desc: 'Veritabanının fiziksel yapısını, datafile konumlarını ve güncel SCN (System Change Number) değerini tutan ikili dosyalardır.',
       detail: 'Bozulması durumunda veritabanı mount edilemez; mutlaka çoklu disklerde aynalanmalıdır.'
     },
@@ -769,17 +762,17 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     },
     'haproxy': {
       title: 'HAProxy / Keepalived',
-      role: 'Trafik Yönlendirici & Yük Dengeleyici',
-      desc: 'İstemcilerin port 5000 (yazma) ve port 5001 (okuma) isteklerini doğru PostgreSQL düğümüne şeffaf yönlendirir.',
+      role: 'Traffic Router & Load Balancer',
+      desc: 'Client\'ların port 5000 (yazma) ve port 5001 (okuma) isteklerini doğru PostgreSQL düğümüne şeffaf yönlendirir.',
       detail: 'Patroni\'nin 8008 sağlık portunu yoklayarak kesintisiz failover yönlendirmesi sağlar.'
     },
 
     // PostgREST
     'postgrest': {
       title: 'PostgREST (Haskell Daemon)',
-      role: 'Anında REST API Motoru',
-      desc: 'PostgreSQL şemasını okuyarak RESTful HTTP API uç noktalarına dönüştüren, durumsuz (stateless) ve ultra hafif servistir.',
-      detail: 'İstekleri C düzeyinde JSON üreten tekil SQL ifadelerine derler; sıfır ORM gecikmesi sağlar.'
+      role: 'REST API Engine',
+      desc: 'PostgreSQL şemasını okuyarak RESTful HTTP API uç noktalarına dönüştüren, stateless ve hafif servistir.',
+      detail: 'İstekleri C düzeyinde JSON üreten tekil SQL ifadelerine derler; zero ORM gecikmesi sağlar.'
     },
 
     // ZFS
@@ -787,21 +780,21 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       title: 'ZFS recordsize',
       role: 'Blok Boyutu Ayarı',
       desc: 'ZFS dosya sisteminin dosya bloklarını bölme boyutudur. Varsayılan 128KB, veritabanı için 8KB olarak ayarlanmalıdır.',
-      detail: '8KB ayarlanmazsa her 8KB güncelleme için 128KB yazılır; 16 kat yazma şişmesi (write amplification) oluşur.'
+      detail: '8KB ayarlanmazsa her 8KB güncelleme için 128KB yazılır; 16 kat write amplification oluşur.'
     },
     'arc': {
       title: 'ZFS ARC (Adaptive Replacement Cache)',
-      role: 'Dosya Sistemi RAM Önbelleği',
-      desc: 'ZFS\'in en sık ve en son kullanılan disk bloklarını bellekte tuttuğu gelişmiş RAM önbelleğidir.',
+      role: 'Dosya Sistemi RAM Cache',
+      desc: 'ZFS\'in en sık ve en son kullanılan disk bloklarını bellekte tuttuğu gelişmiş RAM cache\'tir.',
       detail: 'Veritabanı sunucularında arc_max parametresiyle sınırlandırılmalıdır; aksi halde PostgreSQL shared_buffers ile çatışır.'
     },
 
     // Apache Arrow
     'arrow': {
       title: 'Apache Arrow RecordBatch',
-      role: 'Sütunsal İkili Veri Formatı',
-      desc: 'Verileri bellekte sütun bazlı (columnar) ve CPU SIMD işlemlerine hazır ikili diziler halinde tutan açık kaynak standarttır.',
-      detail: 'JSON serileştirme yükünü ortadan kaldırır; ArrayBuffer üzerinden doğrudan WebGL Canvas belleğine sıfır kopyalama eşlenir.'
+      role: 'Columnar İkili Veri Formatı',
+      desc: 'Verileri bellekte columnar ve CPU SIMD işlemlerine hazır ikili diziler halinde tutan açık kaynak standarttır.',
+      detail: 'JSON serileştirme yükünü ortadan kaldırır; ArrayBuffer üzerinden doğrudan WebGL Canvas belleğine zero-copy eşlenir.'
     }
   };
 
@@ -821,8 +814,6 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     const panel = figure.querySelector('.mermaid-details-panel') as HTMLElement | null;
     if (!panel) return;
 
-    const defaultView = panel.querySelector('.details-default-view') as HTMLElement;
-    const activeView = panel.querySelector('.details-active-view') as HTMLElement;
     const roleEl = panel.querySelector('.details-role') as HTMLElement;
     const titleEl = panel.querySelector('.details-title') as HTMLElement;
     const descEl = panel.querySelector('.details-desc') as HTMLElement;
@@ -837,8 +828,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
         selectedNode.removeAttribute('aria-current');
         selectedNode = null;
       }
-      activeView.classList.add('hidden');
-      defaultView.classList.remove('hidden');
+      panel?.classList.add('hidden');
     }
 
     function selectNode(node: Element, exp: { title: string; role: string; desc: string; detail?: string }) {
@@ -859,8 +849,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       } else {
         extraEl.classList.add('hidden');
       }
-      defaultView.classList.add('hidden');
-      activeView.classList.remove('hidden');
+      panel?.classList.remove('hidden');
     }
 
     resetBtn?.addEventListener('click', clearSelection);
@@ -954,10 +943,7 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
       // Clear details panel selection on tab switch
       const panel = figure.querySelector('.mermaid-details-panel') as HTMLElement | null;
       if (panel) {
-        const defaultView = panel.querySelector('.details-default-view') as HTMLElement;
-        const activeView = panel.querySelector('.details-active-view') as HTMLElement;
-        defaultView?.classList.remove('hidden');
-        activeView?.classList.add('hidden');
+        panel.classList.add('hidden');
         figure.querySelectorAll('.selected-node').forEach(el => el.classList.remove('selected-node'));
       }
 
@@ -994,7 +980,8 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   function setupFullscreenModal(figure: HTMLElement) {
     const btn = figure.querySelector('.mermaid-fullscreen-btn') as HTMLButtonElement | null;
     const modal = figure.querySelector('.mermaid-modal') as HTMLElement | null;
-    if (!btn || !modal) return;
+    if (!btn || !modal || modal.dataset.bound === 'true') return;
+    modal.dataset.bound = 'true';
 
     const closeBtn = modal.querySelector('.modal-close-btn') as HTMLButtonElement | null;
     const modalContent = modal.querySelector('.modal-content') as HTMLElement | null;
@@ -1003,14 +990,19 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     function openModal() {
       const activePane = figure.querySelector('.mermaid-tabpane:not(.hidden)') || figure.querySelector('.mermaid-diagrams-wrap');
       const svg = activePane?.querySelector('svg');
-      if (!svg || !modalContent) return;
+      if (!svg || !modalContent || !modal) return;
+
+      // Move modal to body to escape page-content's view-transition-name stacking context
+      if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
 
       modalContent.innerHTML = '';
       const clonedSvg = svg.cloneNode(true) as SVGElement;
-      clonedSvg.style.maxWidth = '100%';
+      clonedSvg.style.maxWidth = '92vw';
       clonedSvg.style.maxHeight = '82vh';
-      clonedSvg.style.width = 'auto';
-      clonedSvg.style.height = 'auto';
+      clonedSvg.style.width = '100%';
+      clonedSvg.style.height = '100%';
       clonedSvg.style.margin = 'auto';
       modalContent.appendChild(clonedSvg);
 
@@ -1025,10 +1017,14 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
     }
 
     function closeModal() {
-      modal?.classList.add('hidden');
+      if (!modal) return;
+      modal.classList.add('hidden');
       document.body.style.overflow = '';
       if (modalContent) modalContent.innerHTML = '';
-      btn.focus();
+      if (figure.isConnected && modal.parentElement !== figure) {
+        figure.appendChild(modal);
+      }
+      btn?.focus();
     }
 
     btn.addEventListener('click', openModal);
@@ -1099,6 +1095,12 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
         const { svg } = await mermaid.render(id, code.trim());
         el.innerHTML = svg;
 
+        const svgEl = el.querySelector('svg');
+        if (svgEl) {
+          const inlineMax = svgEl.style.maxWidth;
+          svgEl.style.maxWidth = inlineMax ? `min(100%, ${inlineMax})` : '100%';
+        }
+
         const figure = el.closest('.mermaid-container') as HTMLElement;
         if (figure) {
           setupInteractiveDetails(figure);
@@ -1123,6 +1125,10 @@ const isTabbed = Array.isArray(tabs) && tabs.length > 0;
   } else {
     renderAllMermaid();
   }
+  document.addEventListener('astro:before-swap', () => {
+    document.querySelectorAll('body > .mermaid-modal').forEach((m) => m.remove());
+    document.body.style.overflow = '';
+  });
   document.addEventListener('astro:page-load', () => {
     document.querySelectorAll('.mermaid-diagram').forEach(el => el.removeAttribute('data-processed'));
     renderAllMermaid();

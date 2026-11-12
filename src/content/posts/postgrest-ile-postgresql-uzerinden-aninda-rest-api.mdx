@@ -7,7 +7,7 @@ tags: ["PostgreSQL", "PostgREST", "Docker", "Veritabanı", "Mimari", "Performans
 
 import PostgrestInteractiveExplorer from '../../components/PostgrestInteractiveExplorer.astro';
 
-Modern web ve veri altyapılarında en çok tekrarlanan ve en çok kaynak tüketen katman genellikle "CRUD backend" katmanıdır: Bir istemci HTTP isteği atar, web çatısı (Spring, Express, FastAPI, ASP.NET) isteği karşılar, yetkiyi kontrol eder, ORM ile SQL üretir, veritabanına sorgu atar, gelen satırları bellekte nesnelere (DTO/Entity) dönüştürür ve ardından tekrar JSON'a serileştirip HTTP soketine yazar.
+Modern web ve veri altyapılarında en çok tekrarlanan ve en çok kaynak tüketen katman genellikle "CRUD backend" katmanıdır: Bir **client** HTTP isteği atar, web çatısı (Spring, Express, FastAPI, ASP.NET) isteği karşılar, yetkiyi kontrol eder, ORM ile SQL üretir, veritabanına sorgu atar, gelen satırları bellekte nesnelere (DTO/Entity) dönüştürür ve ardından tekrar JSON'a serileştirip HTTP soketine yazar.
 
 Bu geleneksel boru hattında iki büyük darboğaz vardır:
 1. **Çift Serileştirme Yükü:** Veri diskten PostgreSQL belleğine okunur, oradan TCP üzerinden backend'e taşınır, backend belleğinde yüz binlerce nesne tahsis edilir (GC baskısı), ardından JSON string'ine çevrilir.
@@ -19,7 +19,7 @@ Bu geleneksel boru hattında iki büyük darboğaz vardır:
 
 ## İnteraktif PostgREST Sorgu ve SQL Simülatörü
 
-Aşağıdaki canlı simülatörde, istemciden gönderilen bir HTTP REST isteğinin PostgREST tarafından PostgreSQL içinde nasıl tek bir **parametrik CTE ve `json_agg()`** sorgusuna dönüştürüldüğünü ve dönen çıktıyı inceleyebilirsiniz:
+Aşağıdaki canlı simülatörde, client'tan gönderilen bir HTTP REST isteğinin PostgREST tarafından PostgreSQL içinde nasıl tek bir **parametrik CTE ve `json_agg()`** sorgusuna dönüştürüldüğünü ve dönen çıktıyı inceleyebilirsiniz:
 
 <PostgrestInteractiveExplorer />
 
@@ -27,17 +27,17 @@ Aşağıdaki canlı simülatörde, istemciden gönderilen bir HTTP REST isteğin
 
 ## 1. PostgREST Nasıl Çalışır? İstek Yaşam Döngüsü
 
-PostgREST uygulamanın iş mantığını veya nesne modellerini bilmez; yalnızca PostgreSQL katalog tablolarını (`pg_class`, `pg_attribute`, `pg_constraint`, `pg_proc`) okuyarak veritabanının güncel bir AST (Soyut Sözdizimi Ağacı) haritasını çıkarır.
+PostgREST uygulamanın iş mantığını veya nesne modellerini bilmez; yalnızca PostgreSQL katalog tablolarını (`pg_class`, `pg_attribute`, `pg_constraint`, `pg_proc`) okuyarak veritabanının güncel bir AST (Abstract Syntax Tree) haritasını çıkarır.
 
 import Mermaid from '../../components/Mermaid.astro';
 
-İstemciden bir HTTP isteği geldiğinde süreç şu şekilde işler:
+Client'tan bir HTTP isteği geldiğinde süreç şu şekilde işler:
 
 <Mermaid 
   title="PostgREST ve PostgreSQL İstek Yaşam Döngüsü" 
   code={`
 flowchart TD
-    Client["İstemci HTTP İsteği (GET / POST)"] -->|JWT Bearer Token| PGR["PostgREST (Haskell Daemon)"]
+    Client["Client HTTP İsteği (GET / POST)"] -->|JWT Bearer Token| PGR["PostgREST (Haskell Daemon)"]
     
     subgraph PGRInternal ["PostgREST Katmanı"]
         direction TB
@@ -58,7 +58,7 @@ flowchart TD
     end
     PG --> PGInternal
 
-    PGInternal -->|Ham JSON Bayt Akışı (Doğrudan Sokete Borulama)| Response["İstemci HTTP Yanıtı (JSON, < 15ms)"]
+    PGInternal -->|Ham JSON Bayt Akışı (Doğrudan Sokete Borulama)| Response["Client HTTP Yanıtı (JSON, < 15ms)"]
 `} />
 
 Bu mimarinin en çarpıcı yanı, **PostgREST'in gelen JSON verisini parse etmemesi veya veritabanından dönen satırları nesneye dönüştürmemesidir**. PostgreSQL, `row_to_json()` ve `json_agg()` sayesinde JSON yanıtını doğrudan C düzeyinde oluşturur. PostgREST yalnızca bu baytları HTTP soketine borular (pipe).
@@ -153,7 +153,7 @@ Yukarıdaki `docker-compose.yml` içinde yer alan `swagger` servisini ayağa kal
 
 ## 4. Resource Embedding: SQL JOIN Mantığının REST Karşılığı
 
-Geleneksel REST mimarilerinde ilişkili verileri çekmek için istemci ya ayrı ayrı uç noktalara istek atar (örneğin önce istasyonu, sonra o istasyonun cihazlarını çeker) ya da backend geliştiricisinin özel bir DTO yazması gerekir.
+Geleneksel REST mimarilerinde ilişkili verileri çekmek için **client** ya ayrı ayrı uç noktalara istek atar (örneğin önce istasyonu, sonra o istasyonun cihazlarını çeker) ya da backend geliştiricisinin özel bir DTO yazması gerekir.
 
 PostgREST, veritabanındaki yabancı anahtar (`FOREIGN KEY`) kısıtlarını okuyarak **Resource Embedding** özelliğini otomatik olarak sunar.
 
@@ -186,7 +186,7 @@ SELECT coalesce(json_agg(_postgrest_t), '[]')::text AS body
 FROM ( SELECT * FROM pgrst_source ) _postgrest_t;
 ```
 
-Sonuç olarak veritabanı, iç içe geçmiş ilişkisel JSON verisini tek bir disk erişiminde istemciye teslim eder:
+Sonuç olarak veritabanı, iç içe geçmiş ilişkisel JSON verisini tek bir disk erişiminde **client**'a teslim eder:
 
 ```json
 [
@@ -215,7 +215,7 @@ Sonuç olarak veritabanı, iç içe geçmiş ilişkisel JSON verisini tek bir di
 
 PostgREST'te "Controller seviyesinde yetkilendirme" diye bir kavram yoktur. Güvenlik doğrudan **PostgreSQL Çekirdeği (Kernel)** tarafından Row-Level Security politikalarıyla zorunlu kılınır.
 
-İstemci bir JWT ile istek attığında:
+**Client** bir JWT ile istek attığında:
 1. PostgREST token'ı doğrular ve içindeki `role` ve diğer claim'leri okur.
 2. PostgreSQL oturumunun başında şu komutları atomik olarak çalıştırır:
    ```sql
@@ -267,7 +267,7 @@ END;
 $$;
 ```
 
-İstemci bu fonksiyonu tek bir POST isteğiyle çağırabilir:
+Client bu fonksiyonu tek bir POST isteğiyle çağırabilir:
 
 ```bash
 curl -X POST "http://localhost:3000/rpc/istasyon_ozet" \

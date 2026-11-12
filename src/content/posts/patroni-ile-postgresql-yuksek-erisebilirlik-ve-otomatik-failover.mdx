@@ -14,7 +14,7 @@ Birçok ekip işe yerel `Streaming Replication` kurarak başlar: Bir `Primary` s
 ### Geleneksel Replikasyonun İki Büyük Çıkmazı
 
 1. **İnsan Müdahalesi Gecikmesi (Yüksek RTO):** Gece yarısı saat 03:00'te Primary sunucunun anakartı yandığında, nöbetçi mühendisin uyanması, VPN ile bağlanması, hangi replikanın en güncel LSN (Log Sequence Number) pozisyonunda olduğunu tespit etmesi ve `pg_ctl promote` komutunu vermesi en iyi ihtimalle 15 ila 45 dakika sürer. Bu süre, yüksek hacimli üretim sistemleri için kabul edilemez bir kesintidir (RTO - Recovery Time Objective).
-2. **Kör Otomasyon ve Split-Brain Felaketi:** Mühendis müdahalesini ortadan kaldırmak için yazılan basit bash script'leri veya kör ping kontrolleri çoğu zaman daha büyük bir felakete yol açar: Bir ağ dalgalanmasında primary ile replikanın iletişimi koptuğunda replika kendini primary ilan ederse, kümede aynı anda iki primary oluşur (**Split-Brain**). Her iki sunucu da farklı istemcilerden bağımsız yazma kabul eder ve veritabanı zaman çizgisi (timeline) geri döndürülemez biçimde çatallanır.
+2. **Kör Otomasyon ve Split-Brain Felaketi:** Mühendis müdahalesini ortadan kaldırmak için yazılan basit bash script'leri veya kör ping kontrolleri çoğu zaman daha büyük bir felakete yol açar: Bir ağ dalgalanmasında primary ile replikanın iletişimi koptuğunda replika kendini primary ilan ederse, kümede aynı anda iki primary oluşur (**Split-Brain**). Her iki sunucu da farklı client'lardan bağımsız yazma kabul eder ve veritabanı timeline'ı geri döndürülemez biçimde çatallanır.
 
 **Patroni**, bu problemi dağıtık konsensüs algoritmaları (Raft/Paxos tabanlı etcd veya Consul) ile çözen, PostgreSQL için endüstri standardı haline gelmiş yüksek erişilebilirlik (HA) orkestratörüdür.
 
@@ -30,7 +30,7 @@ Patroni, PostgreSQL düğümlerinin durumunu izlemek ve liderlik seçimini yöne
   title="Patroni, PostgreSQL ve etcd Dağıtık Konsensüs Mimarisi" 
   code={`
 flowchart TD
-    Client["İstemci Uygulamaları"] -->|Port 5000 / 5001| LB["HAProxy / Keepalived"]
+    Client["Client Uygulamaları"] -->|Port 5000 / 5001| LB["HAProxy / Keepalived"]
     
     LB -->|200 OK: Primary| Node1
     LB -.->|503: Standby| Node2
@@ -83,7 +83,7 @@ Patroni bu durumu matematiksel olarak imkansız kılan **Fencing** kurallarına 
 
 ## 3. Senkron Replikasyon ve Sıfır Veri Kaybı (RPO = 0)
 
-Varsayılan PostgreSQL replikasyonu asenkrondur. Asenkron modda primary diske yazar, istemciye "işlem tamam" der ve WAL'ı ağa gönderir. Bu sırada elektrik kesilirse, ağdaki henüz replikaya ulaşmamış WAL kayıtları kaybolur (**Veri Kaybı / RPO > 0**).
+Varsayılan PostgreSQL replikasyonu asenkrondur. Asenkron modda primary diske yazar, client'a "işlem tamam" der ve WAL'ı ağa gönderir. Bu sırada elektrik kesilirse, ağdaki henüz replikaya ulaşmamış WAL kayıtları kaybolur (**Veri Kaybı / RPO > 0**).
 
 Finans, e-ticaret ve telemetri gibi kritik altyapılarda Patroni'nin **`synchronous_mode: true`** özelliği devreye sokulmalıdır:
 
@@ -107,14 +107,14 @@ bootstrap:
 ```
 
 * **Dinamik `synchronous_standby_names`:** Patroni, kümedeki replikaları sürekli izler ve en sağlıklı olanı etcd `/sync` anahtarına yazar. PostgreSQL motorunun `synchronous_standby_names` parametresini otomatik günceller.
-* **İki Aşamalı Commit:** Primary sunucu, işlemi yerel diske yazdıktan sonra beklemeye geçer. Seçilen senkron replika WAL'ı kendi diskine yazıp `flush` onayı gönderdiği anda istemciye başarılı yanıt döner.
-* **`synchronous_mode_strict` Kararı:** Eğer `strict: true` yapılırsa ve tüm replikalar ölürse, veritabanı veri kaybetmemek için yazma işlemlerini tamamen kilitler. `strict: false` ise replika kalmadığında sistem geçici olarak asenkron moda düşerek erişilebilirliği (availability) korur.
+* **İki Aşamalı Commit:** Primary sunucu, işlemi yerel diske yazdıktan sonra beklemeye geçer. Seçilen senkron replika WAL'ı kendi diskine yazıp `flush` onayı gönderdiği anda client'a başarılı yanıt döner.
+* **`synchronous_mode_strict` Kararı:** Eğer `strict: true` yapılırsa ve tüm replikalar ölürse, veritabanı veri kaybetmemek için yazma işlemlerini tamamen kilitler. `strict: false` ise replika kalmadığında sistem geçici olarak asenkron moda düşerek availability'yi korur.
 
 ---
 
 ## 4. HAProxy ile Akıllı Yönlendirme ve Sağlık Kontrolleri
 
-İstemci uygulamalarının hangi sunucunun primary olduğunu bilmesine gerek yoktur. Patroni, her düğümde HTTP **8008** portundan zengin bir REST API sunar:
+Client uygulamalarının hangi sunucunun primary olduğunu bilmesine gerek yoktur. Patroni, her düğümde HTTP **8008** portundan zengin bir REST API sunar:
 
 * `GET http://<host>:8008/primary` $\rightarrow$ Eğer düğüm Primary ise `HTTP 200 OK`, Standby ise `HTTP 503 Service Unavailable`.
 * `GET http://<host>:8008/replica` $\rightarrow$ Eğer düğüm Standby ise `HTTP 200 OK`, Primary ise `HTTP 503 Service Unavailable`.

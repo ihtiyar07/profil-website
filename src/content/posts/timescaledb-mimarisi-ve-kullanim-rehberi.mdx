@@ -1,13 +1,14 @@
 ---
-title: "TimescaleDB: Docker Kurulumu, 10M Satır Benchmark ve İleri Analitik"
+title: "TimescaleDB: Docker Kurulumu, Mimari Genel Bakış ve 10M Benchmark"
 slug: "timescaledb-mimarisi-ve-kullanim-rehberi"
 date: "2025-08-12"
 lang: "tr"
-summary: "TimescaleDB ile yüksek hacimli zaman serisi depolama: Docker ile hızlı kurulum, 10M satırlık telemetri benchmark'ı (Partition Pruning), time_bucket_gapfill ile eksik veri enterpolasyonu ve Zstd sıkıştırma."
+summary: "TimescaleDB eklentisinin timescaledb-ha Docker kurulumu, Hypertable veri yaşam döngüsü, 10M satır PostgreSQL vs TimescaleDB benchmark özeti ve derinlemesine alt modül rehberleri."
 tags: ["PostgreSQL", "TimescaleDB", "Veritabanı", "Docker"]
 ---
+import Mermaid from '../../components/Mermaid.astro';
 
-**TimescaleDB**, standart PostgreSQL üzerine eklenti (extension) olarak çalışan açık kaynaklı bir zaman serisi veritabanıdır. Yüksek frekanslı sensör, log veya finansal veriler yüz milyonlarca satıra ulaştığında standart B-Tree indeksleri `shared_buffers` alanına sığmaz ve disk I/O darboğazı başlar. TimescaleDB bu sorunu veriyi zaman aralıklarına göre otomatik alt tablolara (**Chunk**) bölerek çözer.
+**TimescaleDB**, standart PostgreSQL üzerine eklenti (extension) olarak çalışan açık kaynaklı bir zaman serisi motorudur. Yüksek frekanslı sensör, log veya finansal akışlar yüz milyonlarca satıra ulaştığında tekil B-Tree indeksleri `shared_buffers` alanına sığmaz ve her yazmada rastgele disk I/O oluşur. TimescaleDB bu darboğazı veriyi zaman aralıklarına göre otomatik alt tablolara (**Chunk**) bölerek ve eski verileri **Columnar** biçimde sıkıştırarak çözer.
 
 <div class="flex flex-wrap items-center gap-3 my-5">
   <a
@@ -47,19 +48,21 @@ tags: ["PostgreSQL", "TimescaleDB", "Veritabanı", "Docker"]
   </a>
 </div>
 
-## 1. Docker ile Hızlı Kurulum
+---
 
-PostgreSQL 16 tabanlı resmi TimescaleDB imajını tek komutla ayağa kaldırıp eklentiyi aktif edebilirsiniz:
+## 1. Docker ile Hızlı Kurulum (`timescaledb-ha`)
+
+`timescaledb_toolkit` (Hyperfunctions: `lttb`, `counter_agg`, `percentile_agg`) dahil tüm fonksiyonların doğrudan çalışması için PostgreSQL 16 tabanlı **`timescaledb-ha:pg16`** imajını kullanın:
 
 ```bash
 docker run -d --name timescaledb \
   -p 5432:5432 \
   -e POSTGRES_PASSWORD=secretpassword \
-  -v timescaledb_data:/var/lib/postgresql/data \
-  timescale/timescaledb:latest-pg16
+  -v timescaledb_data:/home/postgres/pgdata/data \
+  timescale/timescaledb-ha:pg16
 ```
 
-Konteyner içindeki `psql` istemcisine bağlanıp eklentiyi etkinleştirin:
+Veritabanına bağlanıp her iki eklentiyi etkinleştirin:
 
 ```bash
 docker exec -it timescaledb psql -U postgres
@@ -67,65 +70,52 @@ docker exec -it timescaledb psql -U postgres
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+CREATE EXTENSION IF NOT EXISTS timescaledb_toolkit;
 ```
 
 ---
 
-## 2. Case Senaryosu ve 10M Satır Veri Üretimi
+## 2. Veri Yaşam Döngüsü
 
-Farkı ölçmek için 100 farklı IoT cihazından 30 gün boyunca gelen CPU ve sıcaklık ölçümlerini simüle edelim. Aynı 10 milyon satırlık veriyi hem standart PostgreSQL tablosuna hem de TimescaleDB Hypertable'a yükleyelim.
+TimescaleDB'de veri tek bir fiziksel yığında beklemez; yaşına göre üç aşamadan geçer:
 
-```sql
--- 1. Standart PostgreSQL Tablosu
-CREATE TABLE sensor_data_std (
-    time        TIMESTAMPTZ NOT NULL,
-    device_id   INT NOT NULL,
-    cpu_usage   DOUBLE PRECISION,
-    temperature DOUBLE PRECISION
-);
-CREATE INDEX idx_std_device_time ON sensor_data_std (device_id, time DESC);
+<Mermaid
+  title="TimescaleDB Chunk Yaşam Döngüsü"
+  ariaLabel="TimescaleDB veri yaşam döngüsü: Aktif Chunk, Columnar Sıkıştırma ve Retention"
+  code={`
+flowchart LR
+    Ingest["Client / COPY Yazımı"]
+    HotChunk["Aktif Chunk (Row / B-Tree)"]
+    CAggs["Continuous Aggregates"]
+    ColdChunk[("Sıkıştırılmış Chunk (Columnar)")]
+    Drop(["drop_chunks() (Retention)"])
 
--- 2. TimescaleDB Hypertable (1 günlük chunk aralığı)
-CREATE TABLE sensor_data_ts (
-    time        TIMESTAMPTZ NOT NULL,
-    device_id   INT NOT NULL,
-    cpu_usage   DOUBLE PRECISION,
-    temperature DOUBLE PRECISION
-);
-SELECT create_hypertable('sensor_data_ts', 'time', chunk_time_interval => INTERVAL '1 day');
-CREATE INDEX idx_ts_device_time ON sensor_data_ts (device_id, time DESC);
+    Ingest -->|"Son Pencere"| HotChunk
+    HotChunk -->|"Arka Plan Rollup"| CAggs
+    HotChunk -->|"Compression Policy"| ColdChunk
+    ColdChunk -->|"Retention Policy"| Drop
 
--- 3. 10.000.000 Satır Sentetik Veri Basma (~259ms aralıklarla 30 gün)
-INSERT INTO sensor_data_std (time, device_id, cpu_usage, temperature)
-SELECT
-    t,
-    (random() * 99 + 1)::INT,
-    random() * 100.0,
-    20.0 + (random() * 45.0)
-FROM generate_series(
-    NOW() - INTERVAL '30 days',
-    NOW(),
-    INTERVAL '259 milliseconds'
-) AS t;
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
 
-INSERT INTO sensor_data_ts SELECT * FROM sensor_data_std;
-```
+    class Ingest,CAggs process
+    class HotChunk memory
+    class ColdChunk,Drop storage
+`}
+  summarySteps={[
+    "1. Gelen yüksek frekanslı telemetri verileri yalnızca en güncel zaman aralığındaki Aktif Chunk içine yazılır; bu sayede sadece sıcak B-Tree indeksi shared_buffers içinde tutulur.",
+    "2. Arka plan policy işçisi güncel verileri periyodik olarak Continuous Aggregates özet tablolarına işler.",
+    "3. Yazma penceresinden çıkan eski chunk'lar Compression Policy ile Row-based formattan Columnar formata sıkıştırılır.",
+    "4. Saklama süresini dolduran chunk'lar DELETE/VACUUM maliyeti olmadan drop_chunks() ile doğrudan diskten düşürülür."
+  ]}
+/>
 
 ---
 
-## 3. Benchmark: Standart PostgreSQL vs. TimescaleDB (10M Satır)
+## 3. 10M Satır Benchmark Özeti (4 vCPU · 8 GB RAM · NVMe)
 
-Aynı sunucu üzerinde (4 vCPU, 8 GB RAM, NVMe SSD) 10 milyon kayıt sonrası belirli bir 24 saatlik pencere ve disk ayak izi karşılaştırması:
-
-```sql
--- Test Sorgusu: 42 numaralı cihazın dünkü sıcaklık ortalaması
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT AVG(temperature), MAX(cpu_usage)
-FROM sensor_data_ts
-WHERE device_id = 42
-  AND time >= NOW() - INTERVAL '2 days'
-  AND time <  NOW() - INTERVAL '1 day';
-```
+100 cihazdan 30 gün boyunca toplanan 10 milyon sentetik sensör kaydında (her iki tarafta da `(device_id, time DESC)` indeksiyle) ölçülen temel farklar:
 
 <div class="table-responsive-wrapper">
   <table>
@@ -140,8 +130,8 @@ WHERE device_id = 42
     <tbody>
       <tr>
         <td>24 Saatlik Filtreli Sorgu</td>
-        <td><span class="font-mono text-xs text-[var(--text-dim)]">~1.840 ms</span> <span class="text-xs text-[var(--text-dim)]">(Geniş B-Tree / Disk I/O)</span></td>
-        <td><span class="font-mono text-xs font-semibold text-[var(--text-accent)]">~12 ms</span> <span class="text-xs text-[var(--text-muted)]">(Yalnızca 1 Chunk)</span></td>
+        <td><span class="font-mono text-xs text-[var(--text-dim)]">~1.840 ms</span> <span class="text-xs text-[var(--text-dim)]">(Geniş B-Tree)</span></td>
+        <td><span class="font-mono text-xs font-semibold text-[var(--text-accent)]">~12 ms</span> <span class="text-xs text-[var(--text-muted)]">(1 Chunk Pruning)</span></td>
         <td><span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-[2px] font-mono text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-200 dark:border-teal-800/80">~150x Hızlanma</span></td>
       </tr>
       <tr>
@@ -152,93 +142,31 @@ WHERE device_id = 42
       </tr>
       <tr>
         <td>Disk Alanı (Data + İndeks)</td>
-        <td><span class="font-mono text-xs text-[var(--text-dim)]">~1.36 GB</span> <span class="text-xs text-[var(--text-dim)]">(Row-based + İndeks)</span></td>
-        <td><span class="font-mono text-xs font-semibold text-[var(--text-accent)]">~98 MB</span> <span class="text-xs text-[var(--text-muted)]">(Zstd Sıkıştırılmış)</span></td>
-        <td><span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-[2px] font-mono text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-200 dark:border-teal-800/80">%93 Disk Tasarrufu</span></td>
+        <td><span class="font-mono text-xs text-[var(--text-dim)]">~1.36 GB</span> <span class="text-xs text-[var(--text-dim)]">(Row-based)</span></td>
+        <td><span class="font-mono text-xs font-semibold text-[var(--text-accent)]">~98 MB</span> <span class="text-xs text-[var(--text-muted)]">(Columnar Zstd)</span></td>
+        <td><span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-[2px] font-mono text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-200 dark:border-teal-800/80">%93 Tasarruf</span></td>
       </tr>
       <tr>
         <td>Veri Silme (Retention)</td>
-        <td><code>DELETE</code> + <code>VACUUM</code> <span class="text-xs text-[var(--text-dim)]">(Dead Tuples)</span></td>
+        <td><code>DELETE</code> + <code>VACUUM</code></td>
         <td><code>drop_chunks()</code> <span class="font-mono text-xs font-semibold text-[var(--text-accent)]">(&lt; 40 ms)</span></td>
-        <td><span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-[2px] font-mono text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-200 dark:border-teal-800/80">Sıfır Bloat &amp; Kilit</span></td>
+        <td><span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-[2px] font-mono text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-200 dark:border-teal-800/80">Sıfır Bloat</span></td>
       </tr>
     </tbody>
   </table>
 </div>
 
-Standart tabloda zaman ilerledikçe B-Tree indeksi `shared_buffers` dışına taşar; TimescaleDB ise sadece aktif günün küçük indeksini RAM'de tutarak sorgu gecikmesini sabitler.
-
 ---
 
-## 4. İleri Seviye Analitik Fonksiyonlar
+## 4. Alt Dökümanlar ve Teknik Rehberler
 
-TimescaleDB, standart SQL'de yazılması karmaşık veya performanssız olan zaman serisi analizleri için özel C fonksiyonları sunar.
+TimescaleDB'nin iç mimarisi ve üretim pratikleri dört ayrı alt dökümanda ele alınmıştır:
 
-### A. `time_bucket()`: Esnek Zaman Pencereleri
-Standart `date_trunc` yalnızca sabit birimlerle (saat, gün) çalışırken; `time_bucket` ile 5 dakika, 15 dakika veya 4 saat gibi keyfi aralıklar oluşturulur:
-
-```sql
-SELECT
-    time_bucket('15 minutes', time) AS bucket,
-    device_id,
-    ROUND(AVG(temperature)::NUMERIC, 2) AS avg_temp,
-    MAX(cpu_usage) AS peak_cpu
-FROM sensor_data_ts
-WHERE time >= NOW() - INTERVAL '24 hours' AND device_id = 42
-GROUP BY bucket, device_id
-ORDER BY bucket DESC;
-```
-
-### B. `time_bucket_gapfill()`, `locf()` ve `interpolate()`
-Ağ kesintisi veya sensör yeniden başlatma anlarında seride boş zaman aralıkları (gaps) oluşur. `time_bucket_gapfill` bu eksik zaman dilimlerini otomatik üretir; `locf` (Last Observation Carried Forward) son bilinen değeri taşır, `interpolate` ise doğrusal ara değer hesaplar:
-
-```sql
-SELECT
-    time_bucket_gapfill('10 minutes', time) AS bucket,
-    device_id,
-    AVG(temperature)              AS raw_avg,
-    locf(AVG(temperature))        AS temp_locf,
-    interpolate(AVG(temperature)) AS temp_linear_interp
-FROM sensor_data_ts
-WHERE time >= NOW() - INTERVAL '6 hours'
-  AND time <= NOW()
-  AND device_id = 42
-GROUP BY bucket, device_id
-ORDER BY bucket;
-```
-
-### C. Continuous Aggregates (Artımlı Özet Tablolar)
-Büyük tarih aralıklarında her seferinde milyonlarca ham satırı toplamak yerine arka planda artımlı güncellenen özet görünümler kullanılır:
-
-```sql
-CREATE MATERIALIZED VIEW sensor_hourly_summary
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', time) AS bucket,
-    device_id,
-    AVG(temperature) AS avg_temp,
-    MAX(cpu_usage)   AS max_cpu,
-    COUNT(*)         AS sample_count
-FROM sensor_data_ts
-GROUP BY bucket, device_id;
-
-SELECT add_continuous_aggregate_policy('sensor_hourly_summary',
-    start_offset      => INTERVAL '3 days',
-    end_offset        => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '15 minutes');
-```
-
-### D. Native Columnar Sıkıştırma ve Retention Politikası
-Aktif yazma penceresinden çıkan eski chunk'lar sütunsal (columnar) formata dönüştürülüp sıkıştırılır, saklama süresi dolanlar ise `DELETE` maliyeti olmadan diskten düşürülür:
-
-```sql
-ALTER TABLE sensor_data_ts SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'device_id',
-    timescaledb.compress_orderby   = 'time DESC'
-);
-
--- 7 günden eski chunk'ları sıkıştır, 90 günden eskileri sil
-SELECT add_compression_policy('sensor_data_ts', INTERVAL '7 days');
-SELECT add_retention_policy('sensor_data_ts', INTERVAL '90 days');
-```
+1. **[Hypertable, Chunk Boyutlandırma ve Partition Pruning](/posts/timescaledb-hypertable-ve-chunk-mimarisi)**  
+   *Chunk aralığı ile `shared_buffers` dengesi, Chunk Exclusion akışı, Space Partitioning ve 10M satırlık tekrarlanabilir SQL testi.*
+2. **[Columnar Sıkıştırma (Hypercore) ve Retention Mimarisi](/posts/timescaledb-columnar-sikistirma-ve-retention)**  
+   *Gorilla, Delta-of-Delta ve Zstd sıkıştırma algoritmaları, `segmentby`/`orderby` seçimi, sıkıştırılmış chunk'a backfill maliyeti ve `drop_chunks()`.*
+3. **[Continuous Aggregates ve İleri Analitik (Hyperfunctions)](/posts/timescaledb-continuous-aggregates-ve-analitik)**  
+   *Hiyerarşik rollup'lar, Real-time vs Materialized-Only, `time_bucket_gapfill`, `locf`, `interpolate`, `lttb()` ve `counter_agg()`.*
+4. **[Production Operasyon, Tuning ve Yazma Performansı](/posts/timescaledb-production-tuning-ve-operasyon)**  
+   *`timescaledb-tune`, `max_locks_per_transaction`, `COPY` / batch yazım optimizasyonu, background worker havuzu ve yedekleme.*

@@ -9,9 +9,9 @@ parent: "postgresql-mimarisi-ve-calisma-prensipleri"
 order: 1
 ---
 
-PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Paylaşılan Bellek (Shared Memory)** ve **Her istemci sürecine özel tahsis edilen Yerel Bellek (Local Memory)**.
+PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Shared Memory** ve **Her client sürecine özel tahsis edilen Local Memory**.
 
-Bu ayrım, Unix süreç yalıtımının doğal bir sonucudur; her `postgres` backend süreci kendi sorgusunu işlerken özel bellek havuzlarını kullanır, ortak veri sayfaları ve kilit koordinasyonu için ise işletim sisteminin paylaşımlı bellek (POSIX / SysV Shared Memory) mekanizması üzerinden `shared_buffers` alanına erişir.
+Bu ayrım, Unix süreç yalıtımının doğal bir sonucudur; her `postgres` backend süreci kendi sorgusunu işlerken özel bellek havuzlarını kullanır, ortak data page'ler ve kilit koordinasyonu için ise işletim sisteminin paylaşımlı bellek (POSIX / SysV Shared Memory) mekanizması üzerinden `shared_buffers` alanına erişir.
 
 ## 1. Oturuma Özel Bellek (Local Memory / Backend Private Memory)
 
@@ -21,24 +21,24 @@ Her `postgres` backend süreci, kendisine gelen sorguları işlerken ortak belle
 - `ORDER BY`, `DISTINCT`, `HASH JOIN`, `MERGE JOIN` ve hash aggregation işlemleri için ayrılır.
 - **Kritik Mimari Kural:** `work_mem` bağlantı başına değil, **sorgu yürütme planındaki HER BİR OPERATÖR (node) başına** dinamik olarak harcanır.
 - Örneğin; içinde 2 adet hash join ve 1 adet sort bulunan karmaşık bir sorgu, tek bir oturumda `3 × work_mem` kadar RAM tüketebilir. Eğer sunucuda 100 eşzamanlı aktif bağlantı varsa, anlık tüketim `100 × 3 × work_mem` seviyesine ulaşabilir.
-- **Disk Spill:** Eğer bir operatörün ihtiyaç duyduğu veri `work_mem` sınırını aşarsa, PostgreSQL işlemi bellekten diske taşır (**Spill to Disk**). `$PGDATA/base/pgsql_tmp` dizini altında geçici dosyalar oluşturulur ve harici sıralama (external merge sort) yapılır. `EXPLAIN ANALYZE` çıktısındaki `"Sort Method: external merge Disk"` ifadesi bu I/O darboğazını belgeler.
+- **Disk Spill:** Eğer bir operatörün ihtiyaç duyduğu veri `work_mem` sınırını aşarsa, PostgreSQL işlemi bellekten diske taşır (**Spill to Disk**). `$PGDATA/base/pgsql_tmp` dizini altında geçici dosyalar oluşturulur ve external merge sort yapılır. `EXPLAIN ANALYZE` çıktısındaki `"Sort Method: external merge Disk"` ifadesi bu I/O darboğazını belgeler.
 
 ### B. `maintenance_work_mem` (Bakım ve DDL Operasyonları)
 - `VACUUM`, `ANALYZE`, `CREATE INDEX`, `REINDEX` ve `ALTER TABLE ADD FOREIGN KEY` gibi yoğun I/O ve CPU gerektiren bakım operasyonları tarafından kullanılır.
 - Sıradan sorgular tarafından tüketilmediğinden ve genelde aynı anda tek bir bakım işlemi çalıştığından, `work_mem`'e kıyasla çok daha cömert (örn. 1GB–2GB) yapılandırılabilir.
 
-### C. `temp_buffers` (Geçici Tablo Tamponu)
+### C. `temp_buffers` (Geçici Tablo Buffer'ı)
 - Oturuma özel `CREATE TEMP TABLE` ile oluşturulan geçici tabloların 8KB'lık data page'lerini tutmak için ayrılır.
-- Bu data page'ler ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı kilit çekişmesi (lock contention) yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
+- Bu data page'ler ortak `shared_buffers` havuzuna girmez. En büyük avantajı: **WAL kaydı üretmez** ve diğer backend'lerle paylaşımlı lock contention yaratmaz. Oturum kapandığında anında bellekten serbest bırakılır.
 
-### D. Yerel Plan & Sistem Kataloğu Önbelleği (syscache & relcache)
+### D. Yerel Plan & Sistem Kataloğu Önbelleği (`syscache` & `relcache`)
 - Her backend süreci, sık kullandığı tablo metaverilerini (`relcache`), katalog satırlarını (`syscache`) ve `PREPARE` ile hazırlanmış sorgu planlarını (prepared statement plan cache) kendi yerel belleğinde saklar. Böylece her sorguda katalog tablolarına kilit atıp disk okuması yapmaktan kurtulur.
 
 ---
 
-## 2. Paylaşılan Bellek (Shared Memory) ve `shared_buffers` İç Mimarisi
+## 2. Shared Memory ve `shared_buffers` İç Mimarisi
 
-Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşzamanlı eriştiği ortak RAM alanıdır. `shared_buffers`, PostgreSQL'in kalbidir ve tek bir monolitik blok değil, birbirine sıkı sıkıya bağlı **4 alt katmandan** oluşur:
+Tüm backend süreçlerinin ve background worker'ların eşzamanlı eriştiği ortak RAM alanıdır. `shared_buffers`, PostgreSQL'in kalbidir ve tek bir monolitik blok değil, birbirine sıkı sıkıya bağlı **4 alt katmandan** oluşur:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -59,20 +59,20 @@ Tüm backend süreçlerinin ve arka plan işçilerinin (background workers) eşz
 │    └─────────────────┴─────────────────┴─────────────────┘             │
 │                            ▲                                           │
 │ 4. Clock Sweep Algoritması ┘ (Dairesel ibre: Pin=0 & usage_count=0)    │
-│    (usage_count == 0 ve refcount == 0 olan data page kurban seçilir)   │
+│    (usage_count == 0 ve refcount == 0 olan data page victim seçilir)   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 1. Buffer Mapping Table (Paylaşımlı Hash Tablosu)
 Bir backend, diskteki bir tablonun belirli bir bloğuna ihtiyaç duyduğunda önce bu hash tablosuna bakar.
 
-`BufferTag` yapısı: `(spcNode, dbNode, relNode)` (tablo kimliği), `forkNum` (veri mi, visibility map mi, FSM mi?) ve `blockNum` (8KB blok sırası) bilgilerini içerir. Bu anahtar $O(1)$ sürede taranarak bloğun hangi tampon slotunda (`Buffer ID`) bulunduğu tespit edilir. Eğer blok buradaysa **Buffer Hit** oluşur ve diske gitmeden nanosaniye seviyesinde okunur.
+`BufferTag` yapısı: `(spcNode, dbNode, relNode)` (tablo kimliği), `forkNum` (veri mi, visibility map mi, FSM mi?) ve `blockNum` (8KB blok sırası) bilgilerini içerir. Bu anahtar $O(1)$ sürede taranarak bloğun hangi buffer slotunda (`Buffer ID`) bulunduğu tespit edilir. Eğer blok buradaysa **Buffer Hit** oluşur ve diske gitmeden nanosaniye seviyesinde okunur.
 
 ### 2. Buffer Descriptors (Başlık Metadata Dizisi)
 Her bir 8KB data page çerçevesine karşılık gelen bir `BufferDesc` başlığı bulunur. Bellekte bitişik bir dizi olarak saklanır.
 
 - **32-Bit Atomic State:** Data page durumları atomic bayraklarla yönetilir:
-  - `BM_DIRTY`: Data page bellekte değiştirildi mi? (Diske yazılması gerekiyor).
+  - `BM_DIRTY`: Data page bellekte değiştirildi mi? (Diske flush edilmesi gerekiyor).
   - `BM_VALID`: Data page geçerli veri içeriyor mu?
   - `BM_TAG_VALID`: BufferTag geçerli mi?
   - `BM_IO_IN_PROGRESS`: Data page şu an diskten okunuyor mu?
@@ -83,31 +83,31 @@ Her bir 8KB data page çerçevesine karşılık gelen bir `BufferDesc` başlığ
 ### 3. Buffer Pool (8KB Data Page Slotları)
 İşletim sisteminden ayrılmış devasa bitişik sanal bellek alanıdır. Tipik üretim sunucularında toplam fiziksel RAM'in **%25'i** buraya tahsis edilir.
 
-Disk standart 8KB bloklar halinde okunur; heap tabloları ve B-Tree/GIN indeks sayfaları birebir bu 8KB slotlara yüklenir. Geri kalan RAM (%75), işletim sisteminin disk tamponuna (**OS Page Cache**) bırakılır. PostgreSQL çift tamponlama (double buffering) mantığıyla çalışır: Diskten okunan blok önce OS page cache'e, oradan `shared_buffers` çerçevesine gelir.
+Disk standart 8KB bloklar halinde okunur; heap tabloları ve B-Tree/GIN indeks sayfaları birebir bu 8KB slotlara yüklenir. Geri kalan RAM (%75), işletim sisteminin sayfa önbelleğine (**OS Page Cache**) bırakılır. PostgreSQL **Double Buffering** mantığıyla çalışır: Diskten okunan blok önce OS Page Cache'e, oradan `shared_buffers` çerçevesine gelir.
 
-### 4. Clock Sweep Algoritması (Data Page Tahliyesi)
-Yeni bir blok okunacakken havuzda boş tampon kalmamışsa, eski bir data page'in tahliye edilmesi (eviction / victim selection) gerekir.
+### 4. Clock Sweep Algoritması (Data Page Eviction)
+Yeni bir blok okunacakken havuzda boş buffer slotu kalmamışsa, eski bir data page'in tahliye edilmesi (**eviction / victim selection**) gerekir.
 
-PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü devasa eşzamanlı sistemlerde tek bir global LRU kilidi yüksek bir çekişme (lock contention) darboğazı yaratır. Bunun yerine **Lock-Free Clock Sweep** algoritması kullanılır:
+PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü devasa eşzamanlı sistemlerde tek bir global LRU kilidi yüksek bir lock contention darboğazı yaratır. Bunun yerine **Lock-Free Clock Sweep** algoritması kullanılır:
 
 1. Bir saat ibresi (`StrategyControl->nextVictimBuffer`) dairesel olarak `Buffer Descriptors` dizisini tarar.
 2. Eğer taranan slot pinli ise (`refcount > 0`), atlar.
 3. Slot pinli değil ama `usage_count > 0` ise, sayacını 1 azaltır (`usage_count--`) ve bir sonrakine geçer.
-4. Pinli olmayan ve `usage_count == 0` olan ilk slot **kurban tampon (victim buffer)** olarak seçilir.
-5. Eğer seçilen kurban kirli (`BM_DIRTY`) ise, önce diske yazılır, ardından yeni data page için tahsis edilir.
+4. Pinli olmayan ve `usage_count == 0` olan ilk slot **Victim Buffer** olarak seçilir.
+5. Eğer seçilen victim dirty (`BM_DIRTY`) ise, önce diske flush edilir, ardından yeni data page için tahsis edilir.
 
 ---
 
 ## 3. BGWriter ile Checkpointer Süreçlerinin Görev Ayrımı
 
-İki süreç de `shared_buffers` içindeki kirli sayfaları diske yazar, ancak amaçları ve çalışma tempoları tamamen farklıdır:
+İki süreç de `shared_buffers` içindeki **dirty page**'leri diske yazar, ancak amaçları ve çalışma tempoları tamamen farklıdır:
 
 | Özellik | `Checkpointer` | `BGWriter` (Background Writer) |
 |---|---|---|
 | **Ana Hedef** | Kurtarma süresini (MTTR) sınırlandırmak | Backend süreçlerinin I/O beklemesini önlemek |
 | **Yazma Şekli** | Periyodik, toplu (batch) ve agresif flush | Sürekli, küçük partiler halinde proaktif flush |
 | **Tetikleyici** | `checkpoint_timeout` veya `max_wal_size` dolması | Sürekli arka plan döngüsü (`bgwriter_delay`) |
-| **Hangi Sayfaları Yazar?** | Checkpoint anına kadar kirli olan **tüm** sayfaları | Clock sweep ibresinin hemen önündeki kirli sayfaları |
+| **Hangi Sayfaları Yazar?** | Checkpoint anına kadar dirty olan **tüm** page'leri | Clock sweep ibresinin hemen önündeki dirty page'leri |
 | **fsync Çağrısı** | Tüm dosyalar için checkpoint sonunda `fsync` eder | Dosyaları yazar ancak hemen `fsync` etmek zorunda değildir |
 
 ## 4. `wal_buffers`, Lock Tabloları ve `ProcArray`

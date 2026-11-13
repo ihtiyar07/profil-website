@@ -1,0 +1,100 @@
+---
+title: "PostgreSQL Konfigürasyon ve Parametre Yönetimi: Dosyalar, Bağlamlar ve Tuning"
+slug: "postgresql-konfigurasyon-ve-parametre-yonetimi"
+date: "2026-11-13"
+lang: "tr"
+summary: "postgresql.conf'tan ALTER SYSTEM ve pg_hba.conf kurallarına; postmaster/sighup parametre bağlamlarından bellek, WAL ve autovacuum tuning metodolojisine PostgreSQL parametre yönetimi."
+tags: ["PostgreSQL", "Konfigürasyon", "Operasyon", "Tuning", "Performans"]
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'de yüksek performans ve güvenilirlik, donanım kaynaklarının motor parametreleriyle uyumuna bağlıdır. Çekirdek yüzlerce ayar barındırır; ancak bu ayarların geçerlilik kazanma zamanı (`context`), tanımlandığı hiyerarşik katman (`file`, `database`, `user`, `session`) ve ağ güvenlik kuralları (`pg_hba.conf`) birbirinden bağımsız dinamiklerle çalışır.
+
+Üretim sistemlerinde parametre yönetimi; statik formülleri ezbere uygulamak değil, değişikliklerin yeniden başlatma (`restart`) gereksinimini ve oturum bazlı etkilerini bilerek yönetmektir.
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
+  <a href="/posts/postgresql-konfigurasyon-dosyalari-ve-hba" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Dosyalar &amp; Ağ</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">postgresql.conf, ALTER SYSTEM ve HBA</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">postgresql.auto.conf önceliği, include dizinleri, pg_hba.conf ve pg_ident.conf kuralları.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-parametre-baglamlari-ve-hiyerarsi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">02 · Bağlamlar &amp; Öncelik</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">postmaster vs sighup ve Override Hiyerarşisi</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Restart vs Reload kararı, ALTER ROLE/DATABASE SET ve 8 katmanlı parametre öncelik piramidi.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-parametre-gruplari-ve-tuning" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Tuning Metodolojisi</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">Parametre Grupları ve Tuning</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Bellek, WAL, autovacuum ve logging grupları; PGTune sınırları ve metrik odaklı tuning.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+</div>
+
+---
+
+## 1. Konfigürasyon Katmanları ve Parametre Yaşam Döngüsü
+
+PostgreSQL konfigürasyonu tek bir düz metin dosyasından ibaret değildir. Sistem açılışında dosya sisteminden okunan küme seviyesi ayarlardan, bir sorgunun sadece yürütüldüğü işlem bloğuna (`SET LOCAL`) kadar uzanan çok katmanlı bir yapı bulunur:
+
+<Mermaid
+  title="PostgreSQL Konfigürasyon Akışı ve Değerlendirme Yolu"
+  ariaLabel="PostgreSQL konfigürasyon dosyalarından oturum seviyesi override mekanizmasına kadar olan akış şeması"
+  code={`
+flowchart LR
+    DiskFiles["postgresql.conf / conf.d / auto.conf"] -->|"postmaster Başlatma"| Shmem["Shared Memory Tahsisi"]
+    HBA["pg_hba.conf & pg_ident.conf"] -->|"TCP Bağlantı Anı"| Auth["Kimlik Doğrulama"]
+    Auth -->|"fork() Backend"| Session["Backend Process (Oturum)"]
+    DBRole["ALTER ROLE / DATABASE SET"] -->|"Oturum Açılışı"| Session
+    SQLSet["SET / SET LOCAL"] -->|"Sorgu Esnası"| Session
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Auth,Session process
+    class Shmem memory
+    class DiskFiles,HBA storage
+    class DBRole,SQLSet primary
+`}
+  summarySteps={[
+    "1. postmaster açılırken postgresql.conf, include dizinleri ve postgresql.auto.conf dosyalarını okuyarak Shared Memory alanlarını ayırır.",
+    "2. Client bağlandığında pg_hba.conf ve pg_ident.conf kuralları üzerinden ağ ve kimlik doğrulaması yapılır.",
+    "3. Backend süreci oluşurken hedef Database ve bağlanan Role üzerinde tanımlanmış özel parametreler (ALTER ROLE/DATABASE SET) yüklenir.",
+    "4. Oturum veya işlem sırasında çalıştırılan SET ve SET LOCAL ifadeleri en üst öncelikle anlık çalışma değerini belirler."
+  ]}
+/>
+
+---
+
+## 2. Konfigürasyon Yönetiminin Üç Temel Kuralı
+
+Üretim operasyonlarında kesinti ve veri darboğazlarını önlemek için şu üç ilke gözetilmelidir:
+
+1. **`ALTER SYSTEM` ile `postgresql.conf` Ayrımını Bilmek:** `ALTER SYSTEM SET` komutu ayarları doğrudan `postgresql.auto.conf` dosyasına yazar. Bu dosya `postgresql.conf` içindeki aynı anahtarlı ayarları ezer. Ansible veya Puppet gibi araçlarla yönetilen sunucularda plansız `ALTER SYSTEM` kullanımı konfigürasyon sapmasına (drift) yol açar.
+2. **Context Bilgisi Olmadan Ayar Değiştirmemek:** Bir parametrenin uygulanabilmesi için `reload` (SIGHUP) mu yoksa tam `restart` mı gerektiği `pg_settings.context` sütununda belirlidir. `shared_buffers` gibi `postmaster` context'li bir ayar `pg_reload_conf()` ile değişmez.
+3. **Statik Formül Sihirbazlarına Güvenmemek:** Çevrimiçi araçlar (ör. PGTune) toplam RAM'e bakarak tek bir şablon üretir. Ancak eşzamanlı bağlantı sayısı, sorguların operatör karmaşıklığı (`work_mem` çarpımı) ve depolama türü (NVMe vs HDD) hesaba katılmadan yapılan genel tuning sistemleri OOM (Out Of Memory) veya I/O kilitlenmelerine sürükler.
+
+---
+
+## 3. Derinlemesine İncelemeler
+
+PostgreSQL konfigürasyon ve parametre ekosistemi aşağıdaki üç teknik rehberde ayrıntılı olarak ele alınmıştır:
+
+1. **[PostgreSQL Konfigürasyon Dosyaları: postgresql.conf, ALTER SYSTEM, include ve HBA Kuralları](/posts/postgresql-konfigurasyon-dosyalari-ve-hba)**  
+   *`postgresql.conf`, `postgresql.auto.conf` önceliği, `ALTER SYSTEM RESET`, `include_dir` modülerliği, `pg_hba.conf` sıra duyarlılığı ve `pg_ident.conf` OS kullanıcı eşlemesi.*
+
+2. **[PostgreSQL Parametre Bağlamları: postmaster vs sighup ve Override Hiyerarşisi](/posts/postgresql-parametre-baglamlari-ve-hiyerarsi)**  
+   *`pg_settings.context` sınıfları (`postmaster`, `sighup`, `user`, `internal`), `pending_restart` takibi, `ALTER ROLE/DATABASE ... SET` ve 8 katmanlı parametre öncelik piramidi.*
+
+3. **[PostgreSQL Parametre Grupları ve Tuning Metodolojisi: Bellek, WAL ve Autovacuum](/posts/postgresql-parametre-gruplari-ve-tuning)**  
+   *Bellek (`shared_buffers`, `work_mem`), bağlantı, WAL/Checkpoint, autovacuum ve logging parametreleri; PGTune sınırları ve metrik odaklı üretim tuning metodolojisi.*

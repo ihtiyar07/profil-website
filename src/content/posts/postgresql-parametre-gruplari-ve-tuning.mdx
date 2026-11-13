@@ -1,0 +1,99 @@
+---
+title: "PostgreSQL Parametre Grupları ve Tuning Metodolojisi: Bellek, WAL ve Autovacuum"
+slug: "postgresql-parametre-gruplari-ve-tuning"
+date: "2026-11-13"
+lang: "tr"
+summary: "shared_buffers, work_mem, max_connections, checkpoint ve autovacuum parametre grupları; PGTune statik formüllerinin riskleri ve metrik odaklı tuning metodolojisi."
+tags: ["PostgreSQL", "Tuning", "Performans", "Bellek", "WAL"]
+parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
+order: 3
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL varsayılan konfigürasyonu, en mütevazı donanımlarda bile sorunsuz başlayabilmesi için son derece tutucu parametrelerle gelir (ör. `shared_buffers = 128MB`). Üretim sunucularında donanım kapasitesini tam kullanabilmek için motor parametrelerinin iş yüküne göre optimize edilmesi şarttır.
+
+Ancak parametre optimizasyonu; web üzerindeki statik hesaplama araçlarından değer kopyalamak değil, bellek çarpanlarını, I/O karakteristiklerini ve metrik sinyallerini izleyerek yürütülen iteratif bir mühendislik sürecidir.
+
+---
+
+## 1. Çekirdek Parametre Grupları ve Üretim Değerleri
+
+### A. Bellek ve Önbellek Parametreleri
+
+* **`shared_buffers`:** Fiziksel RAM'in **%25'i** ile başlanır (ör. 64GB RAM için 16GB). PostgreSQL, Linux **OS Page Cache** ile birlikte (Double Buffering) çalıştığı için bu değerin %40–50 üzerine çıkarılması nadiren fayda sağlar ve checkpoint yazma süresini uzatabilir.
+* **`work_mem`:** Sıralama (`ORDER BY`) ve hash tabloları (`HASH JOIN`) için tahsis edilir. **Kritik Kural:** `work_mem` bağlantı başına değil, **sorgudaki her bir operatör başına** harcanır. 3 join ve 1 sort içeren tek bir sorgu `4 × work_mem` tüketebilir. Genel değer 16MB–64MB arasında tutulmalı; büyük analitik sorgular için oturum bazlı (`SET work_mem`) artırılmalıdır.
+* **`maintenance_work_mem`:** `VACUUM`, `CREATE INDEX` ve `ALTER TABLE` gibi bakım işlerine ayrılır. Sıradan sorgular kullanmadığı için cömert yapılandırılabilir (1GB–2GB).
+* **`effective_cache_size`:** Donanımdan RAM **tahsis etmez**; yalnızca Sorgu Planlayıcı'ya (Planner) disk bloklarının ne kadarının RAM'de (shared_buffers + OS cache) bulunabileceğini fısıldayan bir tahmindir. Genellikle toplam RAM'in **%70–%75'ine** ayarlanır; düşük tutulması Planner'ı gereksiz `Seq Scan` seçimine iter.
+
+### B. Bağlantı Yönetimi
+
+* **`max_connections`:** Üretimde **100–200** bandında tutulmalıdır. PostgreSQL'in process-per-connection mimarisinde binlerce bağlantı açmak `ProcArray` LWLock çekişmesine ve bellek tükenmesine yol açar. Yüksek eşzamanlılık mutlaka sunucu önünde bir **PgBouncer** (Transaction Pooling) katmanı ile yönetilmelidir.
+
+### C. WAL ve Checkpoint Optimizasyonu
+
+* **`checkpoint_completion_target = 0.9`:** Checkpoint disk yazmalarını iki checkpoint arasındaki sürenin %90'ına yayar. Böylece I/O patlamalarını düzleştirir.
+* **`checkpoint_timeout = 15min` (veya 30min):** Çok sık checkpoint alınmasını ve buna bağlı tam sayfa yazmalarını (Full Page Writes) azaltır.
+* **`max_wal_size = 16GB - 64GB`:** WAL dosyalarının bu sınıra ulaşmadan önce plansız erken checkpoint tetiklemesini önler.
+* **`wal_buffers = 16MB - 64MB`:** Yüksek yazma eşzamanlılığında backend'lerin `WALInsert` LWLock beklemesine girmesini engeller.
+
+### D. Autovacuum Tuning (Tablo Şişmesini Önleme)
+
+Varsayılan autovacuum ayarları küçük tablolar içindir; büyük tablolarda temizliğin gecikmesine (Table Bloat) neden olur:
+
+* **`autovacuum_vacuum_scale_factor = 0.05`:** Varsayılan %20 yerine %5'e çekilerek 10 milyon satırlı bir tabloda 2 milyon dead tuple birikmesi beklenmeden temizlik başlatılır.
+* **`autovacuum_vacuum_cost_limit = 2000`:** Varsayılan 200 değeri modern NVMe disklerde vakum sürecini gereksiz frenler; 2000 seviyesine çıkarılarak temizliğin hızla bitmesi sağlanır.
+* **`autovacuum_vacuum_cost_delay = 2ms`:** Disk I/O yükü kontrol altında tutularak kesintisiz temizlik sağlanır.
+
+### E. Teşhis ve Loglama Parametreleri
+
+```text
+logging_collector = on
+log_min_duration_statement = 250ms   # 250ms'den uzun süren tüm sorguları logla
+log_checkpoints = on                 # Checkpoint süre ve yazma istatistiklerini izle
+log_lock_waits = on                  # deadlock_timeout aşan kilit beklemelerini kaydet
+log_line_prefix = '%m [%p] %q%u@%d ' # Zaman, PID, kullanıcı ve veritabanı başlığı
+```
+
+---
+
+## 2. Tuning Metodolojisi ve PGTune Gibi Araçların Sınırları
+
+Çevrimiçi konfigürasyon sihirbazları (ör. PGTune) yalnızca sunucu RAM ve CPU sayısına göre kaba bir başlangıç şablonu sunar; ancak üretimde körü körüne kopyalanmaları tehlikelidir:
+
+<Mermaid
+  title="Statik Hesaplama Araçlarının Kör Noktaları vs Mühendislik Metodolojisi"
+  ariaLabel="PGTune statik formülleri ile metrik odaklı tuning arasındaki yaklaşım farkı"
+  code={`
+flowchart LR
+    Static["PGTune / Statik Hesaplama"] --> Bias1["work_mem Çarpan Körlüğü (OOM Riski)"]
+    Static --> Bias2["İş Yükü Körlüğü (OLTP vs OLAP)"]
+    Static --> Bias3["Disk Türü Körlüğü (NVMe random_page_cost)"]
+
+    Metric["Metrik Odaklı Tuning"] --> Step1["1. Donanım & SLA Tabanı"]
+    Metric --> Step2["2. Konservatif Başlangıç + Pooler"]
+    Metric --> Step3["3. pg_stat_statements & Wait Events"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Metric primary
+    class Static,Bias1,Bias2,Bias3 storage
+    class Step1,Step2,Step3 process
+`}
+  summarySteps={[
+    "1. Statik araçlar sorgulardaki operatör sayısını bilmediği için work_mem x max_connections ile OOM riski yaratır.",
+    "2. OLTP kısa sorguları ile analitik raporlama iş yükünü ayıramaz.",
+    "3. NVMe disklerde random_page_cost = 1.1 yapılmadığında planlayıcı indeksleri göz ardı edebilir.",
+    "4. Doğru yöntem; konservatif başlangıç sonrası pg_stat_statements ve wait events metriklerine bakarak iteratif ayarlamadır."
+  ]}
+/>
+
+### Üretim Tuning Adımları
+
+1. **Donanım ve Depolama Eşlemesi:** NVMe depolamada `random_page_cost` değeri varsayılan `4.0`'dan `1.1` seviyesine çekilmeli; `effective_io_concurrency = 200` ayarlanmalıdır.
+2. **`work_mem` Çarpım Hesabı:** `max_connections * tipik_operator_sayisi * work_mem < Kalan_Kullanılabilir_RAM` formülü doğrulanmalıdır.
+3. **Metrik Tabanlı Doğrulama:**
+   - `pg_stat_database.blks_hit / (blks_hit + blks_read)` ile Buffer Cache Hit oranının **%99+** olup olmadığı kontrol edilir.
+   - `pg_stat_statements` ile en çok `temp_blks_written` (Spill to Disk) üreten sorgular tespit edilip yalnızca o kullanıcı veya sorgu bazında `work_mem` artırılır.
+   - `pg_statio_user_tables` ile indeks kullanım oranları izlenir.

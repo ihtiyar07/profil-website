@@ -1,0 +1,132 @@
+---
+title: "PostgreSQL Parametre Bağlamları: postmaster vs sighup ve Override Hiyerarşisi"
+slug: "postgresql-parametre-baglamlari-ve-hiyerarsi"
+date: "2026-11-13"
+lang: "tr"
+summary: "pg_settings.context değerlerine göre restart (postmaster), reload (sighup) ve oturum seviyesi parametreler; ALTER SYSTEM, ALTER DATABASE, ALTER ROLE ve SET LOCAL öncelik sıralaması."
+tags: ["PostgreSQL", "Konfigürasyon", "Operasyon", "Mimari"]
+parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
+order: 2
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'de bir parametrenin değiştirilme yöntemi ve etkisi, çekirdeğin o parametreye atadığı **bağlam (context)** tarafından dikte edilir. Bazı ayarlar sıfır kesintiyle anında yürürlüğe girerken, bazıları işletim sistemi paylaşımlı bellek yapısını değiştirdiği için tam sunucu yeniden başlatması (`restart`) gerektirir.
+
+Ayrıca aynı parametre hem küme dosyasında hem veritabanı düzeyinde hem de kullanıcı rolünde tanımlanabilir. Motorun hangi değeri seçeceği katı bir **öncelik hiyerarşisine** tabidir.
+
+---
+
+## 1. Parametre Bağlamları (`pg_settings.context`)
+
+Her PostgreSQL parametresi `pg_settings` kataloğunda belirli bir `context` değeri taşır:
+
+| Context Sınıfı | Değiştirme Yöntemi | Ne Zaman Geçerli Olur? | Tipik Örnekler |
+| :--- | :--- | :--- | :--- |
+| **`internal`** | Değiştirilemez | Sadece `initdb` veya kaynak kod derleme anında sabitlenir | `block_size` (8192), `data_checksums` |
+| **`postmaster`** | `postgresql.conf` / `ALTER SYSTEM` | **Yalnızca sunucu yeniden başlatıldığında (`restart`)** | `shared_buffers`, `max_connections`, `wal_buffers`, `shared_preload_libraries` |
+| **`sighup`** | `postgresql.conf` / `ALTER SYSTEM` | **Sunucu çalışırken kesintisiz (`pg_reload_conf()` veya `systemctl reload`)** | `max_wal_size`, `autovacuum`, `log_min_duration_statement`, `log_directory` |
+| **`superuser-backend`** | `postgresql.conf` veya bağlantı dizgisi | Yeni açılan oturumlarda geçerli olur; mevcut oturumları etkilemez | `log_connections`, `log_disconnections` |
+| **`backend`** | `postgresql.conf` veya bağlantı anı | Yeni açılan oturumlarda geçerli olur | `ignore_system_indexes` |
+| **`superuser`** | SQL: `SET param = val` | Yalnızca süper kullanıcılar oturum sırasında anlık değiştirebilir | `session_replication_role` |
+| **`user`** | SQL: `SET param = val` | Tüm kullanıcılar kendi oturumunda veya işleminde anlık değiştirebilir | `work_mem`, `statement_timeout`, `search_path` |
+
+### `pending_restart` Takibi
+
+Eğer `postmaster` bağlamındaki bir parametreyi (`ALTER SYSTEM SET max_connections = 200;`) değiştirir ve ardından `pg_reload_conf()` çalıştırırsanız, parametre uygulanmaz; ancak `pg_settings` tablosunda kuyruğa alınır:
+
+```sql
+SELECT name, setting, unit, context, pending_restart
+FROM pg_settings
+WHERE pending_restart = true;
+```
+
+```text
+      name       | setting | unit |  context   | pending_restart 
+-----------------+---------+------+------------+-----------------
+ max_connections | 100     |      | postmaster | t
+```
+
+Burada `setting = 100` değeri sunucunun hâlâ 100 bağlantı ile çalıştığını, `pending_restart = true` ise bir sonraki `restart` anında yeni değerin devreye gireceğini gösterir.
+
+---
+
+## 2. Parametre Öncelik ve Override Hiyerarşisi
+
+PostgreSQL bir sorguyu çalıştırırken parametrenin değerini en genelden en özele doğru 8 katmanlı bir piramit üzerinden çözümler:
+
+<Mermaid
+  title="PostgreSQL 8 Katmanlı Parametre Öncelik Piramidi"
+  ariaLabel="SET LOCAL'den compile-time varsayılanlarına kadar parametre öncelik ve ezme sıralaması"
+  code={`
+flowchart TD
+    L1["1. SET LOCAL (İşlem / Transaction)"] --> L2["2. SET (Oturum / Session)"]
+    L2 --> L3["3. ALTER ROLE ... IN DATABASE ... SET"]
+    L3 --> L4["4. ALTER ROLE ... SET"]
+    L4 --> L5["5. ALTER DATABASE ... SET"]
+    L5 --> L6["6. postgresql.auto.conf (ALTER SYSTEM)"]
+    L6 --> L7["7. postgresql.conf & conf.d"]
+    L7 --> L8["8. Çekirdek Varsayılanı (Compile-time)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class L1,L2 primary
+    class L3,L4,L5 process
+    class L6,L7 storage
+    class L8 memory
+`}
+  summarySteps={[
+    "1. En dar kapsam olan SET LOCAL, mevcut transaction bitene kadar altındaki tüm ayarları ezer.",
+    "2. SET ifadesi mevcut Client oturumu boyunca geçerliliğini korur.",
+    "3. ALTER ROLE ... IN DATABASE ... SET, belirli bir veritabanına bağlanan belirli bir kullanıcıya özel değer atar.",
+    "4. ALTER ROLE ve ALTER DATABASE kullanıcı veya veritabanı genelinde dosya seviyesi ayarları ezer.",
+    "5. postgresql.auto.conf, postgresql.conf içindeki dosya ayarlarını ezer.",
+    "6. Hiçbir yerde tanımlanmamış ayarlar motorun derleme anındaki çekirdek varsayılanına döner."
+  ]}
+/>
+
+---
+
+## 3. Rol ve Veritabanı Bazlı Özelleştirme Pratikleri
+
+Tüm sunucu için genel bir parametreyi gevşetmek yerine, yalnızca ihtiyaç duyan kullanıcıya veya veritabanına özel atama yapmak en iyi operasyonel pratiktir:
+
+```sql
+-- 1. OLTP veritabanında uzun sorguları engellemek için genel sınır:
+ALTER DATABASE oltp_prod SET statement_timeout = '5s';
+
+-- 2. Ağır analitik ve raporlama kullanıcısına özel geniş bellek ve sınırsız süre:
+ALTER ROLE bi_reporter SET work_mem = '256MB';
+ALTER ROLE bi_reporter SET statement_timeout = '30min';
+
+-- 3. Yalnızca belirli bir veritabanına bağlandığında geçerli kılma:
+ALTER ROLE app_etl IN DATABASE staging_db SET maintenance_work_mem = '1GB';
+
+-- 4. Tek bir SQL transaction bloğunda geçici indeks yapımı veya ağır sıralama:
+BEGIN;
+  SET LOCAL work_mem = '512MB';
+  CREATE INDEX CONCURRENTLY ...;
+COMMIT;
+```
+
+### Değerin Kaynağını Sorgulama: `pg_settings.source`
+
+Aktif bir oturumda parametrenin hangi katmandan devralındığını doğrulamak için `source` sütununa bakılır:
+
+```sql
+SELECT name, setting, source
+FROM pg_settings
+WHERE name IN ('work_mem', 'statement_timeout', 'shared_buffers');
+```
+
+```text
+       name        | setting |       source        
+-------------------+---------+---------------------
+ shared_buffers    | 16384   | configuration file
+ statement_timeout | 5000    | database
+ work_mem          | 262144  | user
+```
+
+`source = 'database'` ayarın `ALTER DATABASE`, `source = 'user'` ayarın `ALTER ROLE`, `source = 'session'` ise anlık `SET` komutu ile belirlendiğini gösterir.

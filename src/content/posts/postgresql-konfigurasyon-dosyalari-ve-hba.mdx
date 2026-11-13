@@ -1,0 +1,145 @@
+---
+title: "PostgreSQL Konfigürasyon Dosyaları: postgresql.conf, ALTER SYSTEM, include ve HBA Kuralları"
+slug: "postgresql-konfigurasyon-dosyalari-ve-hba"
+date: "2026-11-13"
+lang: "tr"
+summary: "postgresql.conf, postgresql.auto.conf ve ALTER SYSTEM öncelikleri; include_dir modülerliği, pg_hba.conf first-match kimlik doğrulama mantığı ve pg_ident.conf OS eşlemesi."
+tags: ["PostgreSQL", "Konfigürasyon", "Güvenlik", "HBA"]
+parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
+order: 1
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'de sistem parametreleri ve ağ erişim izinleri doğrudan motorun okuduğu yapılandırma dosyaları üzerinden belirlenir. Bu dosyaların diskteki yerleşimi, yüklenme sırası ve birbirini ezme kuralları; hem konfigürasyon sürüklenmesini (configuration drift) engellemek hem de ağ güvenliğini sağlamak için kritik öneme sahiptir.
+
+---
+
+## 1. `postgresql.conf`, `ALTER SYSTEM` ve `include` Yönergeleri
+
+PostgreSQL açılışında ana yapılandırma dosyasını (`postgresql.conf`) okur. Ancak modern mimaride ayarlar yalnızca bu tek dosya içine yazılmaz:
+
+### `ALTER SYSTEM` ve `postgresql.auto.conf` Önceliği
+
+SQL üzerinden süper kullanıcı yetkisiyle çalıştırılan `ALTER SYSTEM SET` komutu, `postgresql.conf` dosyasını değiştirmez; `$PGDATA/postgresql.auto.conf` dosyasına yazar:
+
+```sql
+ALTER SYSTEM SET work_mem = '64MB';
+ALTER SYSTEM RESET work_mem; -- Belirli bir ayarı kaldırır
+ALTER SYSTEM RESET ALL;      -- auto.conf dosyasını tamamen temizler
+```
+
+* **Öncelik Kuralı:** `postmaster`, `postgresql.conf` dosyasını baştan sona işledikten sonra dosyanın en sonunda yer alan gizli `include 'postgresql.auto.conf'` satırını okur. Dolayısıyla `postgresql.auto.conf` içindeki bir parametre, `postgresql.conf` içinde ne yazarsa yazsın **her zaman onu ezer**.
+* **Operasyonel Risk:** IaC (Terraform, Ansible) ile yönetilen sunucularda DBA'ların geçici olarak `ALTER SYSTEM` çalıştırması, kod tabanındaki değişikliklerin sunucuya yansımasını engeller. Bu nedenle üretimde ayar değişikliklerinin merkezi dosyalara işlenmesi tavsiye edilir.
+
+### Modüler Konfigürasyon: `include` ve `include_dir`
+
+Tek bir devasa konfigürasyon dosyası yerine ayarları modüllere ayırmak için üç yönerge kullanılır:
+
+```text
+# Belirli bir dosyayı dahil et (dosya yoksa sunucu AÇILMAZ)
+include = 'conf.d/memory.conf'
+
+# Dosya varsa dahil et, yoksa hata vermeden geç
+include_if_exists = 'conf.d/local_override.conf'
+
+# conf.d dizinindeki tüm .conf dosyalarını alfabetik sırayla dahil et
+include_dir = 'conf.d'
+```
+
+`include_dir = 'conf.d'` kullanıldığında dosyalar alfabetik sırayla (`01-memory.conf`, `02-wal.conf`, `99-tuning.conf`) okunur; aynı parametre birden fazla dosyada varsa **en son okunan dosyadaki değer** geçerli olur.
+
+---
+
+## 2. `pg_hba.conf`: Ağ Erişimi ve Kimlik Doğrulama
+
+`pg_hba.conf` (Host-Based Authentication), hangi istemcinin hangi IP adresinden, hangi veritabanına ve hangi kimlik doğrulama yöntemiyle bağlanabileceğini belirler.
+
+```text
+# TYPE   DATABASE        USER            ADDRESS                 METHOD          [OPTIONS]
+local    all             all                                     peer
+hostssl  app_db          app_user        10.20.0.0/16            scram-sha-256
+hostssl  all             all             192.168.1.50/32         cert            clientcert=verify-full
+host     all             all             0.0.0.0/0               reject
+```
+
+<Mermaid
+  title="pg_hba.conf First-Match Wins Doğrulama Akışı"
+  ariaLabel="pg_hba.conf kurallarının yukarıdan aşağıya taranması ve ilk eşleşen kuralın uygulanması akış şeması"
+  code={`
+flowchart TD
+    Client["Client TCP Bağlantı İsteği"] --> Rule1["1. Kural: TYPE & ADDR & DB & USER Eşleşti mi?"]
+    Rule1 -->|Evet| Auth1["Kuralın METHOD'u ile Doğrula (First Match)"]
+    Rule1 -->|Hayır| Rule2["2. Kural: Eşleşti mi?"]
+    Rule2 -->|Evet| Auth2["Kuralın METHOD'u ile Doğrula"]
+    Rule2 -->|Hayır| RuleN["N. Kural (Son Satıra Kadar Tara)"]
+    RuleN -->|Eşleşme Yok| Reject["Bağlantı Doğrudan Reddedilir (FATAL)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Client primary
+    class Rule1,Rule2,RuleN process
+    class Auth1,Auth2,Reject storage
+`}
+  summarySteps={[
+    "1. İstemciden bağlantı geldiğinde PostgreSQL pg_hba.conf dosyasını ilk satırdan itibaren sırayla tarar.",
+    "2. TYPE, DATABASE, USER ve IP adresi koşullarının dördü birden eşleştiği an tarama durur (First-Match Wins).",
+    "3. Eşleşen satırın kimlik doğrulama yöntemi (scram-sha-256, peer, cert) çalıştırılır; başarısız olursa sonraki satıra geçilmez, oturum sonlanır.",
+    "4. Hiçbir satırla eşleşmeyen bağlantılar varsayılan olarak FATAL: no pg_hba.conf entry hatasıyla reddedilir."
+  ]}
+/>
+
+### Kritik HBA Bileşenleri
+
+* **`TYPE`:** `local` (Unix domain socket), `host` (düz veya TLS TCP bağlantısı), `hostssl` (zorunlu TLS/SSL bağlantısı), `hostnossl`.
+* **`METHOD`:**
+  * `scram-sha-256`: Endüstri standardı şifre doğrulama yöntemi (`md5` güvensiz kabul edildiğinden kullanılmamalıdır).
+  * `peer`: Yerel Linux işletim sistemi kullanıcısı ile PostgreSQL rolünün adını eşleştirir (yalnızca `local` soketlerde geçerlidir).
+  * `cert`: Karşılıklı TLS (mTLS) kimlik doğrulaması; istemci sertifikasının CN (Common Name) alanını kullanıcı adı olarak kabul eder.
+  * `reject`: Belirli IP bloklarının erişimini anında kesmek için kullanılır.
+* **First-Match Kuralı:** Daha genel bir kural daha özel bir kuralın üzerine yazılırsa, özel kural **asla çalışmaz**. Bu nedenle IP adresleri ve veritabanı kısıtlamaları dar kapsamdan geniş kapsama doğru (en üste spesifik, en alta `reject`) sıralanmalıdır.
+
+---
+
+## 3. `pg_ident.conf`: İşletim Sistemi Kullanıcı Eşleme (User Mapping)
+
+`peer` veya `cert` kimlik doğrulamasında istemcinin işletim sistemi adı ile veritabanı rolü birebir uyuşmayabilir (örneğin Linux `deployer` kullanıcısının PostgreSQL `app_owner` rolüyle işlem yapması gerektiğinde).
+
+`$PGDATA/pg_ident.conf` dosyası bu haritalamayı tanımlar:
+
+```text
+# MAPNAME       SYSTEM-USERNAME         PG-USERNAME
+app_map         deployer                app_owner
+app_map         backup_bot              backup_role
+cron_map        root                    postgres
+```
+
+Bu haritanın geçerli olması için `pg_hba.conf` dosyasında `map` opsiyonu belirtilir:
+
+```text
+# TYPE   DATABASE   USER        ADDRESS   METHOD   OPTIONS
+local    app_db     app_owner             peer     map=app_map
+```
+
+---
+
+## 4. Canlı Konfigürasyon Dosyası Denetimi: `pg_file_settings`
+
+Bir ayarın hangi dosyadan, hangi satırdan geldiğini ve dosya içinde sözdizimi hatası olup olmadığını veritabanı açıkken `pg_file_settings` görünümüyle denetleyebilirsiniz:
+
+```sql
+SELECT sourcefile, sourceline, name, setting, applied, error
+FROM pg_file_settings
+WHERE error IS NOT NULL OR name IN ('work_mem', 'shared_buffers')
+ORDER BY sourcefile, sourceline;
+```
+
+```text
+              sourcefile               | sourceline |      name      | setting | applied | error 
+---------------------------------------+------------+----------------+---------+---------+-------
+ /etc/postgresql/18/main/conf.d/01.conf |         14 | work_mem       | 32MB    | f       | 
+ /var/lib/postgresql/18/data/auto.conf |          3 | work_mem       | 64MB    | t       | 
+```
+
+Yukarıdaki gerçek sorgu çıktısında görüldüğü gibi, `01.conf` içindeki 32MB değeri `applied = f` olarak işaretlenmiş; çünkü `auto.conf` içindeki 64MB değeri onu ezmiştir (`applied = t`). Dosyada geçersiz bir parametre değeri varsa `error` sütununda gösterilir ve `pg_reload_conf()` çalıştırılmadan önce hata güvenle tespit edilir.

@@ -1,10 +1,10 @@
 ---
-title: "PostgreSQL Kurulum Yöntemleri ve initdb: PGDG, Kaynak Kod, Docker ve Data Checksums"
+title: "PostgreSQL Kurulum Yöntemleri ve initdb: PGDG, Kaynak Kod ve Konfigürasyon Yaşam Döngüsü"
 slug: "postgresql-kurulum-yontemleri-ve-initdb"
 date: "2026-11-12"
 lang: "tr"
-summary: "Debian/RHEL üzerinde PGDG repo kurulumu, kaynak koddan derleme bayrakları, Docker üretim sınırları ve initdb aşamasında encoding, locale, ICU ve data checksums seçimi."
-tags: ["PostgreSQL", "Kurulum", "PGDG", "Docker", "initdb"]
+summary: "PGDG ve kaynak koddan derleme, postgres kullanıcısı ve initdb ile cluster başlatma, canlıda konfigürasyon sırası (ALTER SYSTEM vs postgresql.conf) ve data checksums."
+tags: ["PostgreSQL", "Kurulum", "PGDG", "Docker", "initdb", "Konfigürasyon"]
 parent: "postgresql-kurulum-ve-servis-yonetimi"
 order: 1
 ---
@@ -46,9 +46,10 @@ sudo /usr/pgsql-18/bin/postgresql-18-setup initdb
 
 Standart paketlerde bulunmayan çekirdek yamaları, farklı sayfa boyutu (`--with-blocksize`) veya spesifik derleyici optimizasyonu gerektiğinde PostgreSQL kaynak koddan derlenir. Modern PostgreSQL sürümlerinde klasik `autotools` yanında daha hızlı olan **`meson` + `ninja`** altyapısı da desteklenir.
 
-Üretim uyumlu bir derlemede sıkıştırma (`lz4`, `zstd`), `ICU` ve asenkron I/O (`liburing`, PG18+) kütüphanelerinin aktif edilmesi gerekir:
+Buradaki `./configure` komutu **derleme zamanı yapılandırmasıdır (build-time)**; C ikili dosyalarına hangi paylaşımlı kütüphanelerin (`ICU`, `OpenSSL`, `lz4`, `systemd`, `liburing`) bağlanacağını belirler. Veritabanı kümesini (`$PGDATA`) veya çalışma zamanı ayarlarını (`postgresql.conf`) kurmaz:
 
 ```bash
+# 1. Derleme Zamanı Yapılandırması ve İkili Dosyaların Kurulumu
 ./configure \
   --prefix=/opt/pg18 \
   --with-icu \
@@ -59,7 +60,70 @@ Standart paketlerde bulunmayan çekirdek yamaları, farklı sayfa boyutu (`--wit
 make -j$(nproc) && sudo make install
 ```
 
-> Kurulum sonrası ikili dosyaların hangi bayraklarla derlendiğini kontrol etmek için `pg_config --configure` komutu kullanılır.
+> Derlenmiş bir PostgreSQL ikilisinin hangi derleme bayraklarıyla üretildiğini doğrulamak için `/opt/pg18/bin/pg_config --configure` komutu kullanılır.
+
+### Derleme Sonrası: Sistem Kullanıcısı, Dizin İzinleri ve `initdb`
+
+İkili dosyalar (`bin/`, `lib/`) sisteme kurulduktan sonra veritabanının çalışabilmesi için işletim sistemi kullanıcısı ve `$PGDATA` kümesinin oluşturulması şarttır (`postgres` kullanıcısı `root` olarak çalıştırılamaz):
+
+```bash
+# 2. Sistem Kullanıcısı ve Dizinlerin Hazırlanması
+sudo useradd -r -m -d /var/lib/pgsql -s /bin/bash postgres
+sudo mkdir -p /var/lib/pgsql/18/data /var/lib/pgsql/18/wal
+sudo chown -R postgres:postgres /var/lib/pgsql
+
+# 3. initdb ile Veritabanı Kümesinin (Cluster) Başlatılması
+sudo -u postgres /opt/pg18/bin/initdb \
+  -D /var/lib/pgsql/18/data \
+  --waldir=/var/lib/pgsql/18/wal \
+  --encoding=UTF8 \
+  --locale-provider=icu \
+  --icu-locale=tr-TR \
+  --data-checksums
+```
+
+`initdb` çalıştırıldığında disk üzerinde sistem tabloları ve şablon veritabanları oluşturulup başarıyla mühürlenir:
+
+```text
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+Using language tag "tr-TR" for ICU locale "tr-TR".
+The database cluster will be initialized with this locale configuration:
+  locale provider:   icu
+  default collation: tr-TR
+The default database encoding has accordingly been set to "UTF8".
+Data page checksums are enabled.
+
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+running bootstrap script ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+    /opt/pg18/bin/pg_ctl -D /var/lib/pgsql/18/data -l logfile start
+```
+
+### Konfigürasyon Sırası: `initdb` Öncesi mi, Sonrası mı?
+
+Veritabanı parametreleri mimaride iki ayrı aşamada yönetilir:
+
+1. **`initdb` Anında Sabitlenenler (Geri Dönüşsüz):** Karakter seti (`--encoding=UTF8`), dil sıralayıcısı (`--locale-provider=icu`), veri blok mühürleri (`--data-checksums`) ve fiziksel WAL yolu (`--waldir`). Bunlar veritabanı oluştuktan sonra `postgresql.conf` üzerinden değiştirilemez; değişim yeni bir `initdb` ve mantıksal veri aktarımı (`pg_dump`) ister.
+2. **`initdb` Sonrası Yapılandırılanlar (Esnek Çalışma Zamanı):** `initdb` tamamlandığında `$PGDATA/postgresql.conf` ve `pg_hba.conf` dosyaları varsayılan güvenli ayarlarla diskte hazırdır. DBA bu aşamada iki yöntem seçebilir:
+   - **Başlatmadan Önce Yapılandırma:** `$PGDATA/postgresql.conf` doğrudan metin editörüyle açılır; `shared_buffers`, `max_connections`, `port` ve `listen_addresses` düzenlenip servis ilk kez öyle ayağa kaldırılır.
+   - **Önce Başlatıp Canlıda Yapılandırma:** Veritabanı doğrudan `pg_ctl start` ile başlatılır. Ardından SQL istemcisi üzerinden `ALTER SYSTEM SET shared_buffers = '4GB';` veya `ALTER SYSTEM SET work_mem = '32MB';` komutlarıyla ayarlar `postgresql.auto.conf` dosyasına yazdırılır ve bağlama göre `pg_ctl reload` (SIGHUP) veya `restart` ile devreye alınır.
+   - **`initdb -c` ile Varsayılanları Ezme:** `initdb` çalıştırılırken doğrudan `-c shared_buffers=2GB -c work_mem=64MB` parametreleri verilerek oluşturulan ilk `postgresql.conf` dosyasının bu değerlerle yazılması da mümkündür.
+
+```bash
+# 4. Servisi Başlatma ve Canlıda Konfigüre Etme Örneği
+sudo -u postgres /opt/pg18/bin/pg_ctl -D /var/lib/pgsql/18/data -l /var/lib/pgsql/18/logfile start
+
+# Başlatıldıktan sonra SQL üzerinden yapılandırma:
+sudo -u postgres /opt/pg18/bin/psql -c "ALTER SYSTEM SET shared_buffers = '4GB';"
+sudo -u postgres /opt/pg18/bin/psql -c "ALTER SYSTEM SET work_mem = '32MB';"
+sudo -u postgres /opt/pg18/bin/pg_ctl -D /var/lib/pgsql/18/data restart
+```
 
 ### Docker / Container Kurulumu
 

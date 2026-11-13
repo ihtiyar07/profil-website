@@ -21,71 +21,71 @@ const navSections: NavSection[] = [
     overviewHref: '/posts/postgresql-mimarisi-ve-calisma-prensipleri',
     items: [
       {
-        title: 'Genel Bakış: Mimari & Çalışma Mantığı',
+        title: 'Mimari & Süreç Modeli',
         href: '/posts/postgresql-mimarisi-ve-calisma-prensipleri',
         children: [
           {
-            title: 'Bellek Yönetimi: shared_buffers',
+            title: 'Bellek & shared_buffers',
             href: '/posts/postgresql-bellek-yonetimi'
           },
           {
-            title: '8KB Data Page & Tuple Anatomisi',
+            title: '8KB Page & Tuple Düzeni',
             href: '/posts/postgresql-data-page-ve-tuple'
           },
           {
-            title: 'MVCC, Autovacuum ve WAL',
+            title: 'MVCC, Autovacuum & WAL',
             href: '/posts/postgresql-mvcc-ve-wal'
           },
           {
-            title: 'Sorgu İşleme: Parser, Planner & Executor',
+            title: 'Sorgu Yaşam Döngüsü',
             href: '/posts/postgresql-sorgu-yasam-dongusu'
           },
           {
-            title: 'Cluster, OID & PGDATA Anatomisi',
+            title: 'Cluster, OID & PGDATA',
             href: '/posts/postgresql-cluster-oid-ve-pgdata'
           },
           {
-            title: 'İç Kilitler & Wait Events Teşhisi',
+            title: 'İç Kilitler & Wait Events',
             href: '/posts/postgresql-ic-kilitler-ve-wait-events'
           },
           {
-            title: 'Arka Plan Süreçleri: Archiver & Workers',
+            title: 'Arka Plan Süreçleri',
             href: '/posts/postgresql-arka-plan-surecleri'
           }
         ]
       },
       {
-        title: 'Genel Bakış: Kurulum & Servis Yönetimi',
+        title: 'Kurulum & Servis Yönetimi',
         href: '/posts/postgresql-kurulum-ve-servis-yonetimi',
         children: [
           {
-            title: 'Kurulum: PGDG, Kaynak, initdb & Konfigürasyon',
+            title: 'PGDG, Kaynak Kod & initdb',
             href: '/posts/postgresql-kurulum-yontemleri-ve-initdb'
           },
           {
-            title: 'Servis Yönetimi: systemd, Reload & Disk',
+            title: 'systemd & Disk Yerleşimi',
             href: '/posts/postgresql-servis-yonetimi-ve-disk-yerlesimi'
           },
           {
-            title: 'Multi-Instance, pg_wrapper & ICU Collation',
+            title: 'Multi-Instance & ICU',
             href: '/posts/postgresql-multi-instance-pgwrapper-ve-collation'
           }
         ]
       },
       {
-        title: 'Genel Bakış: Konfigürasyon & Parametreler',
+        title: 'Konfigürasyon & Parametreler',
         href: '/posts/postgresql-konfigurasyon-ve-parametre-yonetimi',
         children: [
           {
-            title: 'Konfigürasyon Dosyaları, ALTER SYSTEM & HBA',
+            title: 'postgresql.conf & HBA',
             href: '/posts/postgresql-konfigurasyon-dosyalari-ve-hba'
           },
           {
-            title: 'Parametre Bağlamları, Restart vs Reload & Override',
+            title: 'Bağlamlar & SIGHUP/Restart',
             href: '/posts/postgresql-parametre-baglamlari-ve-hiyerarsi'
           },
           {
-            title: 'Parametre Grupları & Tuning Metodolojisi',
+            title: 'Parametre Tuning Rehberi',
             href: '/posts/postgresql-parametre-gruplari-ve-tuning'
           }
         ]
@@ -98,15 +98,15 @@ const navSections: NavSection[] = [
     overviewHref: '/posts/postgresql-extension-mimarisi-ve-c-hooks',
     items: [
       {
-        title: 'Genel Bakış: Extension Mimarisi & C Hooks',
+        title: 'Extension Mimarisi & Hooks',
         href: '/posts/postgresql-extension-mimarisi-ve-c-hooks'
       },
       {
-        title: 'TimescaleDB: Kurulum & Genel Bakış',
+        title: 'TimescaleDB: Genel Bakış',
         href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
         children: [
           {
-            title: 'Hypertable & Chunk Boyutlandırma',
+            title: 'Hypertable & Chunk Boyutu',
             href: '/posts/timescaledb-hypertable-ve-chunk-mimarisi'
           },
           {
@@ -114,7 +114,7 @@ const navSections: NavSection[] = [
             href: '/posts/timescaledb-columnar-sikistirma-ve-retention'
           },
           {
-            title: 'Continuous Aggs & Hyperfunctions',
+            title: 'Continuous Aggs & Analitik',
             href: '/posts/timescaledb-continuous-aggregates-ve-analitik'
           },
           {
@@ -126,7 +126,7 @@ const navSections: NavSection[] = [
             href: '/posts/timescaledb-parallel-copy-ve-bulk-ingest'
           },
           {
-            title: 'Sorgu Optimizasyonu: SkipScan & BRIN',
+            title: 'SkipScan & BRIN İndeksleme',
             href: '/posts/timescaledb-sorgu-optimizasyonu-skipscan-ve-indeksleme'
           },
           {
@@ -134,17 +134,17 @@ const navSections: NavSection[] = [
             href: '/posts/timescaledb-ha-replikasyon-ve-katmanli-depolama'
           },
           {
-            title: 'pgvectorscale & StreamingDiskANN',
+            title: 'pgvectorscale & DiskANN',
             href: '/posts/pgvectorscale-ve-timescaledb-hibrit-vektor-mimarisi'
           }
         ]
       },
       {
-        title: 'Patroni: HA ve Otomatik Failover',
+        title: 'Patroni: HA & Failover',
         href: '/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover'
       },
       {
-        title: 'PostgREST: Sıfır Kodla REST API',
+        title: 'PostgREST: Otomatik API',
         href: '/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api'
       }
     ]
@@ -155,23 +155,23 @@ const navSections: NavSection[] = [
     overviewHref: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi',
     items: [
       {
-        title: 'Genel Bakış: ZFS ve Depolama Düzeni',
+        title: 'ZFS & Depolama Düzeni',
         href: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi'
       },
       {
-        title: 'Arrow ile DB\'den Zero-Copy Akış',
+        title: 'Arrow ile Zero-Copy',
         href: '/posts/arrow-ile-dbden-tarayiciya-zero-copy'
       },
       {
-        title: 'Apache Arrow Mimari Vaka Dosyası',
+        title: 'Apache Arrow Vaka Dosyası',
         href: '/cases/apache-arrow'
       },
       {
-        title: 'Proxmox VE: Ağ, NAT ve ZFS',
+        title: 'Proxmox VE: Ağ & ZFS',
         href: '/posts/dedicated-sunucuya-sifirdan-proxmox-ag-ve-firewall-notlari'
       },
       {
-        title: 'JWT vs Redis ile O(1) Yetki İptali',
+        title: 'JWT vs Redis O(1) Yetki',
         href: '/posts/jwtde-yetki-tasimak-neden-her-zaman-iyi-fikir-degil'
       }
     ]
@@ -249,7 +249,7 @@ function getSectionTheme(id: string): SectionColorRole {
 ---
 
 <!-- Desktop Sticky Sidebar (Left Column: docking at >=768px) -->
-<aside transition:persist="sidebar-desktop" style="view-transition-name: sidebar-desktop;" class="hidden md:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg-card)]/90 dark:bg-[#0D1118] overflow-y-auto select-none z-30">
+<aside transition:persist="sidebar-desktop" style="view-transition-name: sidebar-desktop;" class="hidden md:flex flex-col w-[280px] xl:w-[300px] shrink-0 h-screen sticky top-0 border-r border-[var(--border)] bg-[var(--bg-card)]/90 dark:bg-[#0D1118] overflow-y-auto select-none z-30">
   <div class="p-5 flex flex-col justify-between min-h-full">
     <!-- Top: Identity & Collapsible Topic Tree -->
     <div class="space-y-5">
@@ -328,7 +328,7 @@ function getSectionTheme(id: string): SectionColorRole {
                               ]}
                               aria-current={isActive ? 'page' : undefined}
                             >
-                              <span class="truncate">{item.title}</span>
+                              <span class="line-clamp-2 leading-snug break-words">{item.title}</span>
                             </a>
 
                             <button
@@ -367,9 +367,9 @@ function getSectionTheme(id: string): SectionColorRole {
                                       ]}
                                       aria-current={isChildActive ? 'page' : undefined}
                                     >
-                                      <span class="truncate flex items-center gap-1.5">
-                                        <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 group-hover:bg-[var(--accent)] shrink-0"></span>
-                                        <span class="truncate">{child.title}</span>
+                                      <span class="flex items-start gap-1.5 min-w-0 flex-1">
+                                        <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 group-hover:bg-[var(--accent)] shrink-0 mt-1.5"></span>
+                                        <span class="line-clamp-2 leading-snug break-words">{child.title}</span>
                                       </span>
                                       <span class="text-[9px] font-mono text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0" aria-hidden="true">→</span>
                                     </a>
@@ -394,7 +394,7 @@ function getSectionTheme(id: string): SectionColorRole {
                         ]}
                         aria-current={isActive ? 'page' : undefined}
                       >
-                        <span class="truncate">{item.title}</span>
+                        <span class="line-clamp-2 leading-snug break-words">{item.title}</span>
                         <span class="text-[10px] font-mono text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity ml-1.5 shrink-0" aria-hidden="true">→</span>
                       </a>
                     );
@@ -612,7 +612,7 @@ function getSectionTheme(id: string): SectionColorRole {
                           href={item.href}
                           title={item.title}
                           class:list={[
-                            'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors truncate',
+                            'mobile-article-link flex-1 block py-1.5 pl-2 pr-1 text-xs font-sans transition-colors line-clamp-2 leading-snug break-words',
                             isActive ? 'text-[var(--accent)] font-medium' : hasActiveChild ? 'text-[var(--text)] font-medium' : ''
                           ]}
                           aria-current={isActive ? 'page' : undefined}
@@ -655,9 +655,9 @@ function getSectionTheme(id: string): SectionColorRole {
                                   ]}
                                   aria-current={isChildActive ? 'page' : undefined}
                                 >
-                                  <span class="flex items-center gap-1.5">
-                                    <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 shrink-0"></span>
-                                    <span class="truncate">{child.title}</span>
+                                  <span class="flex items-start gap-1.5 min-w-0">
+                                    <span class="w-1 h-1 rounded-full bg-[var(--text-dim)]/50 shrink-0 mt-1.5"></span>
+                                    <span class="line-clamp-2 leading-snug break-words">{child.title}</span>
                                   </span>
                                 </a>
                               );
@@ -681,7 +681,7 @@ function getSectionTheme(id: string): SectionColorRole {
                     ]}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    {item.title}
+                    <span class="line-clamp-2 leading-snug break-words">{item.title}</span>
                   </a>
                 );
               })}

@@ -93,7 +93,7 @@ export async function getStaticPaths() {
         title: 'Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapıları üzerine çalışan veritabanı mimarı.',
         subtitle: 'Ahmet İhtiyar — Veritabanı Mimarı | İstanbul',
         badge: 'Veritabanı Mimarisi',
-        meta: 'PostgreSQL · Oracle · TimescaleDB · Memgraph · Arrow',
+        meta: 'PostgreSQL · TimescaleDB · Memgraph · Arrow',
       },
     },
   ];

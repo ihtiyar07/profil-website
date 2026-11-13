@@ -5,8 +5,6 @@ date: "2026-11-12"
 lang: "tr"
 summary: "MySQL, MSSQL ve Oracle'a kıyasla PostgreSQL'de eklentilerin neden çekirdek düzeyinde çalışabildiği; Backend Process, shared_preload_libraries, Background Worker ve C Hook mekanizması."
 tags: ["PostgreSQL", "Mimari", "Extension", "C Hooks"]
-parent: "postgresql-mimarisi-ve-calisma-prensipleri"
-order: 5
 ---
 import Mermaid from '../../components/Mermaid.astro';
 
@@ -188,3 +186,13 @@ _PG_init(void)
 ```
 
 Bu mekanizma sayesinde birden fazla eklenti (`TimescaleDB` + `pg_stat_statements` + özel audit hook'u) birbirini ezmeden aynı sorgu yaşam döngüsü üzerinde sırayla çalışabilir.
+
+---
+
+## 5. PostgreSQL Eklenti Ekosistemi ve Derinlemesine Rehberler
+
+Bu katalog güdümlü ve kancalı çekirdek altyapısı üzerine inşa edilen popüler eklenti ve platform çözümleri:
+
+* **[TimescaleDB Mimarisi ve Kullanım Rehberi](/posts/timescaledb-mimarisi-ve-kullanim-rehberi):** Zaman serisi verileri için Hypertables, chunk pruning, continuous aggregates ve columnar sıkıştırma motoru.
+* **[Patroni ile HA ve Otomatik Failover](/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover):** Dağıtık konsensüs (etcd), split-brain koruması ve yüksek erişilebilirlik mimarisi.
+* **[PostgREST ile Sıfır Kodla REST API](/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api):** PostgreSQL katalog şemasından anında derlenen yüksek performanslı REST API ve RLS güvenlik katmanı.

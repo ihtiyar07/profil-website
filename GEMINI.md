@@ -63,10 +63,26 @@ order: 1 # Parent altındaki sıralama sırası (1, 2, 3...)
 
 ## 3. Sidebar ve Navigasyon Standartları
 
+### 3.1. Ağaç Hiyerarşisi ve Geri Dönüş
 - **Ağaç Hiyerarşisi:** 
   - Sidebar sadece düz makale listesi sunmaz; bir konunun genel bakış dökümanı varsa, onun altındaki alt dökümanlar (child items) girintili (indent) ve hiyerarşik bir ağaç yapısıyla gösterilir.
 - **Geri Dönüş Bağlantısı (Breadcrumb & Up-link):**
   - Bir child döküman açıldığında, sayfa başında veya navigasyonunda kullanıcı kolayca parent dökümana dönebilmeli ve kardeş dökümanlar (sibling articles) arasında gezinebilmelidir.
+
+### 3.2. Başlık Formatı ve Kırpılma Yasağı (Sığma Standardı)
+- **Gereksiz Ön Ek Yasağı:** Başlıklarda yer israfı yaratan `"Genel Bakış: "` veya `"Bölüm X: "` gibi tekrarlayan gürültülü ön ekler kullanılamaz.
+- **2 Terimli ~18-24 Karakter Kuralı:** Yan panelde listelenen ana ve alt başlıklar, yan panel genişliğini aşmayacak ve `...` (ellipsis) ile kesilmeyecek şekilde en fazla 2-3 odaklı teknik terimden oluşmalıdır:
+  - ✅ `Mimari & Süreç Modeli` (❌ *PostgreSQL Mimarisi ve Çalışma Prensiplerine Genel Bakış*)
+  - ✅ `Bellek & shared_buffers` (❌ *PostgreSQL Bellek Yönetimi ve Buffer Pool Mimarisi*)
+  - ✅ `8KB Page & Tuple Düzeni` (❌ *Fiziksel Depolama: 8KB Data Page ve Tuple Anatomisi*)
+  - ✅ `MVCC, Autovacuum & WAL` (❌ *Eşzamanlılık ve Güvenlik: MVCC, Autovacuum ve WAL Mekanizması*)
+  - ✅ `ZFS & Depolama Düzeni` (❌ *Veritabanı Depolama ve Donanım Altyapısı Mimarisi*)
+  - ✅ `Arrow ile Zero-Copy` (❌ *Arrow ile DB'den Tarayıcıya Sıfır Kopyalama Akışı*)
+
+### 3.3. Panel Genişliği ve Esnek Metin Düzeni (Layout & Wrapping)
+- **Desktop Sidebar Genişliği:** Desktop yan panel genişliği `w-[280px] xl:w-[300px]` olarak tutulmalıdır.
+- **Esnek Metin Sarmalama:** Katı `truncate` tek satır zorlaması yerine `line-clamp-2 leading-snug break-words` kullanılır; olası uzun veya teknik bileşik terimler yatayda taşmadan veya kesilmeden 2 satıra yumuşakça kaymalıdır.
+- **Mermi İkonu Hizalaması:** Alt başlıkların solundaki mermi noktaları (bullet dots), metin 2 satıra taştığında ilk satırla hizada kalması için `items-start mt-1.5` ile dikey hizalanmalıdır.
 
 ---
 

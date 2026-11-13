@@ -132,16 +132,47 @@ Planlayıcının tahmini (`cost`, `rows`) ile Executor'ın sahadaki gerçek çal
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT o.customer_id, count(*) AS siparis_sayisi
-FROM orders o
-WHERE o.created_at >= now() - interval '7 days'
-  AND o.status = 'PAID'
-GROUP BY o.customer_id
-ORDER BY siparis_sayisi DESC
-LIMIT 20;
+SELECT c.relname, count(a.attname)
+FROM pg_class c
+JOIN pg_attribute a ON a.attrelid = c.oid
+WHERE c.relkind = 'r'
+GROUP BY c.relname
+ORDER BY 2 DESC
+LIMIT 5;
 ```
 
-Çıktıda şu üç sinyale odaklanılır:
-1. **`rows` vs `actual rows` Sapması:** Tahmin ile gerçek satır sayısı arasında 10x+ fark varsa istatistikler güncel değildir (`ANALYZE orders;`) veya iki sütun arasında (`created_at` ile `status`) gizli korelasyon vardır; bu durumda **Extended Statistics** (`CREATE STATISTICS`) tanımlanmalıdır.
-2. **`Buffers: shared hit=... read=...`:** `read` sayısı yüksekse veri `shared_buffers` içinde değil, diskten/OS page cache'ten çekilmiştir.
-3. **`Sort Method: external merge Disk: ...kB`:** `work_mem` yetersiz kalıp diske taşma (`Spill to Disk`) yaşandığını gösterir; oturum bazında `SET LOCAL work_mem = '64MB';` ile iyileştirme test edilebilir.
+PostgreSQL 18 üzerinde elde edilen gerçek yürütme çıktısı:
+
+```text
+ Limit  (cost=119.54..119.55 rows=5 width=72) (actual time=10.365..10.367 rows=5.00 loops=1)
+   Buffers: shared hit=263 read=15
+   ->  Sort  (cost=119.54..119.78 rows=96 width=72) (actual time=10.364..10.365 rows=5.00 loops=1)
+         Sort Key: (count(a.attname)) DESC
+         Sort Method: top-N heapsort  Memory: 26kB
+         Buffers: shared hit=263 read=15
+         ->  HashAggregate  (cost=116.98..117.94 rows=96 width=72) (actual time=10.334..10.341 rows=96.00 loops=1)
+               Group Key: c.relname
+               Batches: 1  Memory Usage: 40kB
+               Buffers: shared hit=260 read=15
+               ->  Nested Loop  (cost=0.28..113.45 rows=706 width=128) (actual time=0.530..10.145 rows=1362.00 loops=1)
+                     Buffers: shared hit=260 read=15
+                     ->  Seq Scan on pg_class c  (cost=0.00..23.62 rows=96 width=68) (actual time=0.007..0.079 rows=96.00 loops=1)
+                           Filter: (relkind = 'r'::"char")
+                           Rows Removed by Filter: 434
+                           Buffers: shared hit=17
+                     ->  Index Only Scan using pg_attribute_relid_attnam_index on pg_attribute a  (cost=0.28..0.87 rows=7 width=68) (actual time=0.102..0.103 rows=14.19 loops=96)
+                           Index Cond: (attrelid = c.oid)
+                           Heap Fetches: 326
+                           Index Searches: 96
+                           Buffers: shared hit=243 read=15
+ Planning:
+   Buffers: shared hit=108 read=8 dirtied=1
+ Planning Time: 1.855 ms
+ Execution Time: 10.412 ms
+```
+
+Çıktıda şu dört sinyale odaklanılır:
+1. **`rows` vs `actual rows` Sapması:** Tahmin ile gerçek satır sayısı arasında 10x+ fark varsa istatistikler güncel değildir (`ANALYZE`) veya iki sütun arasında gizli korelasyon vardır; bu durumda **Extended Statistics** (`CREATE STATISTICS`) tanımlanmalıdır.
+2. **`Buffers: shared hit=263 read=15`:** 263 blok `shared_buffers` içinden karşılanmış, 15 blok ise diskten/OS page cache'ten okunmuştur (`read`).
+3. **`Index Only Scan` & `Heap Fetches: 326`:** `Visibility Map` üzerinde `ALL_VISIBLE` işaretlenmemiş sayfalar için heap'e inildiğini gösterir; `VACUUM` sonrası bu sayı düşer.
+4. **`Sort Method: top-N heapsort Memory: 26kB`:** Veri `work_mem` sınırına sığdığı için bellekte bitmiştir; eğer burada `external merge Disk` görülseydi `Spill to Disk` yaşanıyor olacaktı.

@@ -122,6 +122,31 @@ flowchart LR
 | **`pg_cron`** | Preload + `BG Worker` | `RegisterBackgroundWorker` | Zamanlanmış SQL işlerini harici servis olmadan kendi PostgreSQL sürecinden çalıştırır. |
 | **`PostGIS`** | On-Demand (`Backend`) | `pg_type`, `GiST` OpClass, `LANGUAGE C` | Mekansal tipleri ve R-Tree tabanlı GiST operatör sınıflarını kataloğa bağlar. |
 
+### Pluggable Depolama ve İndeks Motorları (`pg_am`)
+
+PostgreSQL, yalnızca sorgu hattı hook'larını değil, tablo ve indekslerin fiziksel depolama biçimini de eklentiyle değiştirilebilir (`pluggable`) arayüzler üzerinden sunar:
+
+* **`Table Access Method (TableAmRoutine)`:** PostgreSQL 12+ ile çekirdeğe eklenen bu C arayüzü, `CREATE ACCESS METHOD ... TYPE TABLE` komutuyla varsayılan satır bazlı **`heap`** motoru dışında (ör. columnar veya sıkıştırılmış) özel depolama motorları yazılmasına izin verir (`USING my_am`).
+* **`Index Access Method (IndexAmRoutine)`:** `CREATE ACCESS METHOD ... TYPE INDEX` sözleşmesini uygulayan her eklenti (`pgvector` için HNSW/IVFFlat, yerleşik `btree`, `gin`, `brin`) arama ve ekleme callback'lerini `amhandler` fonksiyonu üzerinden Planner ve Executor'a bağlar.
+
+Canlı bir PostgreSQL 18.1 kümesindeki yerleşik Access Method kayıtları `pg_am` kataloğunda yer alır (`amtype = 't'` tablo motorunu, `'i'` indeks motorlarını gösterir):
+
+```sql
+SELECT oid, amname, amhandler, amtype FROM pg_am ORDER BY amtype, amname;
+```
+
+```text
+ oid  | amname |      amhandler       | amtype
+------+--------+----------------------+--------
+ 3580 | brin   | brinhandler          | i
+  403 | btree  | bthandler            | i
+ 2742 | gin    | ginhandler           | i
+  783 | gist   | gisthandler          | i
+  405 | hash   | hashhandler          | i
+ 4000 | spgist | spghandler           | i
+    2 | heap   | heap_tableam_handler | t
+```
+
 ---
 
 ## 4. Paketleme Yapısı ve `ExecutorRun_hook` Zinciri

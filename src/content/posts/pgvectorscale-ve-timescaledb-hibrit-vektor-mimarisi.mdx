@@ -1,0 +1,110 @@
+---
+title: "pgvectorscale ve TimescaleDB: StreamingDiskANN ile Hibrit Vektör Araması"
+slug: "pgvectorscale-ve-timescaledb-hibrit-vektor-mimarisi"
+date: "2026-11-12"
+lang: "tr"
+summary: "Timescale'ın pgvectorscale eklentisi, StreamingDiskANN (SBQ) ile HNSW bellek duvarını aşma, 20K x 384-dim gerçek boyut/hız ölçümü ve Hypertable Chunk Exclusion + Label Filtering."
+tags: ["PostgreSQL", "TimescaleDB", "pgvectorscale", "Performans", "Mimari"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 8
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Standart `pgvector` eklentisindeki **HNSW** indeksi yüksek arama hızı sunar ancak grafiği tamamen bellekte (`shared_buffers` / RAM) tutmaya dayanır. Vektör sayısı milyonlara çıktığında HNSW indeksi tablo verisinin kendisinden bile daha büyük RAM tüketir; paralel indeks oluşturma sırasında ise yüksek paylaşımlı bellek (`shared memory`) ister.
+
+Timescale'ın Rust ile geliştirdiği açık kaynaklı **[`pgvectorscale`](https://github.com/timescale/pgvectorscale)** eklentisi (`timescaledb-ha:pg16` içinde `0.9.1` sürümüyle hazır gelir), **StreamingDiskANN** algoritması ve **Statistical Binary Quantization (SBQ)** sıkıştırmasıyla vektör indekslerini NVMe/SSD üzerinde verimli şekilde çalıştırır.
+
+## 1. `StreamingDiskANN` ve SBQ Sıkıştırma Akışı
+
+`storage_layout = 'memory_optimized'` (varsayılan) modunda `pgvectorscale`, tam hassasiyetli `float32` vektörleri indeks içinde kopyalamak yerine **SBQ** ile kuantize edilmiş kompakt grafiği kullanır; aday komşuları belirledikten sonra yalnızca en yakın adayları heap'teki tam vektörlerle yeniden sıralar (**re-ranking**):
+
+<Mermaid
+  title="StreamingDiskANN + Hypertable Hibrit Sorgu Akışı"
+  ariaLabel="Zaman aralığına göre Chunk Exclusion sonrası DiskANN SBQ indeks taraması ve heap re-ranking"
+  code={`
+flowchart LR
+    Query["WHERE time >= ... AND labels && ..."]
+    Prune["Chunk Exclusion (Zaman Budama)"]
+    DiskANN["StreamingDiskANN (SBQ + Labels)"]
+    Rerank["Heap Re-Ranking (Top-K)"]
+
+    Query --> Prune ==>|"Yalnızca İlgili Chunk'lar"| DiskANN --> Rerank
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Query,Prune process
+    class DiskANN memory
+    class Rerank storage
+`}
+  summarySteps={[
+    "1. Sorgudaki zaman filtresi (created_at >= ...) eski Hypertable Chunk'larını daha vektör aramasına girmeden eler.",
+    "2. Yalnızca kalan Chunk'lardaki StreamingDiskANN indeksi, etiket filtresini (labels &&) grafiği gezerken doğrudan indeks içinde uygular.",
+    "3. SBQ ile daraltılan aday kümesi tablo heap'indeki tam hassasiyetli vektörlerle yeniden skorlanarak kesin Top-K sonucu döner."
+  ]}
+/>
+
+---
+
+## 2. `HNSW` vs `StreamingDiskANN` Ölçümü (20K × 384-Dim)
+
+`timescale/timescaledb-ha:pg16` (`vector 0.8.7`, `vectorscale 0.9.1`) üzerinde `VECTOR(384)` boyutlu 20.000 satırlık veri kümesinde ölçülen gerçek indeks davranışları:
+
+| Metrik | `pgvector` HNSW | `pgvectorscale` StreamingDiskANN (`memory_optimized`) |
+| :--- | :--- | :--- |
+| **Tablo Heap Boyutu** | `32 MB` | `32 MB` |
+| **İndeks Disk / RAM Ayak İzi** | `39 MB` (Heap'ten büyük) | **`10 MB`** (**~3.9x** daha küçük) |
+| **Paralel Build Davranışı** | Varsayılan Docker `/dev/shm` (`64 MB`) içinde `2.14 GB` SHM segmenti isteyerek hata verdi; `max_parallel_maintenance_workers = 0` gerekti | Ek `/dev/shm` ayarı gerektirmeden `24.45 s` içinde hatasız tamamlandı |
+| **Top-10 Cosine (`<=>`) Sorgusu** | Maliyet tabanlı planda Planner `DiskANN`'i seçti | `3.96 ms` (Seq Scan + Sort: `8.23 ms`) |
+
+```sql
+-- Eklentiyi etkinleştirme (vector bağımlılığını otomatik kurar)
+CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
+
+-- SBQ sıkıştırmalı DiskANN indeksi
+CREATE INDEX idx_vec_diskann
+ON vec_events USING diskann (embedding vector_cosine_ops)
+WITH (
+    storage_layout   = 'memory_optimized',
+    num_neighbors    = 50,
+    search_list_size = 100
+);
+```
+
+---
+
+## 3. Hypertable + `DiskANN` + Label Filtering (`&&`)
+
+RAG, log anomali tespiti veya finansal haber akışlarında yalnızca vektör benzerliği yetmez; **"son 10 günde, kategori=3 olan en benzer 5 olay"** gibi zaman + etiket + vektör birleşik sorguları gerekir. Standart vektör indekslerinde sonradan filtreleme (**post-filtering**) recall kaybına yol açar; `pgvectorscale` ise `SMALLINT[]` etiket sütununu doğrudan `diskann` indeksine gömer:
+
+```sql
+CREATE TABLE ts_vec_events (
+    created_at TIMESTAMPTZ NOT NULL,
+    labels     SMALLINT[]  NOT NULL,
+    embedding  VECTOR(384) NOT NULL
+);
+
+SELECT create_hypertable('ts_vec_events', 'created_at', chunk_time_interval => INTERVAL '7 days');
+
+-- Vektör + Label birlikte indeksleme (her Chunk için ayrı DiskANN grafiği oluşur)
+CREATE INDEX idx_ts_vec_diskann
+ON ts_vec_events USING diskann (embedding vector_cosine_ops, labels)
+WITH (storage_layout = 'memory_optimized');
+
+-- Zaman budama + indeks içi label filtresi + cosine sıralama
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT created_at, labels
+FROM ts_vec_events
+WHERE created_at >= '2026-10-20T00:00:00Z'
+  AND labels && ARRAY[3]::SMALLINT[]
+ORDER BY embedding <=> $1
+LIMIT 5;
+```
+
+20.000 satırın 4 haftalık Chunk'a (`5040 + 5040 + 5040 + 4880`) bölündüğü testte bu sorgunun gerçek yürütme planı:
+1. İlk 2 Chunk plan aşamasında tamamen dışlandı (**Chunk Exclusion**).
+2. Kalan yalnızca 2 Chunk (`_hyper_2_303_chunk` ve `_hyper_2_304_chunk`) üzerinde `Index Scan using ..._diskann` düğümü `Index Cond: (labels && '{3}'::smallint[])` ve `Order By: (embedding <=> $0)` koşullarını aynı anda yürüttü.
+3. Sonuçlar `Merge Append` ile birleştirilip toplam **`2.84 ms`** içinde döndürüldü.
+
+> **HA ve Büyük Tablo Notu:** Üretim ortamında çalışan canlı bir Hypertable üzerine sonradan indeks açarken yazma kilitlerini önlemek için `CREATE INDEX CONCURRENTLY` yerine Chunk bazlı indeksleme stratejisi izlenmeli ve streaming replikalardaki WAL yazım artışı (`replication lag`) izlenmelidir.

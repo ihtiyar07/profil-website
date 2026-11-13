@@ -1,0 +1,109 @@
+---
+title: "PostgreSQL Arka Plan Süreçleri: Archiver, PG15+ Shared Memory Stats ve Logical Replication Worker"
+slug: "postgresql-arka-plan-surecleri"
+date: "2026-11-12"
+lang: "tr"
+summary: "postmaster süreç ağacı altında Checkpointer, BGWriter, WAL Archiver (.ready/.done), Autovacuum Launcher/Worker, PG15+ Shared Memory Stats mimarisi ve Logical Replication Worker görev dağılımı."
+tags: ["PostgreSQL", "Mimari", "WAL", "Replikasyon", "Performans"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 8
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL sunucusu başlatıldığında `postmaster` yalnızca gelen Client bağlantılarını (`Backend Process`) karşılamaz; disk dayanıklılığı, vakum bakımı, istatistik toplama ve replikasyon akışını yürüten özelleşmiş **arka plan süreçlerini (Background / Auxiliary Processes)** de yönetir. Tüm aktif süreçler `pg_stat_activity` görünümünde `backend_type` sütunuyla izlenebilir.
+
+---
+
+## 1. `postmaster` Süreç Ağacı
+
+Her yardımcı süreç belirli bir sistem görevini üstlenir ve `Shared Memory` üzerinden diğer süreçlerle haberleşir. Bir yardımcı süreç beklenmedik şekilde sonlanırsa `postmaster` onu yeniden başlatır veya veri bütünlüğü riski varsa recovery döngüsünü tetikler.
+
+<Mermaid
+  title="1. postmaster Altındaki Arka Plan Süreçleri"
+  ariaLabel="postmaster tarafından yönetilen Checkpointer, BGWriter, WAL Writer, Archiver, Autovacuum ve Logical Replication süreçleri"
+  code={`
+flowchart LR
+    PM["postmaster (Ana Süreç)"] --> Core["Checkpointer · BGWriter · WAL Writer"]
+    PM --> Arch["WAL Archiver (archive_status)"]
+    PM --> Vac["Autovacuum Launcher → Workers"]
+    PM --> Rep["walsender & Logical Rep Worker"]
+    PM --> Log["Syslogger (Stderr → Dosya)"]
+
+    Core <--> Shmem[("Shared Memory (PG15+ Stats)")]
+    Arch -.->|"Kopyalar"| Archive[("WAL Arşivi / S3 / pgBackRest")]
+    Vac <--> Shmem
+    Rep <--> Shmem
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class PM primary
+    class Core,Arch,Vac,Rep,Log process
+    class Shmem memory
+    class Archive storage
+`}
+  summarySteps={[
+    "1. Checkpointer, BGWriter ve WAL Writer bellekten diske yazma (flush) ve recovery noktası ilerletme işini böler.",
+    "2. WAL Archiver, dolan 16MB WAL segmentlerini archive_status/.ready bayraklarına bakarak arşiv depolamasına kopyalar.",
+    "3. Autovacuum Launcher zamanlayıcı gibi çalışır; tablo ihtiyacına göre kısa ömürlü Autovacuum Worker süreçleri başlatır.",
+    "4. PG15+ ile istatistikler ayrı bir Stats Collector sürecinde değil, doğrudan Shared Memory içinde toplanır."
+  ]}
+/>
+
+---
+
+## 2. `WAL Archiver` ve `archive_status` Kuyruğu
+
+`archive_mode = on` yapılandırıldığında `postmaster` bir **`archiver`** süreci başlatır. Görevi, yazımı tamamlanmış (16MB'a ulaşmış veya `pg_switch_wal()` ile kapatılmış) WAL segmentlerini kalıcı yedekleme alanına (`archive_command` veya `archive_library`) kopyalamaktır.
+
+1. Bir WAL segmenti dolduğunda PostgreSQL `$PGDATA/pg_wal/archive_status/<segment>.ready` dosyasını oluşturur.
+2. `archiver` bu `.ready` dosyasını görür ve tanımlı komutu (`pgBackRest`, `WAL-G`, `cp`) çalıştırır.
+3. Komut `0` (başarılı) dönerse dosya `.done` olarak yeniden adlandırılır ve `Checkpointer` sonraki checkpoint'te o WAL segmentini güvenle silebilir veya geri dönüştürebilir.
+
+> **Kritik Disk Riski:** `archive_command` sürekli hata verirse `.ready` dosyaları `.done` durumuna geçemez. PostgreSQL arşivlenmemiş WAL dosyalarını silemediği için `pg_wal/` dizini `max_wal_size` sınırını aşarak büyür ve disk tamamen dolduğunda veritabanı `PANIC` ile durur.
+
+---
+
+## 3. `Stats Collector`'dan PG15+ `Shared Memory Stats` Mimarisine Geçiş
+
+PostgreSQL 14 ve önceki sürümlerinde `stats collector` adlı ayrı bir arka plan süreci çalışırdı. Tüm backend'ler istatistik güncellemelerini **UDP loopback soketi** üzerinden bu sürece yollar, `stats collector` da verileri periyodik olarak `$PGDATA/pg_stat_tmp` dizinine dosya olarak yazardı. Yoğun OLTP sistemlerinde bu yapı UDP paket kaybına ve gereksiz disk I/O yüküne yol açıyordu.
+
+**PostgreSQL 15+** ile `stats collector` süreci tamamen kaldırılmıştır:
+* Kümülatif istatistikler (`pg_stat_user_tables`, `pg_stat_database`, `pg_stat_bgwriter`, `pg_stat_wal`) artık doğrudan **Dynamic Shared Memory (`dshash`)** üzerinde güncellenir.
+* Okuyucular diskteki geçici stat dosyalarını parse etmek yerine doğrudan bellekten okur; yalnızca sunucu temiz kapatıldığında (`smart`/`fast` shutdown) istatistikler kalıcı olması için `$PGDATA/pg_stat/` altına tek sefer yazılır.
+
+---
+
+## 4. `Autovacuum Launcher/Worker` ve `Logical Replication Worker`
+
+| Süreç | Görev Tipi | Çalışma Mekanizması |
+| :--- | :--- | :--- |
+| **`autovacuum launcher`** | Koordinatör (Kalıcı) | Her `autovacuum_naptime` (varsayılan 1 dk) döngüsünde istatistiklere bakarak hangi veritabanında temizlik gerektiğini belirler ve worker ister. |
+| **`autovacuum worker`** | İşçi (Dinamik) | `autovacuum_max_workers` sınırında başlatılır; hedef tablolarda `VACUUM` ve `ANALYZE` koşturup kapanır. |
+| **`logical replication launcher`** | Koordinatör (Kalıcı) | Aktif `SUBSCRIPTION` tanımlarını izler; bağlantı kurmak üzere her abonelik için apply worker başlatır. |
+| **`logical replication apply worker`** | Abone İşçisi (Kalıcı) | Publisher'daki `walsender` sürecinden mantıksal değişiklik akışını (`pgoutput`) alıp hedef tablolara transaction sırasıyla uygular. |
+| **`logical replication tablesync worker`** | Başlangıç İşçisi (Geçici) | Yeni abonelik kurulduğunda `COPY` ile mevcut tablo snapshot'ını çeker; `apply worker` ile LSN hizalanınca sonlanır. |
+| **`walsender` / `walreceiver`** | Akış Çifti | Primary tarafında WAL okuyan `walsender` ile Replica tarafında WAL yazan `walreceiver` süreçleridir. |
+
+Çalışan bir PostgreSQL 18.1 sunucusunda aktif çekirdek süreçlerini ve o anki `Wait Event` durumlarını tek sorguda doğrulayabilirsiniz (PostgreSQL 18 ile asenkron I/O için `io worker` süreçleri de tabloda yer alır):
+
+```sql
+SELECT pid, backend_type, state, wait_event_type, wait_event
+FROM pg_stat_activity
+ORDER BY pid;
+```
+
+```text
+   pid   |              backend_type               | state | wait_event_type |     wait_event
+---------+-----------------------------------------+-------+-----------------+---------------------
+     982 | io worker                               |       | Activity        | IoWorkerMain
+     985 | checkpointer                            |       | Activity        | CheckpointerMain
+     986 | background writer                       |       | Activity        | BgwriterMain
+    1253 | walwriter                               |       | Activity        | WalWriterMain
+    1254 | autovacuum launcher                     |       | Activity        | AutovacuumMain
+    1255 | TimescaleDB Background Worker Launcher  |       | Extension       | Extension
+    1256 | logical replication launcher            |       | Activity        | LogicalLauncherMain
+ 1537853 | client backend                          | idle  | Client          | ClientRead
+```

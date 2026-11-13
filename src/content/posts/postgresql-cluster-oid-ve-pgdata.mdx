@@ -1,0 +1,187 @@
+---
+title: "PostgreSQL Küme Yapısı: Cluster, OID, System Catalog ve PGDATA Anatomisi"
+slug: "postgresql-cluster-oid-ve-pgdata"
+date: "2026-11-12"
+lang: "tr"
+summary: "Cluster, Database, Schema ve Relation hiyerarşisi; OID ile relfilenode ayrımı, pg_catalog ve information_schema farkı, PGDATA dizin yapısı, Relation Fork'ları (_fsm, _vm), TOAST stratejileri ve Tablespace."
+tags: ["PostgreSQL", "Depolama", "Mimari", "PGDATA"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 6
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'in mantıksal nesneleri (`Database`, `Schema`, `Table`) ile disk üzerindeki fiziksel dosyaları birebir aynı isimlerle tutulmaz. Bir tablonun sorgu planlayıcıdaki mantıksal kimliği ile `$PGDATA` altındaki dosya adı farklı katmanlarda yönetilir; bu ayrım yeniden yazma (`TRUNCATE`, `VACUUM FULL`, `REINDEX`) operasyonlarının atomik yürütülmesini sağlar.
+
+---
+
+## 1. Mantıksal Hiyerarşi: Cluster, Database, Schema ve OID
+
+PostgreSQL tek bir instance altında 4 katmanlı bir nesne hiyerarşisi kurar:
+
+1. **Cluster (Veritabanı Kümesi):** Aynı `postmaster` süreci ve tek bir `$PGDATA` dizini tarafından yönetilen tüm veritabanları bütünüdür. Roller (`pg_authid`), tablespace tanımları (`pg_tablespace`) ve `WAL` akışı Cluster seviyesinde ortaktır.
+2. **Database:** Mantıksal izolasyon sınırıdır. Bir bağlantı her zaman tek bir veritabanına açılır; aynı Cluster içindeki iki veritabanı arasında doğrudan `JOIN` atılamaz (`postgres_fdw` gerekir).
+3. **Schema (`Namespace`):** Tek bir veritabanı içindeki mantıksal ad alanıdır. Nesne çözümlemesi `search_path` (`"$user", public`) sırasına göre yapılır.
+4. **Relation:** Tablo (`r`), indeks (`i`), sequence (`S`), view (`v`) ve TOAST tablolarının (`t`) ortak katalog adıdır.
+
+### `OID` ve `relfilenode` Ayrımı
+
+Her veritabanı nesnesi `pg_class` içinde değişmez bir **OID (Object Identifier)** taşır; ancak diskteki dosya adı **`relfilenode`** sütunundan gelir:
+
+* İlk oluşturmada genellikle `oid == relfilenode` olur (`$PGDATA/base/<db_oid>/<relfilenode>`).
+* `TRUNCATE`, `VACUUM FULL`, `REINDEX` veya `CLUSTER` çalıştırıldığında PostgreSQL yeni bir fiziksel dosya yazar ve yalnızca `pg_class.relfilenode` değerini günceller; tablonun `oid`'si ve yabancı anahtar/view bağımlılıkları bozulmaz.
+* Aktif dosyanın tam yolunu görmek için `SELECT pg_relation_filepath('orders');` kullanılır.
+
+Canlı bir PostgreSQL 18.1 instance'ında çekirdek katalog tabloları sorgulandığında ilginç bir istisna görülür; sistem açılışında okunması zorunlu bootstrap katalogları (`pg_class`, `pg_attribute`) sabit `pg_filenode.map` eşlemesi kullandığı için `relfilenode = 0` döner, ancak `pg_relation_filepath` yine gerçek dosya yolunu çözümler:
+
+```sql
+SELECT oid, relname, relfilenode, pg_relation_filepath(oid), reltuples::bigint, relpages
+FROM pg_class
+WHERE relname IN ('pg_class', 'pg_attribute', 'pg_type', 'pg_proc')
+ORDER BY oid;
+```
+
+```text
+ oid  |   relname    | relfilenode | pg_relation_filepath | reltuples | relpages
+------+--------------+-------------+----------------------+-----------+----------
+ 1247 | pg_type      |           0 | base/5/1247          |       715 |       17
+ 1249 | pg_attribute |           0 | base/5/1249          |      3900 |       72
+ 1255 | pg_proc      |           0 | base/5/1255          |      3731 |      127
+ 1259 | pg_class     |           0 | base/5/1259          |       530 |       17
+```
+
+<Mermaid
+  title="1. Mantıksal Hiyerarşi ve PGDATA Fiziksel Eşleşmesi"
+  ariaLabel="Cluster, Database, Schema ve Relation yapısının PGDATA base, global ve pg_tblspc dizinleriyle eşleşmesi"
+  code={`
+flowchart LR
+    Cluster["Cluster (postmaster)"] --> DB["Database (db_oid)"]
+    Cluster --> Global[("$PGDATA/global")]
+    DB --> Schema["Schema (pg_namespace)"]
+    Schema --> Rel["Relation (oid / relfilenode)"]
+    Rel --> Base[("$PGDATA/base/db_oid/relfilenode")]
+    Rel -.->|"Tablespace Tanımlıysa"| Tblspc[("$PGDATA/pg_tblspc/spc_oid")]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Cluster,DB,Schema process
+    class Rel primary
+    class Global,Base,Tblspc storage
+`}
+  summarySteps={[
+    "1. Cluster (postmaster), tüm veritabanlarının ortak rollerini ve kontrol dosyalarını $PGDATA/global altında tutar.",
+    "2. Her Database, pg_database içindeki OID'sine karşılık gelen $PGDATA/base/<db_oid> alt dizinine sahiptir.",
+    "3. Schema yalnızca mantıksal namespace katmanıdır; diskte ayrı klasör oluşturmaz.",
+    "4. Relation verileri varsayılan olarak base/<db_oid>/<relfilenode> dosyasına, özel Tablespace atanmışsa pg_tblspc symlink'ine yazılır."
+  ]}
+/>
+
+---
+
+## 2. `System Catalog`: `pg_catalog` vs `information_schema`
+
+PostgreSQL tüm şema ve istatistik metaverisini kendi iç tablolarında saklar; kullanıcıya iki farklı okuma arayüzü sunar:
+
+* **`pg_catalog`:** Motorun gerçek iç tablolarıdır (`pg_class`, `pg_attribute`, `pg_namespace`, `pg_index`, `pg_database`, `pg_am`). İndekslenmiştir, doğrudan `OID` üzerinden çok hızlı çalışır ve `reltuples`, `relpages`, `relfilenode`, `reltoastrelid` gibi PostgreSQL'e özgü fiziksel alanları içerir.
+* **`information_schema`:** SQL-92/2003 standardı uyumluluğu için `pg_catalog` tabloları üzerine kurulmuş taşınabilir bir `VIEW` katmanıdır. Standart dışı kavramları (indeks türleri, partition detayları, Tablespace, `OID`) içermez ve arka planda `pg_is_visible_schema` / yetki filtreleri çalıştırdığı için çok sayıda tablo içeren ortamlarda belirgin biçimde daha yavaştır.
+
+---
+
+## 3. `$PGDATA` Dizin Yapısı ve Konfigürasyon Dosyaları
+
+`initdb` ile başlatılan `$PGDATA` kök dizini hem ham veri bloklarını hem de durum/konfigürasyon dosyalarını barındırır:
+
+| Dizin / Dosya | Görevi |
+| :--- | :--- |
+| **`PG_VERSION`** | Cluster'ın major PostgreSQL sürüm numarasını (`16`, `17` vb.) tutar. |
+| **`postmaster.pid`** | Aktif `postmaster` PID'si, `$PGDATA` yolu, port ve Shared Memory anahtarını saklar; çift başlatmayı önler. |
+| **`global/`** | Tüm Cluster için ortak kataloglar (`pg_database`, `pg_authid`, `pg_tablespace`) ve kurtarma durumu başlığı olan **`pg_control`** dosyası burada yaşar. |
+| **`base/`** | Her veritabanının kendi `db_oid` alt dizini ve ilişkilerin fiziksel blok dosyaları burada bulunur. |
+| **`pg_wal/`** | Write-Ahead Log segment dosyaları (varsayılan 16MB) ve `archive_status/` kuyruğu. |
+| **`pg_xact/`** | Transaction commit/abort durumlarını XID başına 2 bit olarak tutan commit log dizini (eski adı `pg_clog`). |
+| **`pg_multixact/`** | Birden fazla transaction aynı satırı paylaştığında (`SELECT ... FOR SHARE`) kullanılan MultiXact durum dosyaları. |
+| **`pg_tblspc/`** | Özel Tablespace tanımlarına işaret eden işletim sistemi sembolik bağlantıları (`spc_oid` → hedef dizin). |
+| **`pg_stat/`** | PostgreSQL 15+ ile Shared Memory üzerinden kapatılışta diske yazılan kalıcı kümülatif istatistik dosyaları. |
+| **`postgresql.conf` & `postgresql.auto.conf`** | Ana yapılandırma dosyası ve `ALTER SYSTEM SET` komutlarının yazdığı dosya (`postgresql.auto.conf` her zaman `postgresql.conf`'u ezer). |
+| **`pg_hba.conf` & `pg_ident.conf`** | İstemci IP/ağ/kimlik doğrulama kuralları (`Host-Based Authentication`) ve OS-PostgreSQL kullanıcı eşleme kuralları. |
+
+Canlı bir PostgreSQL 18.1 (`/var/lib/pgsql/18/data/`) kümesindeki `$PGDATA` kök dizini ve `base/5/` (`postgres` veritabanı) içindeki fork dosyaları diskte şu şekilde görünür:
+
+```text
+# ls -la /var/lib/pgsql/18/data/
+-rw-------  1 postgres postgres     3 PG_VERSION
+drwx------ 11 postgres postgres   115 base
+drwx------  2 postgres postgres  4096 global
+drwx------  2 postgres postgres   188 log
+drwx------  4 postgres postgres    36 pg_multixact
+drwx------  2 postgres postgres     6 pg_stat
+drwx------  2 postgres postgres     6 pg_tblspc
+drwx------  4 postgres postgres  4096 pg_wal
+drwx------  2 postgres postgres  4096 pg_xact
+-rw-------  1 postgres postgres    88 postgresql.auto.conf
+-rw-------  1 postgres postgres 32383 postgresql.conf
+-rw-------  1 postgres postgres    58 postmaster.opts
+-rw-------  1 postgres postgres    90 postmaster.pid
+
+# base/5/ içinde relation ve fork dosyaları (pg_type=1247, pg_class=1259):
+-rw------- 1 postgres postgres 139264 1247
+-rw------- 1 postgres postgres  24576 1247_fsm
+-rw------- 1 postgres postgres   8192 1247_vm
+-rw------- 1 postgres postgres 139264 1259
+-rw------- 1 postgres postgres  24576 1259_fsm
+-rw------- 1 postgres postgres   8192 1259_vm
+```
+
+---
+
+## 4. Fiziksel Dosya Düzeni: Segmentler, Fork'lar, TOAST ve Tablespace
+
+Bir tablo diskte tek bir dosya değildir; 1GB'lık segmentlere ve yardımcı meta dosya **fork**'larına ayrılır:
+
+* **1GB Segmentasyon:** İşletim sistemi dosya boyutu limitlerine takılmamak için 1GB'ı aşan her relation otomatik olarak `<relfilenode>`, `<relfilenode>.1`, `<relfilenode>.2` dosyalarına bölünür.
+* **Ana Veri (`fork 0`):** Tablo veya indeksin 8KB'lık ana `Data Page` bloklarını içerir (dosya adı son eki yoktur).
+* **Free Space Map (`_fsm`):** Her 8KB sayfada ne kadar boş alan kaldığını yaklaşık bayt aralıklarıyla bir ağaç yapısında tutar. Yeni `INSERT`/`UPDATE` sırasında tüm tabloyu taramadan uygun boş sayfayı bulmayı sağlar.
+* **Visibility Map (`_vm`):** Sayfa başına yalnızca 2 bit (`ALL_VISIBLE` ve `ALL_FROZEN`) saklar. `VACUUM` temiz sayfaları atlamak için bu haritaya bakar; `Index-Only Scan` ise heap sayfasına hiç inmeden sonucu doğrudan indeksten dönebilmek için `ALL_VISIBLE` bitini kontrol eder.
+* **Initialization Fork (`_init`):** `UNLOGGED` tablolarda bulunur; crash sonrası sıfırlanacak boş iskeleti temsil eder.
+
+<Mermaid
+  title="2. Relation Fork'ları ve TOAST Fiziksel Dosya Eşleşmesi"
+  ariaLabel="Ana relation dosyası, 1GB segmentler, _fsm, _vm forkları ve pg_toast tablosu ilişkisi"
+  code={`
+flowchart LR
+    Rel["Relation (relfilenode)"] --> Main["16384, 16384.1 (Ana Heap · 1GB)"]
+    Rel --> FSM["16384_fsm (Boş Alan Haritası)"]
+    Rel --> VM["16384_vm (ALL_VISIBLE / FROZEN)"]
+    Rel -.->|"Sütun > ~2KB"| Toast["pg_toast.pg_toast_oid (Chunk Tablosu)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Rel primary
+    class FSM,VM memory
+    class Main,Toast storage
+`}
+  summarySteps={[
+    "1. Ana relation dosyası (soneksiz) 1GB eşiğinde .1, .2 segmentlerine bölünür.",
+    "2. _fsm (Free Space Map) her 8KB bloktaki kullanılabilir boş alanı indeksleyerek INSERT aramalarını hızlandırır.",
+    "3. _vm (Visibility Map) Index-Only Scan ve VACUUM atlamaları için ALL_VISIBLE/ALL_FROZEN bitlerini tutar.",
+    "4. ~2KB eşiğine sığmayan büyük sütun değerleri ilişkili pg_toast tablosuna 2KB'lık chunk'lar halinde taşınır."
+  ]}
+/>
+
+### TOAST Depolama Stratejileri (`pg_toast`)
+
+Bir `HeapTuple` tek bir 8KB sayfa sınırını aşamaz; satır genişliği `TOAST_TUPLE_THRESHOLD` (~2000 bayt) üzerine çıktığında PostgreSQL sütun seviyesindeki stratejiye göre **sıkıştırma** (pglz / LZ4) ve **out-of-line** (`pg_toast_<table_oid>`) parçalama uygular:
+
+| Strateji | Davranış | Tipik Kullanım |
+| :--- | :--- | :--- |
+| **`PLAIN`** | Sıkıştırma ve out-of-line taşıma yapılmaz | Sabit uzunluklu tipler (`int4`, `bigint`, `timestamptz`) |
+| **`EXTENDED`** | Önce sıkıştırır, hâlâ sığmazsa TOAST tablosuna taşır *(Varsayılan)* | `text`, `varchar`, `jsonb` |
+| **`EXTERNAL`** | Sıkıştırmadan doğrudan TOAST tablosuna taşır | Büyük binary/metinlerde `substr()` ile kısmi okuma gerektiğinde |
+| **`MAIN`** | Sıkıştırır; yalnızca başka çare kalmazsa out-of-line taşır | Sık okunan orta boyutlu metin/vektör sütunları |
+
+### Tablespace (`pg_tblspc`) Kullanım Kuralı
+
+`CREATE TABLESPACE` komutu, bir tablo veya indeksi `$PGDATA/base` dışındaki ayrı bir dosya sistemi dizinine yönlendirir. Modern NVMe/SAN veya LVM altyapılarında tek hızlı havuz varken ek Tablespace açmak yedekleme (`pg_basebackup` path mapping) ve restore yönetimini zorlaştırır; yalnızca soğuk arşiv tabloları ile sıcak indeksleri farklı fiziksel disk sınıflarına (ör. NVMe vs HDD) ayırma ihtiyacı olduğunda tercih edilmelidir.

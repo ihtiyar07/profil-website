@@ -43,6 +43,36 @@ const navSections: NavSection[] = [
           {
             title: 'Extension Mimarisi & C Hook Yapısı',
             href: '/posts/postgresql-extension-mimarisi-ve-c-hooks'
+          },
+          {
+            title: 'Cluster, OID & PGDATA Anatomisi',
+            href: '/posts/postgresql-cluster-oid-ve-pgdata'
+          },
+          {
+            title: 'İç Kilitler & Wait Events Teşhisi',
+            href: '/posts/postgresql-ic-kilitler-ve-wait-events'
+          },
+          {
+            title: 'Arka Plan Süreçleri: Archiver & Workers',
+            href: '/posts/postgresql-arka-plan-surecleri'
+          }
+        ]
+      },
+      {
+        title: 'Genel Bakış: Kurulum & Servis Yönetimi',
+        href: '/posts/postgresql-kurulum-ve-servis-yonetimi',
+        children: [
+          {
+            title: 'Kurulum: PGDG, Kaynak Kod, Docker & initdb',
+            href: '/posts/postgresql-kurulum-yontemleri-ve-initdb'
+          },
+          {
+            title: 'Servis Yönetimi: systemd, Reload & Disk',
+            href: '/posts/postgresql-servis-yonetimi-ve-disk-yerlesimi'
+          },
+          {
+            title: 'Multi-Instance, pg_wrapper & ICU Collation',
+            href: '/posts/postgresql-multi-instance-pgwrapper-ve-collation'
           }
         ]
       },
@@ -80,6 +110,22 @@ const navSections: NavSection[] = [
           {
             title: 'Production Tuning & Operasyon',
             href: '/posts/timescaledb-production-tuning-ve-operasyon'
+          },
+          {
+            title: 'Parallel Copy & Bulk Ingest',
+            href: '/posts/timescaledb-parallel-copy-ve-bulk-ingest'
+          },
+          {
+            title: 'Sorgu Optimizasyonu: SkipScan & BRIN',
+            href: '/posts/timescaledb-sorgu-optimizasyonu-skipscan-ve-indeksleme'
+          },
+          {
+            title: 'Patroni HA & Katmanlı Depolama',
+            href: '/posts/timescaledb-ha-replikasyon-ve-katmanli-depolama'
+          },
+          {
+            title: 'pgvectorscale & StreamingDiskANN',
+            href: '/posts/pgvectorscale-ve-timescaledb-hibrit-vektor-mimarisi'
           }
         ]
       }

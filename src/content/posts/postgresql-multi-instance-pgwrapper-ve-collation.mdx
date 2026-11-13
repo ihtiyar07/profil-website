@@ -1,0 +1,114 @@
+---
+title: "PostgreSQL Multi-Instance, Debian pg_wrapper ve ICU Collation Güvencesi"
+slug: "postgresql-multi-instance-pgwrapper-ve-collation"
+date: "2026-11-12"
+lang: "tr"
+summary: "Aynı sunucuda birden fazla PostgreSQL cluster çalıştırma, Debian pg_wrapper/pg_lsclusters mimarisi, RHEL systemd şablonları ve glibc güncellemesinde B-tree indeks bozulmasına karşı ICU collation."
+tags: ["PostgreSQL", "Multi-Instance", "Debian", "ICU", "Collation"]
+parent: "postgresql-kurulum-ve-servis-yonetimi"
+order: 3
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Tek bir fiziksel sunucuda birden fazla bağımsız PostgreSQL kümesi (cluster) çalıştırmak; major sürüm yükseltmeleri (`pg_upgrade`), farklı iş yüklerinin izole edilmesi veya çoklu test ortamlarının barındırılması için yaygın bir pratiktir. Ancak aynı makinede paylaşılan `RAM` ve işletim sistemi `glibc` güncellemeleri dikkatle yönetilmelidir.
+
+---
+
+## 1. Multi-Instance Mimarisi
+
+Aynı sunucuda çalışan her PostgreSQL cluster'ı kendi bağımsız `postmaster` sürecine, `$PGDATA` dizinine, TCP portuna (`5432`, `5433`, ...) ve Unix socket dosyasına sahiptir:
+
+* **Bellek Çakışması Riski:** Her cluster kendi `shared_buffers` alanını işletim sisteminden ayrı ayrı ayırır. Aynı sunucuda iki instance çalışıyorsa toplam `shared_buffers + work_mem` bütçesi toplam fiziksel RAM sınırını aşmayacak şekilde paylaştırılmalıdır.
+* **Bağımsız Bakım:** Bir instance'a `restart` atılırken veya konfigürasyonu değişirken diğer porttaki instance bundan etkilenmez.
+
+---
+
+## 2. Debian `pg_wrapper` ve `pg_lsclusters` Yapısı
+
+RHEL/EL9 tarafında birden fazla cluster açmak için ayrı `$PGDATA` dizinleri ve `systemd` şablon dosyaları (`postgresql-18@analytics.service`) manuel tanımlanırken; **Debian ve Ubuntu**, `postgresql-common` paketiyle gelen **`pg_wrapper`** mimarisini standart olarak sunar.
+
+`pg_wrapper`, konfigürasyon dosyaları ile fiziksel veri bloklarını birbirinden ayırır:
+
+| Katman | Debian / Ubuntu Yolu | Amaç |
+| :--- | :--- | :--- |
+| **Konfigürasyon** | `/etc/postgresql/<sürüm>/<cluster>/` | `postgresql.conf`, `pg_hba.conf`, `start.conf`, `environment` |
+| **Fiziksel Veri (`PGDATA`)** | `/var/lib/postgresql/<sürüm>/<cluster>/` | `base/`, `global/`, `pg_wal/` |
+| **Log Dosyaları** | `/var/log/postgresql/` | `postgresql-<sürüm>-<cluster>.log` |
+
+### Gerçek Multi-Instance Çıktısı (`pg_createcluster` & `pg_lsclusters`)
+
+Aynı Debian 12 sunucusunda varsayılan `5432 (main)` yanında `5433` portunda ikinci bir PostgreSQL 17 kümesi (`analytics`) oluşturulduğunda sistem görünümü şu şekildedir:
+
+```bash
+pg_createcluster 17 analytics -p 5433 --start -- \
+  --data-checksums --locale-provider=icu --icu-locale=tr-TR \
+  --waldir=/var/lib/postgresql/wal_analytics
+```
+
+```text
+$ pg_lsclusters
+Ver Cluster   Port Status Owner    Data directory                   Log file
+17  analytics 5433 online postgres /var/lib/postgresql/17/analytics /var/log/postgresql/postgresql-17-analytics.log
+17  main      5432 down   postgres /var/lib/postgresql/17/main      /var/log/postgresql/postgresql-17-main.log
+```
+
+`pg_ctlcluster 17 analytics status` incelendiğinde, `pg_wrapper`'ın `postmaster` sürecini `-c config_file=/etc/postgresql/17/analytics/postgresql.conf` parametresiyle ayırdığı görülür; böylece `$PGDATA` içinde yedeklenen veri ile `/etc` altındaki metin konfigürasyonları bağımsız yönetilebilir.
+
+---
+
+## 3. `ICU Collation` ve `glibc` İndeks Bozulması Riski
+
+Metin (`text`, `varchar`) sütunlar üzerindeki tüm **B-tree indeksleri**, verinin fiziksel disk sıralamasını o kümedeki **Collation (sıralama kuralı)** kütüphanesinin döndürdüğü karşılaştırma sonucuna göre kurar.
+
+### `glibc` Güncellemesi Neden Sessiz İndeks Bozulmasına Yol Açar?
+
+İşletim sistemi yükseltmelerinde (ör. `glibc 2.28` sonrası Debian 10→11 veya RHEL 7→8 geçişi) `glibc`'nin karakter ve noktalama sıralama kuralları değişir. Diskteki B-tree indeks sayfaları ise eski `glibc` kuralına göre sıralı kalmaya devam eder:
+
+<Mermaid
+  title="glibc Güncellemesinde B-Tree Bozulması vs ICU Koruması"
+  ariaLabel="OS glibc yükseldiğinde B-tree arama sırasının kırılması ve ICU versiyon takibi ile farkı"
+  code={`
+flowchart LR
+    Old["Eski B-Tree İndeksi (glibc 2.17 Sırası)"] -->|"OS Upgrade (glibc 2.28+)"| Mismatch["Yeni Sıralama vs Eski İndeks"]
+    Mismatch --> Corrupt["Kayıp Satır / Yanlış UNIQUE Hatası"]
+
+    ICU["--locale-provider=icu (tr-TR)"] -->|"Versiyon Kataloğa Yazılır"| Check["collversion Takibi (153.120.42)"]
+    Check --> Safe["OS glibc Değişiminden İzole"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Old,ICU primary
+    class Mismatch,Check process
+    class Safe memory
+    class Corrupt storage
+`}
+  summarySteps={[
+    "1. OS upgrade sırasında glibc sıralama kuralları değişirse mevcut metin B-tree indeksleri fiziksel olarak geçersizleşir.",
+    "2. Bozuk indekste WHERE veya ORDER BY sorguları var olan satırları atlayabilir veya sahte UNIQUE ihlali üretebilir.",
+    "3. ICU collation provider kullanıldığında sıralama OS glibc'sine değil versiyonlu ICU kütüphanesine bağlanır.",
+    "4. Kütüphane sürümü değişse bile pg_database.datcollversion uyarısı hangi nesnelerin REINDEX gerektirdiğini açıkça bildirir."
+  ]}
+/>
+
+### Üretim Çözümü: PostgreSQL 15+ `ICU` Sağlayıcısı
+
+PostgreSQL 15+ ile küme veya veritabanı oluşturulurken `--locale-provider=icu` seçilerek sıralama işletim sistemi `glibc`'sinden koparılır (PostgreSQL 17+ ile yerleşik bağımsız `builtin` `C.UTF-8` sağlayıcısı da bir diğer sıfır-bağımlılık seçeneğidir).
+
+Test ortamında `ICU` ile başlatılmış PostgreSQL 17 (`analytics`) kümesinin katalog kaydı:
+
+```sql
+SELECT datname, datlocprovider, datlocale, datcollversion
+FROM pg_database
+WHERE datname = 'postgres';
+```
+
+```text
+ datname  | datlocprovider | datlocale | datcollversion
+----------+----------------+-----------+----------------
+ postgres | i              | tr-TR     | 153.120.42
+```
+
+* Eğer sunucuda `libicu` veya `glibc` majör sürümü yükselirse PostgreSQL açılış/bağlantı anında `collation "tr-TR" has version mismatch` uyarısı üretir; etkilenen veritabanı veya sütun indeksleri `REINDEX DATABASE` ile yeniden kurulduktan sonra `ALTER DATABASE ... REFRESH COLLATION VERSION;` komutuyla mühür güncellenir.

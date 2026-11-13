@@ -8,6 +8,7 @@ tags: ["PostgreSQL", "Bellek", "Mimari", "Performans"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
 order: 1
 ---
+import Mermaid from '../../components/Mermaid.astro';
 
 PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Shared Memory** ve **Her client sürecine özel tahsis edilen Local Memory**.
 
@@ -34,34 +35,51 @@ Her `postgres` backend süreci, kendisine gelen sorguları işlerken ortak belle
 ### D. Yerel Plan & Sistem Kataloğu Önbelleği (`syscache` & `relcache`)
 - Her backend süreci, sık kullandığı tablo metaverilerini (`relcache`), katalog satırlarını (`syscache`) ve `PREPARE` ile hazırlanmış sorgu planlarını (prepared statement plan cache) kendi yerel belleğinde saklar. Böylece her sorguda katalog tablolarına kilit atıp disk okuması yapmaktan kurtulur.
 
+Örnek bir PostgreSQL 18 üretim örneğinde bellek parametrelerinin `pg_settings` üzerindeki dağılımı ve restart bağlamları (`context`):
+
+```text
+         name         | setting | unit |  context   
+----------------------+---------+------+------------
+ effective_cache_size | 3056256 | 8kB  | user
+ maintenance_work_mem | 2097152 | kB   | user
+ max_connections      | 100     |      | postmaster
+ shared_buffers       | 1018752 | 8kB  | postmaster
+ wal_buffers          | 2048    | 8kB  | postmaster
+ work_mem             | 10187   | kB   | user
+```
+
 ---
 
 ## 2. Shared Memory ve `shared_buffers` İç Mimarisi
 
 Tüm backend süreçlerinin ve background worker'ların eşzamanlı eriştiği ortak RAM alanıdır. `shared_buffers`, PostgreSQL'in kalbidir ve tek bir monolitik blok değil, birbirine sıkı sıkıya bağlı **4 alt katmandan** oluşur:
 
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│                   shared_buffers ÇEKİRDEK İÇ MİMARİSİ                  │
-│                                                                        │
-│ 1. Buffer Mapping Hash Table (O(1))                                    │
-│    BufferTag (relNode + forkNum + blockNum) ──► Buffer ID [0..N-1]     │
-│                                                      │                 │
-│ 2. Buffer Descriptors Array                          ▼                 │
-│    ┌──────────────┬────────────────────────┬─────────────────────┐     │
-│    │ Tag Metadata │ 32-bit Atomic State    │ content_lock LWLock │ ... │
-│    │ (Blok No)    │ (Dirty, Refcount, Pin) │ (Eşzamanlı Erişim)  │     │
-│    └──────────────┴────────────────────────┴─────────────────────┘     │
-│                            │                                           │
-│ 3. Buffer Pool Frames      ▼                                           │
-│    ┌─────────────────┬─────────────────┬─────────────────┐             │
-│    │ Frame 0: [ 8KB ]│ Frame 1: [ 8KB ]│ Frame N: [ 8KB ]│             │
-│    └─────────────────┴─────────────────┴─────────────────┘             │
-│                            ▲                                           │
-│ 4. Clock Sweep Algoritması ┘ (Dairesel ibre: Pin=0 & usage_count=0)    │
-│    (usage_count == 0 ve refcount == 0 olan data page victim seçilir)   │
-└────────────────────────────────────────────────────────────────────────┘
-```
+<Mermaid
+  title="shared_buffers 4 Katmanlı İç Mimarisi ve Clock Sweep"
+  ariaLabel="Buffer Mapping Hash Table, Buffer Descriptors, Buffer Pool 8KB slotları ve Clock Sweep eviction akışı"
+  code={`
+flowchart LR
+    BE["Backend Process"] -->|"1. BufferTag O(1)"| Hash["Buffer Mapping Hash Table"]
+    Hash -->|"2. Buffer ID"| Desc["Buffer Descriptors (State & LWLock)"]
+    Desc -->|"3. İşaret Eder"| Pool["Buffer Pool (8KB Slots)"]
+    Clock["Clock Sweep İbresi"] -.->|"4. Eviction (refcount=0)"| Desc
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class BE primary
+    class Clock process
+    class Hash,Desc,Pool memory
+`}
+  summarySteps={[
+    "1. Backend Process, aranan bloğun BufferTag (spcNode, dbNode, relNode, forkNum, blockNum) anahtarını Buffer Mapping Hash Table üzerinde O(1) sürede arar.",
+    "2. Eşleşen Buffer ID üzerinden Buffer Descriptors dizisindeki atomic durum bayrakları (BM_DIRTY, refcount, usage_count) ve content_lock LWLock kontrol edilir.",
+    "3. Veri doğrudan Buffer Pool içindeki 8KB slotundan okunur veya güncellenir.",
+    "4. Boş slot kalmadığında Clock Sweep ibresi dairesel tarama yaparak refcount = 0 ve usage_count = 0 olan sayfayı victim seçer."
+  ]}
+/>
 
 ### 1. Buffer Mapping Table (Paylaşımlı Hash Tablosu)
 Bir backend, diskteki bir tablonun belirli bir bloğuna ihtiyaç duyduğunda önce bu hash tablosuna bakar.

@@ -1,0 +1,125 @@
+---
+title: "PostgreSQL Kurulum Yöntemleri ve initdb: PGDG, Kaynak Kod, Docker ve Data Checksums"
+slug: "postgresql-kurulum-yontemleri-ve-initdb"
+date: "2026-11-12"
+lang: "tr"
+summary: "Debian/RHEL üzerinde PGDG repo kurulumu, kaynak koddan derleme bayrakları, Docker üretim sınırları ve initdb aşamasında encoding, locale, ICU ve data checksums seçimi."
+tags: ["PostgreSQL", "Kurulum", "PGDG", "Docker", "initdb"]
+parent: "postgresql-kurulum-ve-servis-yonetimi"
+order: 1
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL ikili dosyalarının sisteme hangi kaynaktan kurulduğu bakım kolaylığını, `initdb` aşamasında verilen parametreler ise veritabanı kümesinin yaşam boyu karakter setini ve veri bütünlüğü garantisini belirler.
+
+---
+
+## 1. Paket Kurulumu: `apt` ve `dnf` (PGDG Resmi Deposu)
+
+İşletim sistemlerinin kendi depoları (`AppStream` veya Debian `stable`) genellikle tek ve görece eski bir PostgreSQL sürümü sunar. Güncel major sürümleri (ör. PostgreSQL 17/18) ve aynı sunucuda paralel kurulum araçlarını almak için **PGDG (PostgreSQL Global Development Group)** deposu kullanılır:
+
+```bash
+# Debian / Ubuntu (PGDG APT Deposu)
+sudo install -d /usr/share/postgresql-common/pgdg
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+  | sudo gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] \
+  https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+  | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt-get update && sudo apt-get install -y postgresql-17
+```
+
+**RHEL / Rocky / AlmaLinux (EL9)** tarafında ise işletim sisteminin yerleşik eski modülü devre dışı bırakılmadan PGDG paketleri çakışır:
+
+```bash
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf -qy module disable postgresql
+sudo dnf install -y postgresql18-server postgresql18-contrib
+sudo /usr/pgsql-18/bin/postgresql-18-setup initdb
+```
+
+---
+
+## 2. Kaynak Koddan Derleme ve Docker Seçenekleri
+
+### Kaynak Koddan Derleme (`configure` & `meson`)
+
+Standart paketlerde bulunmayan çekirdek yamaları, farklı sayfa boyutu (`--with-blocksize`) veya spesifik derleyici optimizasyonu gerektiğinde PostgreSQL kaynak koddan derlenir. Modern PostgreSQL sürümlerinde klasik `autotools` yanında daha hızlı olan **`meson` + `ninja`** altyapısı da desteklenir.
+
+Üretim uyumlu bir derlemede sıkıştırma (`lz4`, `zstd`), `ICU` ve asenkron I/O (`liburing`, PG18+) kütüphanelerinin aktif edilmesi gerekir:
+
+```bash
+./configure \
+  --prefix=/opt/pg18 \
+  --with-icu \
+  --with-openssl \
+  --with-lz4 \
+  --with-zstd \
+  --with-systemd
+make -j$(nproc) && sudo make install
+```
+
+> Kurulum sonrası ikili dosyaların hangi bayraklarla derlendiğini kontrol etmek için `pg_config --configure` komutu kullanılır.
+
+### Docker / Container Kurulumu
+
+Container yapısı geliştirme, CI testleri ve Kubernetes operatörleri (`CloudNativePG`) için yüksek tekrarlanabilirlik sunar; ancak klasik VM/bare-metal dışındaki 4 sınıra dikkat edilmelidir:
+
+1. **Paylaşımlı Bellek (`--shm-size`):** Docker varsayılan olarak `/dev/shm` alanını 64MB ile sınırlar. `shared_buffers` büyük ayarlanmasa bile paralel sorgu çalışanları (`dynamic_shared_memory_type = posix`) için `--shm-size=256m` veya üzeri verilmelidir.
+2. **Sürüm Dizin Yapısı ve İzinler:** Resmi PostgreSQL 18 imajında `PGDATA` yolu `/var/lib/postgresql/18/docker` biçiminde sürüme bağlanmıştır; bind mount edilen dizinin container içi `postgres` UID/GID'sine yazılabilir olması gerekir.
+3. **PID 1 ve Sinyal İletimi:** Container içinde başlangıç script'i `exec postgres` ile kendini değiştirmeli ve orchestrator'ün `stop_timeout` süresi uzun checkpoint'leri kesmemelidir.
+
+---
+
+## 3. `initdb`: `Locale`, `Encoding`, `Collation` ve `Data Checksums`
+
+`initdb`, `$PGDATA` dizinini ve ilk sistem kataloglarını (`template0`, `template1`, `postgres`) sıfırdan oluşturur. Bu aşamada verilen kritik parametrelerin çoğu sonradan değiştirilemez:
+
+<Mermaid
+  title="initdb Sırasında Sabitlenen Kritik Seçimler"
+  ariaLabel="initdb sürecinde locale, encoding, waldir ve data checksums kararlarının kalıcı etkisi"
+  code={`
+flowchart LR
+    Cmd["initdb Çalıştırma"] --> Enc["--encoding=UTF8"]
+    Cmd --> Loc["--locale-provider=icu (--icu-locale)"]
+    Cmd --> Chk["--data-checksums"]
+    Cmd --> Wal["--waldir=/pgwal/18"]
+
+    Enc --> Fixed["Katalogda Sabitlenir (Değişim için Dump/Restore)"]
+    Loc --> Fixed
+    Chk --> Page["Her 8KB Data Page Başlığında 16-bit CRC"]
+    Wal --> Sym["PGDATA/pg_wal Symlink Ayrımı"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Cmd primary
+    class Enc,Loc,Chk,Wal process
+    class Fixed,Page memory
+    class Sym storage
+`}
+  summarySteps={[
+    "1. --encoding=UTF8 ve --locale-provider seçimi cluster kataloglarına yazılır; sonradan değişimi yeniden initdb ve veri aktarımı gerektirir.",
+    "2. --data-checksums her 8KB sayfanın diske yazılırken checksum ile mühürlenmesini sağlar.",
+    "3. --waldir parametresi $PGDATA/pg_wal dizinini fiziksel olarak farklı bir diskteki hedefe sembolik linkle bağlar."
+  ]}
+/>
+
+### `Data Checksums` Maliyeti ve Doğrulanması
+
+`--data-checksums` açıldığında PostgreSQL her 8KB `Data Page` diske yazılmadan hemen önce 16-bit bir checksum değeri hesaplar ve sayfa başlığına yazar; sayfa `Buffer Pool`'a geri okunduğunda bu değer doğrulanır.
+
+* **Maliyet:** Modern x86_64 işlemcilerde CPU ek yükü genellikle **~%1–2** bandındadır.
+* **Kazanç:** RAID denetleyicisi veya disk katmanından sızan sessiz blok bozulmalarını (`silent data corruption`) veri çoğalmadan okuma anında yakalar.
+* **Kurulum Sonrası Kontrol:** Checksum aktif edilmemiş bir kümede sonradan açmak (`pg_checksums --enable`) için sunucunun tamamen durdurulması gerekir. Durmuş bir kümede bütünlüğü taramak için `--check` komutu kullanılır:
+
+```text
+# pg_checksums --check -D /var/lib/postgresql/18/data
+Checksum operation completed
+Files scanned:   950
+Blocks scanned:  2884
+Bad checksums:  0
+Data checksum version: 1
+```

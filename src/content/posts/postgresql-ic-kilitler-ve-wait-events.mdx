@@ -1,0 +1,145 @@
+---
+title: "PostgreSQL İç Kilit Hiyerarşisi: Spinlock, LWLock, BufferPin ve Wait Events"
+slug: "postgresql-ic-kilitler-ve-wait-events"
+date: "2026-11-12"
+lang: "tr"
+summary: "PostgreSQL çekirdeğindeki üç katmanlı kilit hiyerarşisi (Spinlock, LWLock, Heavyweight Lock), BufferPin beklemesi ve pg_stat_activity üzerinden wait_event_type / wait_event teşhisi."
+tags: ["PostgreSQL", "Eşzamanlılık", "Performans", "Mimari"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 7
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'de bir backend süreci ortak bellek yapılarına (`shared_buffers`, `ProcArray`, `wal_buffers`) veya tablolara erişirken tek bir kilit mekanizması kullanmaz. Bekleme süresine, korunan verinin boyutuna ve eşzamanlılık maliyetine göre tasarlanmış **üç katmanlı bir kilit hiyerarşisi** vardır: **Spinlock**, **LWLock (Lightweight Lock)** ve **Heavyweight Lock**.
+
+Bir sorgunun CPU üzerinde mi çalıştığını yoksa bu kilitlerden birinde mi beklediğini anlamak için `pg_stat_activity` görünümündeki **`wait_event_type`** ve **`wait_event`** sütunları kullanılır.
+
+---
+
+## 1. Üç Katmanlı Kilit Mimarisi
+
+Çekirdekteki bellek içi veri yapılarını koruyan alt seviye kilitlerle (`Spinlock`, `LWLock`), SQL nesnelerini koruyan üst seviye kilitler (`Heavyweight Lock`) farklı kurallarla çalışır:
+
+| Özellik | `Spinlock` | `LWLock` (Lightweight Lock) | `Heavyweight Lock` |
+| :--- | :--- | :--- | :--- |
+| **Korunan Hedef** | Tekil bellek alanları, sayaçlar (`BufferDesc` state) | Paylaşımlı yapılar (`BufferMapping`, `ProcArray`, `Data Page`) | Tablolar, satırlar, transaction'lar (`pg_locks`) |
+| **Bekleme Mekanizması** | CPU `busy-wait` (kısa döngü + backoff) | Kuyruğa alınıp OS semaphore/latch ile uyutma | Kilit tablosu + kuyruk (`Lock Manager`) |
+| **Modlar** | Yalnızca Exclusive | `Shared` veya `Exclusive` | 8 Tablo Modu + Satır/Transaction modları |
+| **Deadlock Algılama** | Yok (birkaç CPU komutu kadar tutulur) | Yok (çekirdek sabit edinme sırasıyla önler) | Var (`deadlock_timeout` sonrası çalışır) |
+| **`pg_locks` Görünürlüğü** | Görünmez | Görünmez (`wait_event` ile izlenir) | Tam görünür (`pg_locks`) |
+
+<Mermaid
+  title="1. PostgreSQL İç Kilit Hiyerarşisi ve Koruma Katmanları"
+  ariaLabel="Spinlock, LWLock, BufferPin ve Heavyweight Lock katmanlarının Shared Memory ve Relation üzerindeki eşleşmesi"
+  code={`
+flowchart LR
+    BE["Backend Process"] --> Spin["Spinlock (CPU Busy-Wait)"]
+    BE --> LW["LWLock (Shared / Exclusive)"]
+    BE --> Pin["BufferPin (refcount > 0)"]
+    BE --> Heavy["Heavyweight Lock (pg_locks)"]
+
+    Spin -.->|"Nanosaniye"| Desc["BufferDesc 32-bit State"]
+    LW -.->|"Mikrosaniye"| Shmem[("Hash Tables & Content")]
+    Pin -.->|"Sayfa Okuma"| Page["8KB Data Page"]
+    Heavy -.->|"Transaction Süresi"| Rel[("Table / Row / XID")]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class BE primary
+    class Spin,LW,Pin,Heavy process
+    class Desc,Shmem memory
+    class Page,Rel storage
+`}
+  summarySteps={[
+    "1. Spinlock, BufferDesc durum bayrakları gibi birkaç makine komutunda güncellenen atomik alanları korur.",
+    "2. LWLock, Shared Memory hash tablolarını ve 8KB Data Page içerik erişimini (content_lock) yönetir.",
+    "3. BufferPin, bir Data Page okunurken refcount değerini artırarak sayfanın bellekten atılmasını (eviction) engeller.",
+    "4. Heavyweight Lock ise SQL tablo/satır kilitlerini yönetir ve pg_locks üzerinden izlenebilir."
+  ]}
+/>
+
+---
+
+## 2. Buffer Manager İçinde `Spinlock`, `LWLock` ve `BufferPin`
+
+Bir `Backend Process`, `shared_buffers` içindeki bir 8KB `Data Page`'e eriştiğinde bu mekanizmalar sırayla devreye girer:
+
+1. **Hash Partition `LWLock` (`BufferMapping`):** Sayfanın bellekte olup olmadığını bulmak için paylaşımlı hash tablosunun ilgili bölümünde `LW_SHARED` kilidi alınır (bölüm sayısı 128 olduğu için farklı bloklarda çekişme olmaz).
+2. **`Spinlock` (Buffer Header Koruması):** `BufferDesc` içindeki 32-bit atomik durum (`refcount`, `usage_count`, `BM_DIRTY`) güncellenirken çok kısa süreli bir **Spinlock** alınır ve hemen bırakılır.
+3. **`BufferPin` (`refcount > 0`):** Backend, `Data Page` içindeki bir `Tuple`'ı okurken sayfanın Clock Sweep tarafından bellekten atılmasını önlemek için `refcount` sayacını 1 artırır. Sayfa pinli kaldığı sürece başka oturumlar okuyabilir, ancak `VACUUM` sayfayı sıkıştırmak (cleanup lock) için tüm pinlerin sıfırlanmasını bekler (`wait_event = BufferPin`).
+4. **Content `LWLock` (`BufferContent`):** Sayfanın içindeki baytları okurken `LW_SHARED`, yeni `Tuple` eklerken veya `t_infomask` hint bit'lerini yazarken `LW_EXCLUSIVE` kilidi tutulur.
+
+---
+
+## 3. `Wait Events` (`pg_stat_activity`) ile Darboğaz Teşhisi
+
+Bir süreç CPU'da kod koşturmak yerine bir kaynak bekliyorsa `pg_stat_activity` içinde `state = 'active'` iken `wait_event_type` ve `wait_event` alanları dolar. `wait_event IS NULL` ise oturum gerçekten CPU tüketiyordur.
+
+```sql
+SELECT wait_event_type,
+       wait_event,
+       state,
+       count(*) AS oturum_sayisi
+FROM pg_stat_activity
+WHERE backend_type = 'client backend'
+GROUP BY wait_event_type, wait_event, state
+ORDER BY oturum_sayisi DESC;
+```
+
+<Mermaid
+  title="2. pg_stat_activity Wait Event Karar Ağacı"
+  ariaLabel="pg_stat_activity üzerinden wait_event_type sınıflarının darboğaz kök nedenine bağlanması"
+  code={`
+flowchart LR
+    Act["state = active"] -->|"wait_event IS NULL"| CPU["Aktif CPU Tüketimi"]
+    Act -->|"wait_event_type = LWLock"| LW["Shared Memory Çekişmesi"]
+    Act -->|"wait_event_type = Lock"| HWL["SQL Tablo/Satır Beklemesi"]
+    Act -->|"wait_event_type = IO"| IO["Disk / WAL Sync Gecikmesi"]
+    Act -->|"wait_event_type = BufferPin"| Pin["VACUUM Cleanup Beklemesi"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Act primary
+    class CPU,HWL,Pin process
+    class LW memory
+    class IO storage
+`}
+  summarySteps={[
+    "1. state = active ve wait_event IS NULL ise sorgu bloklanmıyordur; yoğun CPU (Seq Scan, Sort, Hash) harcıyordur.",
+    "2. wait_event_type = LWLock, Shared Memory içi kilit çekişmesini (BufferMapping, WALInsert, ProcArray) gösterir.",
+    "3. wait_event_type = Lock, SQL düzeyinde başka bir transaction tarafından tutulan Heavyweight Lock beklemesidir.",
+    "4. wait_event_type = IO, veri okuma (DataFileRead) veya WAL diske yazma (WALSync) kaynaklı depolama gecikmesidir."
+  ]}
+/>
+
+Üretim sistemlerinde en sık karşılaşılan Wait Event sinyalleri ve kök nedenleri:
+
+| `wait_event_type` | `wait_event` | Kök Neden ve İlk Teşhis |
+| :--- | :--- | :--- |
+| **`LWLock`** | `BufferMapping` / `BufferContent` | Aynı sıcak bloklara aşırı eşzamanlı erişim veya yetersiz `shared_buffers`. |
+| **`LWLock`** | `ProcArray` | Çok yüksek bağlantı sayısı (`max_connections`) ve sık kısa transaction açıp kapama (PgBouncer eksikliğini işaret eder). |
+| **`LWLock`** | `WALInsert` / `WALWrite` | Yüksek yazma eşzamanlılığı; `wal_buffers` yetersizliği veya yavaş disk `fsync`. |
+| **`Lock`** | `relation` / `transactionid` | Başka bir oturumun bitmemiş `ALTER`, `UPDATE` veya `idle in transaction` kilidi (`pg_blocking_pids()` ile incelenir). |
+| **`BufferPin`** | `BufferPin` | Açık uzun bir cursor veya `Seq Scan` aynı sayfayı pinli tutarken `VACUUM` cleanup kilidi bekliyor. |
+| **`IO`** | `DataFileRead` / `WALSync` | `shared_buffers` & OS Page Cache miss oranının artması veya depolama IOPS/latency doygunluğu. |
+
+Aynı anda açık olan kendi oturumunuzdaki Heavyweight Lock kayıtlarını görmek için `pg_locks` görünümü sorgulanabilir; basit bir `SELECT` bile işlem bitene kadar hedef tablo üzerinde `AccessShareLock`, kendi sanal transaction'ı üzerinde ise `ExclusiveLock` tutar:
+
+```sql
+SELECT locktype, relation::regclass, mode, granted
+FROM pg_locks
+WHERE pid = pg_backend_pid();
+```
+
+```text
+  locktype  | relation |      mode       | granted
+------------+----------+-----------------+---------
+ relation   | pg_locks | AccessShareLock | t
+ virtualxid |          | ExclusiveLock   | t
+```

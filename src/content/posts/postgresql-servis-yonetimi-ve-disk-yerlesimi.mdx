@@ -1,0 +1,106 @@
+---
+title: "PostgreSQL Servis Yönetimi ve Disk Yerleşimi: systemd, pg_ctl, Reload vs Restart ve WAL Ayrımı"
+slug: "postgresql-servis-yonetimi-ve-disk-yerlesimi"
+date: "2026-11-12"
+lang: "tr"
+summary: "systemd servis yönetimi ile pg_ctl ayrımı, pg_settings context kurallarına göre reload vs restart farkı, shutdown modları ve Data, WAL ile Logların ayrı disklere yerleştirilmesi."
+tags: ["PostgreSQL", "systemd", "WAL", "Depolama", "Operasyon"]
+parent: "postgresql-kurulum-ve-servis-yonetimi"
+order: 2
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Kurulum tamamlandıktan sonra PostgreSQL süreçlerinin yaşam döngüsü tek bir otorite tarafından yönetilmelidir. Aynı anda hem işletim sistemi servis yöneticisini (`systemd`) hem de doğrudan çekirdek aracını (`pg_ctl`) kullanmak süreç takibini bozar.
+
+---
+
+## 1. `systemd` Servis Yönetimi vs `pg_ctl`
+
+Üretim Linux sunucularında PostgreSQL **`systemd`** (`postgresql-18.service` veya Debian'da `postgresql@17-main.service`) üzerinden yönetilir:
+
+* **Neden `systemd` Üzerinden Başlatılmalıdır?** `systemd`, `postmaster` sürecini kendi `cgroup` hiyerarşisine alır; `LimitNOFILE`, `OOMScoreAdjust = -900` ve ortam değişkenlerini uygular. `systemd` aktifken `postgres` kullanıcısıyla doğrudan `pg_ctl start` çalıştırılırsa `systemd` sürecin ayakta olduğunu bilmez; sistem kapatılırken temiz shutdown tetiklenmeyebilir veya yanlışlıkla ikinci bir başlatma denenebilir.
+* **`pg_ctl` Ne Zaman Kullanılır?** Kaynak koddan özel dizine kurulmuş test ortamlarında, servis dışı bakım scriptlerinde veya Debian `pg_ctlcluster` sarmalayıcısının iç mekanizmasında doğrudan çağrılır.
+
+### Kapatma (`Shutdown`) Modları
+
+| Mod | Komut | Davranış | Üretim Kullanımı |
+| :--- | :--- | :--- | :--- |
+| **`smart`** | `pg_ctl stop -m smart` | Yeni bağlantıyı reddeder, mevcut açık oturumlar kapanana kadar bekler | Uzun süre bloklanabilir; otomasyonda tercih edilmez |
+| **`fast`** | `pg_ctl stop -m fast` | Açık transaction'ları abort eder, client'ları keser, checkpoint alıp kapanır | **Standart üretim kapatma modu** (`systemd` varsayılanı) |
+| **`immediate`** | `pg_ctl stop -m immediate` | Checkpoint almadan tüm süreçleri anında öldürür | Yalnızca acil durum; açılışta Crash Recovery zorunludur |
+
+---
+
+## 2. `Reload` vs `Restart` Farkı (`pg_settings.context`)
+
+Yapılandırma değişikliklerinin servis kesintisi yaratıp yaratmayacağı parametrenin `pg_settings.context` değerine bağlıdır:
+
+* **`Reload` (`SIGHUP`):** `systemctl reload postgresql-18` veya SQL üzerinden `SELECT pg_reload_conf();` aktif client bağlantılarını kesmeden ayarları yeniler (`work_mem`, `max_wal_size`, `pg_hba.conf`, `log_directory`).
+* **`Restart` (`postmaster`):** `Shared Memory` boyutunu veya çekirdek süreç sayılarını değiştiren parametreler (`shared_buffers`, `max_connections`, `wal_buffers`, `shared_preload_libraries`, `logging_collector`) tüm kümenin durdurulup yeniden başlatılmasını zorunlu kılar.
+
+Canlı bir PostgreSQL 18 kümesinde kritik parametrelerin `context` değerleri ve kesintisiz `reload` yanıtı aşağıda görülmektedir:
+
+```sql
+SELECT name, setting, unit, context
+FROM pg_settings
+WHERE name IN ('data_checksums', 'logging_collector', 'log_directory', 'shared_buffers', 'max_connections')
+ORDER BY name;
+```
+
+```text
+       name        | setting | unit |  context
+-------------------+---------+------+------------
+ data_checksums    | on      |      | internal
+ log_directory     | log     |      | sighup
+ logging_collector | off     |      | postmaster
+ max_connections   | 100     |      | postmaster
+ shared_buffers    | 16384   | 8kB  | postmaster
+```
+
+```text
+$ pg_ctl -D /var/lib/postgresql/18/data reload
+server signaled
+```
+
+> `logging_collector` parametresi `postmaster` bağlamında olduğu için `restart` ister; ancak bir kez açıldıktan sonra `log_directory` yolunu değiştirmek yalnızca `reload` gerektirir.
+
+---
+
+## 3. Dizin ve Disk Yerleşimi: Data, WAL ve Log Ayrımı
+
+Yüksek yazma yükü altındaki üretim sunucularında `$PGDATA`, `pg_wal` ve log dizinlerinin aynı blok aygıtında toplanması iki ciddi arıza senaryosu üretir:
+
+1. **I/O Karakteristik Çakışması:** Veri dosyaları (`base/`) rastgele 8KB okuma ve Checkpoint sırasında yoğun yazma yapar; `pg_wal/` ise her `COMMIT` anında küçük, ardışık (`sequential`) ve düşük gecikmeli `fsync` ister. Ayrı fiziksel disk/NVMe ayrımı WAL gecikmesini checkpoint I/O patlamalarından korur.
+2. **Disk Dolma İzolasyonu:** Uzun süren bir hata fırtınasında logların büyümesi veya bekleyen bir replication slot nedeniyle `pg_wal`'ın şişmesi işletim sistemi kök bölümünü (`/`) ya da veri diskini doldurursa tüm sunucu kilitlenir.
+
+<Mermaid
+  title="Data, WAL ve Logların Fiziksel Disk İzolasyonu"
+  ariaLabel="Ayrı mount noktalarında PGDATA, pg_wal symlink hedefi ve log_directory yerleşimi"
+  code={`
+flowchart LR
+    PG["PostgreSQL Süreçleri"] -->|"8KB Random / Checkpoint"| Data["/pgdata/18/data (Data Disk / NVMe-1)"]
+    PG -->|"Sequential WAL fsync"| Symlink["$PGDATA/pg_wal (Symlink)"]
+    Symlink --> WalDisk["/pgwal/18 (WAL Disk / NVMe-2)"]
+    PG -->|"log_directory"| LogDisk["/pglog/18 (Ayrı Log Diski)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class PG primary
+    class Symlink memory
+    class Data,WalDisk,LogDisk storage
+`}
+  summarySteps={[
+    "1. Ana veri dizini ($PGDATA/base) rastgele okuma ve checkpoint yazma yükünü üstlenir.",
+    "2. initdb --waldir=/pgwal/18 kullanıldığında $PGDATA/pg_wal dizini hedef diske sembolik link olarak oluşturulur.",
+    "3. postgresql.conf içinde log_directory = '/pglog/18' tanımlanarak log büyümesinin veri veya kök diski doldurması engellenir."
+  ]}
+/>
+
+`initdb` aşamasında `--waldir` parametresiyle ayrılmış bir kümede disk üzerindeki sembolik bağlantı doğrudan doğrulanabilir:
+
+```text
+$ ls -ld /var/lib/postgresql/17/analytics/pg_wal
+lrwxrwxrwx 1 postgres postgres 33 Nov 12 16:32 /var/lib/postgresql/17/analytics/pg_wal -> /var/lib/postgresql/wal_analytics
+```

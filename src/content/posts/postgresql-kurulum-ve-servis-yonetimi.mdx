@@ -1,0 +1,94 @@
+---
+title: "PostgreSQL Kurulum ve Servis Yönetimi: Paket, initdb, Disk ve Collation Stratejileri"
+slug: "postgresql-kurulum-ve-servis-yonetimi"
+date: "2026-11-12"
+lang: "tr"
+summary: "PGDG paket kurulumu, kaynak kod ve Docker seçenekleri; initdb parametreleri, systemd vs pg_ctl, WAL/Log disk ayrımı, Debian pg_wrapper multi-instance ve ICU collation stratejisi."
+tags: ["PostgreSQL", "Kurulum", "Operasyon", "Mimari"]
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL üretim ortamının kararlılığı, ilk SQL sorgusu çalışmadan önce kurulum, `initdb`, dosya sistemi yerleşimi ve servis yönetimi aşamalarında belirlenir. Kurulum sonrasında kolayca değiştirilebilen parametreler olduğu gibi (`work_mem`, `max_connections`), **yeniden veri taşıma (`pg_dump`/`pg_upgrade`) gerektiren** geri dönüşsüz kararlar da bu fazda verilir.
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
+  <a href="/posts/postgresql-kurulum-yontemleri-ve-initdb" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Kurulum &amp; initdb</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">PGDG, Kaynak Kod, Docker ve initdb</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Paket depoları, derleme bayrakları, container sınırları, encoding ve data checksums.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-servis-yonetimi-ve-disk-yerlesimi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">02 · Servis &amp; Disk</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">systemd, Reload/Restart ve Disk Ayrımı</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">pg_ctl riskleri, SIGHUP vs postmaster bağlamı, Data/WAL/Log fiziksel disk yerleşimi.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+  <a href="/posts/postgresql-multi-instance-pgwrapper-ve-collation" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
+    <div>
+      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Multi-Instance &amp; ICU</span>
+      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-relaxed">pg_wrapper, pg_lsclusters ve Collation</h4>
+      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Çoklu cluster izolasyonu, Debian/RHEL farkı ve glibc kaynaklı index bozulması.</p>
+    </div>
+    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
+  </a>
+</div>
+
+---
+
+## 1. Kurulum Yöntemleri Karar Matrisi
+
+İşletim sisteminin varsayılan depolarındaki PostgreSQL paketleri genellikle güncel güvenlik/performans yamalarını geriden takip eder ve major sürüm seçenekleri kısıtlıdır. Bu nedenle üretim ve test ortamlarında üç ana yaklaşımdan biri seçilir:
+
+| Yöntem | Güncelleme &amp; Bakım | Esneklik | Ne Zaman Tercih Edilir? |
+| :--- | :--- | :--- | :--- |
+| **PGDG Resmi Paket (`apt` / `dnf`)** | Çok kolay (otomatik minor yama) | Standart | Üretim sunucuları, `systemd` veya `pg_wrapper` entegrasyonu gerektiren tüm ortamlar *(Varsayılan)* |
+| **Kaynak Koddan Derleme** | Manuel (`configure` / `meson`) | Tam kontrol | Çekirdek yaması, özel `BLCKSZ`/compile flag ihtiyacı veya izole çekirdek debug süreçleri |
+| **Docker / Container** | İmaj değişimiyle | Taşınabilir | Yerel geliştirme, CI/CD test hatları, Kubernetes (`CloudNativePG`) veya izole geçici doğrulamalar |
+
+---
+
+## 2. Kurulumdan Canlı Servise Başlatma Akışı
+
+Bir PostgreSQL kümesi çalışır hale gelene kadar paket kurulumu, disk topolojisi, `initdb` ve servis yöneticisi adımlarından sırasıyla geçer:
+
+<Mermaid
+  title="PostgreSQL Kurulum ve Servis Başlatma Hattı"
+  ariaLabel="Binary kurulumundan initdb, disk ayrımı ve systemd servis başlatmaya kadar olan süreç akışı"
+  code={`
+flowchart LR
+    Bin["1. Binary Kurulumu (PGDG / Source)"] --> Init["2. initdb (UTF8, ICU, Checksums)"]
+    Init --> Disk["3. Disk Ayrımı (PGDATA + WAL + Log)"]
+    Disk --> Svc["4. Servis Katmanı (systemd / pg_wrapper)"]
+    Svc --> Ops["5. Çalışma Modu (Reload vs Restart)"]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Bin,Svc process
+    class Init,Ops primary
+    class Disk storage
+`}
+  summarySteps={[
+    "1. PGDG deposundan veya kaynak koddan hedef major sürümün ikili dosyaları kurulur.",
+    "2. initdb ile karakter seti (UTF8), collation sağlayıcısı (ICU) ve data checksums baştan sabitlenir.",
+    "3. Ana veri ($PGDATA), WAL segmentleri (--waldir) ve loglar ayrı mount noktalarına ayrılır.",
+    "4. Servis yönetimi tek bir kontrol katmanına (systemd veya pg_ctlcluster) bağlanır.",
+    "5. Canlı ortamda konfigürasyon değişiklikleri context türüne göre Reload (SIGHUP) veya Restart ile uygulanır."
+  ]}
+/>
+
+---
+
+## 3. Üretim Öncesi Geri Dönüşü Pahalı Kararlar
+
+Kurulum sırasında yapılan dört hata, sistem canlıya alındıktan sonra kesintisiz düzeltilemez:
+
+1. **Yanlış `Locale` / `Encoding` Seçimi:** `SQL_ASCII` veya `glibc` bağımlı yanlış locale ile kurulan bir kümede karakter/sıralama değişimi yeni bir `initdb` ve mantıksal yedekten geri yükleme (`pg_dump` / `pg_restore`) gerektirir.
+2. **`--data-checksums` Özelliğini Açmayı Unutmak:** Checksum olmadan kurulan bir kümede sonradan etkinleştirme yapmak için servisi tamamen durdurup `pg_checksums --enable` çalıştırmak gerekir (terabayt ölçeğinde uzun kesinti demektir).
+3. **Veri, WAL ve Logların Aynı Kök Diske Konması:** Log fırtınası veya biriken `pg_wal` segmentleri `/` dosya sistemini doldurduğunda işletim sistemi ve veritabanı birlikte kilitlenir.
+4. **`systemd` ile `pg_ctl` Komutlarını Karıştırmak:** `systemd` üzerinden başlatılmış servisi manuel `pg_ctl` ile durdurup başlatmak PID ve cgroup takibini bozar; beklenmedik `OOM` veya çift servis başlatma riskine yol açar.

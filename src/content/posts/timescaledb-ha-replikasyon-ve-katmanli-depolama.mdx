@@ -1,0 +1,118 @@
+---
+title: "TimescaleDB Yüksek Erişilebilirlik (Patroni), Replikasyon ve Katmanlı Depolama"
+slug: "timescaledb-ha-replikasyon-ve-katmanli-depolama"
+date: "2026-11-12"
+lang: "tr"
+summary: "Patroni ile Physical Streaming Replication altında Background Worker ve Read Replica davranışı, failover sonrası job denetimi ve move_chunk() ile NVMe-soğuk disk tablespace katmanlama."
+tags: ["PostgreSQL", "TimescaleDB", "Patroni", "Depolama", "Yüksek Erişilebilirlik"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 7
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+TimescaleDB tek sunucuda dikey olarak yüksek hacimleri kaldırabilse de üretim ortamında donanım arızalarına karşı **Yüksek Erişilebilirlik (HA)** ve büyüyen geçmiş veri için **Hot/Cold Depolama Katmanlaması (Tiering)** gerektirir. PostgreSQL üzerine kurulu olduğu için HA mimarisi doğrudan **[Patroni ve Streaming Replication](/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover)** altyapısıyla bütünleşir; ancak Chunk kataloğu ve arka plan işçileri (Background Workers) nedeniyle dikkat edilmesi gereken kritik noktalar vardır.
+
+## 1. Patroni, Physical Streaming Replication ve Read Replica
+
+TimescaleDB HA kümelerinde **Logical Replication yerine Physical Streaming Replication** kullanılmalıdır; çünkü dinamik olarak oluşturulan `_timescaledb_internal` Chunk alt tabloları, sıkıştırılmış chunk eşlemeleri ve Continuous Aggregate materyalizasyonları fiziksel WAL akışıyla birebir replike edilir.
+
+<Mermaid
+  title="Patroni + TimescaleDB Replikasyon ve Worker Akışı"
+  ariaLabel="Patroni Primary üzerinde çalışan TimescaleDB background worker'ların WAL üzerinden Read Replica'ya aktarımı"
+  code={`
+flowchart LR
+    Ingest["Client Yazma (Port 5000)"]
+    BI["Grafana / Analitik Okuma (Port 5001)"]
+    Primary["Patroni Primary (BGW + Compression + CAgg)"]
+    Standby["Read Replica (BGW Kapalı · Salt Okunur)"]
+
+    Ingest --> Primary
+    Primary ==>|"Physical WAL Stream"| Standby
+    BI --> Standby
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Ingest,BI process
+    class Primary memory
+    class Standby storage
+`}
+  summarySteps={[
+    "1. Tüm yazma trafiği ve TimescaleDB Background Worker politikaları (Compression, Retention, CAgg Refresh) yalnızca Primary düğümde çalışır.",
+    "2. Read Replica salt-okunur recovery modunda olduğu için yerel scheduler job'larını bastırır ve Primary'den gelen WAL kayıtlarını uygular.",
+    "3. HAProxy/PgBouncer analitik okuma trafiğini (Grafana/BI) Read Replica'ya yönlendirerek Primary üzerindeki CPU ve I/O yükünü ayırır."
+  ]}
+/>
+
+### Kritik HA Konfigürasyon ve Failover Kontrolleri
+
+`timescaledb-ha:pg16` varsayılan olarak `max_worker_processes = 35` ve `timescaledb.max_background_workers = 16` ile gelir. Üretim `patroni.yml` içinde `postgresql.parameters` altında dikkat edilmesi gereken 3 kural:
+
+1. **Worker Açlığı (Starvation) Riski:** Her Hypertable'ın Compression, Retention ve Continuous Aggregate politikası worker havuzundan slot ister. `timescaledb.max_background_workers` değeri paralel sorgu worker'larıyla beraber `max_worker_processes` tavanını aşarsa arka plan sıkıştırmaları sessizce kuyruğa girer.
+2. **Real-Time CAgg ve Replication Lag:** Read Replica üzerinde `Real-Time Continuous Aggregate` sorgulandığında sonuç, materyalize edilmiş özet ile son ham satırların birleşiminden oluşur. Replikasyon gecikmesi (`pg_stat_replication`) artarsa replica sorgusu geçmişte kalmış bir anlık görüntü döndürür; **Physical Replication Slot** kullanımı zorunludur.
+3. **Failover Sonrası Job Denetimi:** Primary düğüm bir CAgg yenileme işi ortasındayken ani kesinti yaşarsa yeni terfi eden düğümde job zamanlayıcısının takılı kalmadığını doğrulayın:
+
+```sql
+SELECT j.job_id, j.proc_name, j.hypertable_name,
+       s.last_run_status, s.last_successful_finish, j.next_start
+FROM timescaledb_information.jobs j
+JOIN timescaledb_information.job_stats s ON j.job_id = s.job_id
+ORDER BY j.job_id;
+```
+
+---
+
+## 2. `move_chunk()` ile Hot / Cold Tablespace Katmanlama
+
+Yıllarca saklanması gereken eski Chunk'ları pahalı PCIe NVMe havuzunda tutmak yerine daha ucuz büyük kapasiteli disklere (**Tablespace**) taşımak için PostgreSQL'in doğal `TABLESPACE` özelliği TimescaleDB'nin **`move_chunk()`** fonksiyonuyla birleştirilir (bkz. [ZFS ve Depolama Düzeni](/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi)):
+
+<Mermaid
+  title="Hot NVMe'den Cold Tablespace'e Chunk Taşıma"
+  ariaLabel="Aktif ve sıcak chunk'ların NVMe üzerinde kalıp soğuk chunk'ların move_chunk ile cold_storage tablespace'ine taşınması"
+  code={`
+flowchart LR
+    Hot[("NVMe Hot (pg_default)")]
+    Move["move_chunk() + reorder_index"]
+    Cold[("HDD / S3-Mount (cold_storage)")]
+
+    Hot -->|"Eski Chunk + İndeks"| Move --> Cold
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Move process
+    class Hot memory
+    class Cold storage
+`}
+  summarySteps={[
+    "1. Aktif yazılan sıcak Chunk'lar yüksek IOPS sunan pg_default (NVMe) tablespace üzerinde kalır.",
+    "2. move_chunk() veri tablosunu ve ilişkili indekslerini aynı anda cold_storage tablespace'ine taşırken isteğe bağlı olarak reorder_index ile veriyi fiziksel olarak kümeler.",
+    "3. Standart ALTER TABLE ... SET TABLESPACE aksine move_chunk() çok daha düşük kilit seviyesi kullanarak işlem süresince okuma trafiğini bloklamaz."
+  ]}
+/>
+
+Lokal Docker konteynerinde `33.334` satırlık bir Chunk'ın hem veri hem indeksleriyle `cold_storage` tablespace'ine taşınıp `idx_ingest_dev_time` indeksine göre kümelenmesi **`0.02 s`** sürmüştür:
+
+```sql
+-- 1. Soğuk disk dizini üzerinde PostgreSQL Tablespace tanımı (Superuser gerektirir)
+CREATE TABLESPACE cold_storage LOCATION '/mnt/cold_hdd/pg_ts';
+
+-- 2. Eski Chunk'ı veri + indeksleriyle taşı ve aynı anda kümele
+SELECT move_chunk(
+    chunk                        => '_timescaledb_internal._hyper_1_241_chunk',
+    destination_tablespace       => 'cold_storage',
+    index_destination_tablespace => 'cold_storage',
+    reorder_index                => '_timescaledb_internal._hyper_1_241_chunk_idx_ingest_dev_time',
+    verbose                      => TRUE
+);
+
+-- 3. Fiziksel Tablespace yerleşimini doğrulama
+SELECT c.relname, COALESCE(t.spcname, 'pg_default') AS tablespace
+FROM pg_class c
+LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+WHERE c.relname LIKE '_hyper_1_%_chunk';
+```
+
+> **Sıkıştırma vs Tablespace Sırası:** Eğer Chunk sıkıştırılacaksa önce `compress_chunk()` uygulayıp ardından sıkıştırılmış (~%90 küçülmüş) Chunk'ı `move_chunk()` ile soğuk diske taşımak diskler arası kopyalanan bayt miktarını 10 kata kadar azaltır.

@@ -1,0 +1,123 @@
+---
+title: "TimescaleDB Sorgu Optimizasyonu: SkipScan, BRIN ve reorder_chunk"
+slug: "timescaledb-sorgu-optimizasyonu-skipscan-ve-indeksleme"
+date: "2026-11-12"
+lang: "tr"
+summary: "Son değer sorgularını 31x hızlandıran Custom Scan (SkipScan) motoru, 55x daha küçük BRIN vs B-Tree indeks seçimi ve reorder_chunk() ile fiziksel heap kümeleme."
+tags: ["PostgreSQL", "TimescaleDB", "Performans", "Mimari"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 6
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+Zaman serisi altyapılarında Chunk Exclusion yalnızca zaman aralığı filtresi (`WHERE time >= ...`) verildiğinde Chunk sayısını daraltır. Ancak dashboard'larda çok sık sorulan **"her cihazın son ölçümü nedir?"** (`SELECT DISTINCT ON (device_id) ...`) gibi tüm Chunk'lara yayılan sorgularda standart PostgreSQL B-Tree taraması her cihazın tüm geçmiş satırlarını okumak zorunda kalır.
+
+Bu darboğaz üç ayrı katmanda çözülür: **SkipScan** yürütme düğümü, doğru **BRIN / B-Tree** indeks seçimi ve **`reorder_chunk()`** ile fiziksel veri yerleşimi.
+
+## 1. `Custom Scan (SkipScan)` ile "Son Değer" Sorguları
+
+Standart PostgreSQL bir `B-Tree (device_id, time DESC)` indeksi üzerinde `DISTINCT ON (device_id)` çalıştırırken indeksin tüm yaprak düğümlerini baştan sona tarar (**Full Index Scan**). TimescaleDB'nin **SkipScan** düğümü ise her benzersiz `device_id` için yalnızca ilk kaydı (`time DESC` en güncel satır) alır ve indekste bir sonraki `device_id` değerine doğrudan atlar:
+
+<Mermaid
+  title="Full Index Scan vs SkipScan İndeks Atlaması"
+  ariaLabel="Standart B-Tree sıralı taraması ile SkipScan atlama mekanizması karşılaştırması"
+  code={`
+flowchart LR
+    Query["DISTINCT ON (device_id)"]
+    Full["Standart Index Scan (Tüm Satırları Oku)"]
+    Skip["Custom Scan (SkipScan)"]
+    Leaf["B-Tree (device_id, time DESC)"]
+
+    Query -->|"SkipScan Kapalı"| Full --> Leaf
+    Query -->|"SkipScan Açık"| Skip ==>|"Her ID'de 1 Atla"| Leaf
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Query,Full process
+    class Skip memory
+    class Leaf storage
+`}
+  summarySteps={[
+    "1. Sorguda DISTINCT ON (device_id) ORDER BY device_id, time DESC istendiğinde Planner uygun bileşik indeksi kontrol eder.",
+    "2. SkipScan kapalıyken PostgreSQL tüm Chunk indekslerini Merge Append ile tarar ve ardından Unique filtresi uygular.",
+    "3. SkipScan açıkken motor her device_id grubunun en güncel kaydını aldıktan sonra aradaki binlerce eski satırı atlayarak bir sonraki device_id anahtarına sıçrar."
+  ]}
+/>
+
+1.000.000 satır, 100 cihaz ve 30 günlük Chunk (30 adet) içeren lokal Docker testinde ölçülen gerçek `EXPLAIN (ANALYZE, BUFFERS)` farkı:
+
+| Mod | Yürütme Planı | Süre | Okunan 8KB Sayfa (`shared hit`) |
+| :--- | :--- | :--- | :--- |
+| **`enable_skipscan = off`** | `Unique -> Merge Append -> Index Scan` | `385.91 ms` | `741.150` sayfa |
+| **`enable_skipscan = on`** | `Unique -> Merge Append -> Custom Scan (SkipScan)` | `12.48 ms` | `10.210` sayfa |
+
+- **~31x** daha düşük sorgu süresi ve **~72x** daha az buffer sayfası taraması.
+- **Kritik Şartlar:** `SkipScan` yalnızca bileşik indeksin ilk sütunları `NOT NULL` kısıtına sahip olduğunda (veya sorguda `IS NOT NULL` filtresi verildiğinde) güvenle tetiklenir; sıkıştırılmış Chunk'larda ise `compress_segmentby = 'device_id'` ve `compress_orderby = 'time DESC'` tanımı aynı atlama etkisini sağlar.
+
+---
+
+## 2. `BRIN` vs `B-Tree` İndeks Seçimi
+
+Hypertable oluşturulduğunda TimescaleDB varsayılan olarak `time DESC` üzerinde bir **B-Tree** indeksi açar. Ancak veriler zaten zaman sırasıyla akıyorsa `time` sütunundaki fiziksel korelasyon (`pg_stats.correlation`) `1.0`'a yakındır. Bu durumda **BRIN (Block Range Index)** çok daha az RAM ve disk tüketir.
+
+1M satırlık 30 Chunk üzerinde ölçülen gerçek indeks boyutları:
+
+| İndeks Türü | Tanım | Toplam Boyut (30 Chunk) | Kullanım Senaryosu |
+| :--- | :--- | :--- | :--- |
+| **B-Tree (Bileşik)** | `(device_id, time DESC)` | `45 MB` | Belirli bir `device_id` nokta/aralık sorguları ve `SkipScan` için zorunlu |
+| **B-Tree (Tekil Zaman)** | `(time DESC)` | `39 MB` | Çok yüksek geç/sırasız yazma (out-of-order) varsa gerekli |
+| **BRIN (Zaman)** | `USING brin (time)` | `720 kB` | Zaman sıralı akan ekleme (append-only) yüklerinde **55x** daha küçük bellek ayak izi |
+
+> **Karar Kuralı:** Zaten `(device_id, time DESC)` B-Tree indeksiniz varsa ve `time` üzerinden nokta sorgu atmıyorsanız, varsayılan tekil `(time DESC)` B-Tree indeksini kaldırıp (`create_hypertable(..., create_default_indexes => FALSE)`) yerine küçük bir `BRIN (time)` koymak `shared_buffers` üzerindeki indeks baskısını ciddi oranda düşürür.
+
+---
+
+## 3. `reorder_chunk()` ile Fiziksel Heap Kümeleme
+
+Telemetri verileri diske `time` sırasıyla yazıldığı için, tek bir cihaza (`WHERE device_id = 42`) ait satırlar bir Chunk'ın tüm 8KB **Data Page**'lerine dağınık halde yayılır. Bu durumda motor cihazın son 1 günlük verisini okurken bile yüzlerce farklı heap sayfasını diskten çekmek zorunda kalır.
+
+<Mermaid
+  title="reorder_chunk() Öncesi ve Sonrası Heap Düzeni"
+  ariaLabel="Dağınık cihaz satırlarının reorder_chunk ile fiziksel olarak yan yana kümelenmesi"
+  code={`
+flowchart LR
+    Unordered["Yazım Sırası (correlation: 0.01)"]
+    Reorder["reorder_chunk(chunk, index)"]
+    Clustered["Kümelenmiş Heap (correlation: 1.00)"]
+
+    Unordered -->|"249 Data Page I/O"| Reorder -->|"7 Data Page I/O"| Clustered
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Reorder process
+    class Clustered memory
+    class Unordered storage
+`}
+  summarySteps={[
+    "1. Aktif yazma penceresinden çıkan Chunk içinde cihaz satırları zamana göre karışık (correlation ~0.01) durur.",
+    "2. reorder_chunk() komutu, PostgreSQL'in ağır kilit koyan CLUSTER komutunun aksine düşük kilit seviyesiyle Chunk'ı bileşik indekse göre yeniden sıralar.",
+    "3. Aynı cihaza ait tüm satırlar ardışık 8KB Data Page'lerde toplanır; Bitmap Heap Scan yerine az sayfalı Index Scan çalışır."
+  ]}
+/>
+
+Tek bir Chunk (`33.334` satır, `248` sayfa) üzerinde `WHERE device_id = 42` sorgusunun gerçek ölçümü:
+- **`reorder_chunk()` Öncesi:** `device_id` korelasyonu `0.0117` → `Bitmap Heap Scan`, `Heap Blocks: exact=245`, **`shared hit=249`**, süre `0.571 ms`.
+- **`reorder_chunk()` Sonrası:** `device_id` korelasyonu **`1.0`** → `Index Scan`, **`shared hit=4 read=3` (toplam 7 sayfa — ~35x az sayfa I/O)**, süre `0.200 ms`.
+
+```sql
+-- Tekil Chunk üzerinde manuel kümeleme (tekil transaction dışında çalıştırılmalıdır)
+SELECT reorder_chunk(
+    chunk   => '_timescaledb_internal._hyper_1_241_chunk',
+    index   => '_timescaledb_internal._hyper_1_241_chunk_idx_ingest_dev_time',
+    verbose => TRUE
+);
+
+-- Arka planda en son 2 aktif Chunk hariç tüm eski Chunk'ları otomatik sıralama
+SELECT add_reorder_policy('sensor_ingest', 'idx_ingest_dev_time');
+```
+
+> **Operasyon Uyarısı:** `reorder_chunk()` bir transaction bloğu (`BEGIN ... COMMIT` veya çoklu ifadeli tek komut) içinde çalışmaz ve `ERROR: reorder cannot run inside a transaction block` hatası verir. Her zaman bağımsız (autocommit) oturumda veya `add_reorder_policy()` üzerinden çalıştırın; zaten Columnar sıkıştırma uyguladığınız eski Chunk'larda ise `compress_segmentby` aynı kümelenmeyi sıkıştırılmış katmanda sağladığı için ayrıca `reorder_chunk()` gerekmez.

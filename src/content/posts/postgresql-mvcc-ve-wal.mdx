@@ -8,6 +8,7 @@ tags: ["PostgreSQL", "MVCC", "WAL", "Autovacuum", "Performans"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
 order: 3
 ---
+import Mermaid from '../../components/Mermaid.astro';
 
 PostgreSQL, yüksek eşzamanlı sorgu trafiğinde okuma ve yazma işlemlerinin birbirini bloklamaması için **MVCC (Multi-Version Concurrency Control)** mimarisini; donanım arızalarında veya ani çökmelerde veri kaybını önlemek için ise **WAL (Write-Ahead Logging)** mekanizmasını kullanır.
 
@@ -24,6 +25,32 @@ Bunu sağlamak için PostgreSQL satırları disk üzerinde yerinde (in-place) ez
 3. Eski tuple'ın `t_ctid` değeri, yeni tuple'ın fiziksel data page adresini gösterecek şekilde güncellenir (Tuple Versiyon Zinciri).
 4. Transaction `COMMIT` ettiğinde eski satır **Dead Tuple** haline gelir.
 
+<Mermaid
+  title="1. MVCC UPDATE ve HOT (Heap-Only Tuple) Zinciri"
+  ariaLabel="MVCC normal UPDATE ve aynı sayfa içi HOT LP_REDIRECT zinciri karşılaştırması"
+  code={`
+flowchart LR
+    Idx["Index (TID: 0,1)"] --> LP1["Line Pointer (1)"]
+    LP1 -->|"Eski Versiyon"| T1["Tuple v1 (xmax=545, ctid=0,2)"]
+    T1 -->|"Normal: Yeni İndeks Girdisi"| LP2["Line Pointer (2)"]
+    LP1 -.->|"HOT: LP_REDIRECT (İndeks Değişmez)"| LP2
+    LP2 --> T2["Tuple v2 (xmin=545, xmax=0)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Idx,T2 primary
+    class LP1,LP2 process
+    class T1 storage
+`}
+  summarySteps={[
+    "1. UPDATE sırasında eski tuple silinmez; t_xmax alanı güncel transaction ID ile işaretlenir ve t_ctid yeni satıra bağlanır.",
+    "2. İndeksli bir sütun değiştiyse veya sayfada yer yoksa yeni tuple için yeni indeks girdisi eklenir.",
+    "3. İndekslenmemiş sütun değiştiyse ve aynı 8KB Data Page'de boş alan varsa HOT devreye girer; indeks (0,1)'i işaret etmeye devam eder."
+  ]}
+/>
+
 ### Table Bloat (Tablo Şişmesi)
 Dead tuple'ların diskte yer kaplamaya devam etmesine **Table Bloat** denir. Bir tabloda dead tuple'ların birikmesi, disk I/O operasyonlarının ve `Seq Scan` sürelerinin uzamasına neden olur.
 
@@ -37,6 +64,15 @@ SELECT relname,
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC
 LIMIT 5;
+```
+
+Katalog tabloları dahil aktif bir sunucuda `pg_stat_all_tables` üzerinden ölü satır birikiminin görünümü:
+
+```text
+   relname    | n_live_tup | n_dead_tup |       last_autovacuum        
+--------------+------------+------------+------------------------------
+ pg_class     |        530 |         78 | 2026-10-17 06:25:22.30547-04
+ pg_statistic |          0 |         55 | 
 ```
 
 ---
@@ -62,11 +98,35 @@ Eğer güncellenen sütunlar üzerinde herhangi bir indeks tanımlı değilse ve
 
 Bir transaction `COMMIT` ettiğinde PostgreSQL, değiştirilen tüm 8KB'lık **dirty data page**'leri anında data file'lara yazmaz. Çünkü diske rastgele (random) 8KB bloklar yazmak depolama motorunda ciddi bir I/O darboğazı yaratır.
 
-Bunun yerine:
+<Mermaid
+  title="2. WAL Ardışık Yazma ve Crash Recovery (LSN Kontrolü)"
+  ariaLabel="WAL buffers ardışık yazma yolu, Checkpointer flush ve Crash Recovery LSN karşılaştırması"
+  code={`
+flowchart LR
+    TX["COMMIT"] -->|"1. Sequential Kayıt"| WALB["wal_buffers"]
+    WALB -->|"2. fsync"| WAL[("pg_wal Segmentleri")]
+    TX -.->|"Dirty Page"| SB["shared_buffers"]
+    SB -->|"3. Periyodik Flush"| CP["Checkpointer"]
+    CP -->|"pd_lsn Günceller"| Heap[("Data Files (8KB)")]
+    WAL -.->|"Crash Redo: record_lsn > pd_lsn"| Heap
 
-1. Değişikliğin bayt seviyesindeki özeti **WAL (Write-Ahead Log)** dosyasına ardışık (sequential) olarak yazılır ve diske senkron `fsync` edilir.
-2. Sequential I/O diskin en hızlı gerçekleştirdiği işlemdir; veri anında kalıcı depolamaya güvenceye alınır ve client'a `"COMMIT OK"` cevabı döner.
-3. Arka plandaki **`checkpointer`** süreci belirli aralıklarla (`checkpoint_timeout` veya `max_wal_size` dolduğunda) bellekteki **dirty page**'leri topluca diske flush eder (**Checkpoint**).
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class TX primary
+    class CP process
+    class WALB,SB memory
+    class WAL,Heap storage
+`}
+  summarySteps={[
+    "1. Transaction COMMIT ettiğinde değişiklik özeti önce bellekteki wal_buffers alanına yazılır.",
+    "2. WAL Writer veya Backend, kaydı pg_wal dosyasına ardışık olarak fsync eder; istemciye COMMIT OK döner.",
+    "3. Checkpointer arka planda dirty 8KB Data Page'leri rastgele disk bloklarına flush ederek pd_lsn değerini ilerletir.",
+    "4. Crash Recovery sırasında WAL kaydının LSN değeri sayfanın pd_lsn değerinden büyükse değişiklik yeniden uygulanır."
+  ]}
+/>
 
 ### Crash Recovery (Çökme Sonrası Kurtarma)
 Eğer sunucunun gücü aniden kesilirse, PostgreSQL yeniden başladığında:

@@ -1,0 +1,110 @@
+---
+title: "TimescaleDB Parallel Copy ve Yüksek Hızlı Bulk Ingest"
+slug: "timescaledb-parallel-copy-ve-bulk-ingest"
+date: "2026-11-12"
+lang: "tr"
+summary: "timescaledb-parallel-copy aracının round-robin paralel COPY mimarisi, lokal Docker worker/batch benchmark sonuçları, --import-id ile idempotent veri göçü ve stdin pipe streaming."
+tags: ["PostgreSQL", "TimescaleDB", "Performans", "Operasyon"]
+parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
+order: 5
+---
+import Mermaid from '../../components/Mermaid.astro';
+
+PostgreSQL'in yerleşik `COPY ... FROM` komutu tek bir transaction içinde ve tek thread üzerinden çalışır. On milyonlarca geçmiş sensör kaydını veya CSV/S3 yığınını yeni bir Hypertable'a taşırken tekil `COPY` hattı tek bir CPU çekirdeğine takılır; hata alındığında tüm işlem geri sarılır (**rollback**).
+
+Timescale ekibinin Go ile geliştirdiği açık kaynaklı **[`timescaledb-parallel-copy`](https://github.com/timescale/timescaledb-parallel-copy)** aracı, girdi akışını belirli boyutlu batch'lere bölüp eşzamanlı PostgreSQL bağlantılarına dağıtarak bu darboğazı aşar.
+
+## 1. Round-Robin Paralel `COPY` Mimarisi
+
+<Mermaid
+  title="timescaledb-parallel-copy İş Parçacığı ve Batch Akışı"
+  ariaLabel="CSV veya STDIN akışının batch kuyruğundan paralel worker'lara ve chunk'lara yazılması"
+  code={`
+flowchart LR
+    Source["CSV / STDIN Akışı"]
+    Splitter["Batch Bölücü (--batch-size 5000)"]
+    W1["Worker 1 (COPY)"]
+    W2["Worker 2 (COPY)"]
+    WN["Worker N (COPY)"]
+    Chunks[("Hypertable Chunk'ları")]
+
+    Source --> Splitter
+    Splitter -->|"Round-Robin"| W1
+    Splitter -->|"Round-Robin"| W2
+    Splitter -->|"Round-Robin"| WN
+    W1 --> Chunks
+    W2 --> Chunks
+    WN --> Chunks
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Source,Splitter process
+    class W1,W2,WN memory
+    class Chunks storage
+`}
+  summarySteps={[
+    "1. Araç CSV dosyasını veya stdin akışını satır sınırlarından keserek --batch-size (varsayılan 5.000 satır) ve --batch-byte-size limitinde paketlere ayırır.",
+    "2. Paketler zaman sırasını kabaca koruyacak şekilde round-robin mantığıyla paralel worker havuzuna (--workers) dağıtılır.",
+    "3. Her worker kendi bağlantısı üzerinden bağımsız bir COPY ... FROM STDIN transaction'ı açarak hedef Chunk'lara yazar; böylece zaman sıralı girdide aynı anda çok sayıda eski Chunk'ın B-Tree indeksi Shared Buffers'tan düşürülmez."
+  ]}
+/>
+
+---
+
+## 2. Worker Ölçekleme Testi (1M Satır · Lokal Docker)
+
+`timescale/timescaledb-ha:pg16` (PostgreSQL `16.15`, TimescaleDB `2.31.0`) konteyneri üzerinde, 30 günlük aralığa yayılmış 1.000.000 satırlık (34 MB CSV) ve üzerinde `(device_id, time DESC)` bileşik indeksi bulunan Hypertable'a yapılan gerçek yükleme ölçümleri (16 vCPU i5-13500H, 30 GiB RAM):
+
+| Yöntem / Parametre | Toplam Süre | Hız (satır/sn) | Teknik Gözlem |
+| :--- | :--- | :--- | :--- |
+| **`psql \copy`** (tek thread) | `3.41 s` | `~293.255` | Tek dev transaction; küçük/orta dosyada commit maliyeti yok, hata olursa tümü geri sarılır |
+| **`parallel-copy --workers 1`** (`batch=5000`) | `5.88 s` | `170.193` | 200 ayrı transaction commit maliyeti nedeniyle tek thread'de `\copy`'den yavaş |
+| **`parallel-copy --workers 4`** (`batch=5000`) | `2.43 s` | `412.066` | `1 worker`'a göre **2.42x** hızlanma; paralel index & WAL yazımı dengeli |
+| **`parallel-copy --workers 8`** (`batch=5000`) | `2.20 s` | `455.338` | 4 worker sonrası WAL kilidi ve aynı aktif Chunk B-Tree çekişmesi nedeniyle marjinal kazanç düşer |
+
+> **Tuning Notu:** Çekirdek sayısından fazla `--workers` vermek (ör. 16–32 worker), aynı aktif Chunk ve B-Tree kök sayfası üzerinde kilit çekişmesini artırarak throughput'u düşürür. Genellikle veritabanı sunucusundaki vCPU sayısının `%50`–`%75`'i kadar worker ile başlamak ve büyük dosyalarda `--batch-size 10000` – `25000` denemek en kararlı sonucu verir.
+
+---
+
+## 3. `--import-id` ile Idempotent Göç ve `ON CONFLICT`
+
+Büyük geçmiş veri göçlerinde ağ kesintisi veya konteyner yeniden başlaması durumunda yüklemeyi baştan başlatmamak için `--import-id` parametresi kullanılır:
+
+```bash
+docker run --rm --network host -v /data/metrics.csv:/data/metrics.csv:ro \
+  timescale/timescaledb-parallel-copy \
+  --connection "postgres://postgres:secret@127.0.0.1:5432/telemetry?sslmode=disable" \
+  --table sensor_ingest \
+  --file /data/metrics.csv \
+  --skip-header \
+  --workers 4 \
+  --batch-size 5000 \
+  --import-id "telemetry-2026-10"
+```
+
+1. **Durum Takibi:** Araç hedef veritabanında otomatik olarak `timescaledb_parallel_copy.transactions` tablosunu oluşturur ve commit edilen her batch'i (`import-id` altında) buraya işler (1M satır / 5.000 batch = `200` kayıt).
+2. **Kesintiden Devam:** Aynı `--import-id` ile komut ikinci kez çalıştırıldığında tamamlanmış batch'ler `batch already processed: completed` mesajıyla atlanır (`COPY 0`) ve yalnızca eksik kalan kısımlar yazılır. Kayıtlar 28 gün sonra otomatik temizlenir.
+3. **Tekrarlı Satır Koruması (`--on-conflict-do-nothing`):** PostgreSQL'in yerel `COPY` protokolü `ON CONFLICT` sözdizimini desteklemez. Bu bayrak açıldığında araç, her batch'i önce geçici bir tabloya (`TEMP TABLE`) yükler ve ardından `INSERT INTO ... SELECT * FROM ... ON CONFLICT DO NOTHING` çalıştırır; bu ek adım yazma hızını düşürür, bu yüzden yalnızca gerçekten tekrarlı kayıt riski olan kaynaklarda kullanılmalıdır.
+
+---
+
+## 4. Ara Disksiz Pipe Streaming ve Backfill Kuralları
+
+`--file` parametresi verilmediğinde `timescaledb-parallel-copy` doğrudan `stdin` okur. Böylece kaynak veritabanından veya S3'ten ara CSV dosyası biriktirmeden aktarım yapılabilir:
+
+```bash
+# Başka bir PostgreSQL sunucusundan doğrudan Hypertable'a paralel aktarım
+psql "$SOURCE_DSN" -c "COPY (SELECT time, device_id, cpu_usage, temperature FROM metrics ORDER BY time) TO STDOUT WITH (FORMAT csv, HEADER)" \
+  | timescaledb-parallel-copy \
+      --connection "$TARGET_DSN" \
+      --table sensor_ingest \
+      --skip-header \
+      --workers 4 \
+      --import-id "pg-migration-v1"
+```
+
+- **Sütun Eşleme:** CSV başlıkları tablo sütunlarından farklıysa `--column-mapping "ts:time,temp:temperature"` veya birebir aynıysa `--auto-column-mapping` kullanılabilir.
+- **Sıralı Girdi Avantajı:** Kaynak veriyi zaman sütununa göre sıralı (`ORDER BY time`) akıtmak ve mümkünse `--enable-client-side-sorting` kullanmak, worker'ların aynı anda onlarca farklı eski Chunk açmasını önler.
+- **Sıkıştırılmış Chunk'a Backfill:** Güncel TimescaleDB sürümlerinde `timescaledb-parallel-copy` varsayılan olarak sıkıştırılmış Chunk'lara doğrudan yazmayı destekler; eğer yoğun geçmiş backfill sırasında CPU/bellek baskısı oluşursa `--disable-direct-compress` ile test edilebilir veya hedef Chunk'lar geçici olarak açılabilir.

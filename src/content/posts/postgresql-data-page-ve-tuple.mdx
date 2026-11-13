@@ -70,3 +70,16 @@ Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik b
 
 ### C. User Data (Sütun Değerleri / Payload)
 Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (binary) formatta sıralı saklanır. 2KB'ı aşan büyük sütunlar (büyük JSONB, uzun metinler) otomatik olarak ana data page'den ayrı **TOAST (The Oversized-Attribute Storage Technique)** tablolarına taşınır.
+
+> **Canlı Kanıt (`ctid`, `xmin`, `xmax`):** Her satırın fiziksel `(BlockNumber, OffsetNumber)` konumu ve MVCC XID başlıkları doğrudan SQL ile gözlemlenebilir:
+> ```text
+> SELECT ctid, xmin, xmax, relname FROM pg_class
+> WHERE relname IN ('pg_class', 'pg_attribute', 'pg_type');
+>
+>   ctid  | xmin | xmax |   relname    
+> --------+------+------+--------------
+>  (7,68) |  544 |    0 | pg_attribute
+>  (7,70) |  544 |    0 | pg_class
+>  (0,47) |  544 |    0 | pg_type
+> ```
+> Burada `(7,68)` 7 numaralı 8KB sayfanın 68. Line Pointer'ını, `xmax = 0` ise tuple'ın hâlâ aktif olduğunu gösterir.

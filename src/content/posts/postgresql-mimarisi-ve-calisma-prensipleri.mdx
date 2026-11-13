@@ -222,6 +222,15 @@ PostgreSQL mimarisinin kritik alt bileşenleri ayrı teknik dökümanlar halinde
 5. **[PostgreSQL Extension Mimarisi: Katalog Güdümlü Çekirdek, Süreç Modeli ve C Hook'ları](/posts/postgresql-extension-mimarisi-ve-c-hooks)**  
    *MySQL/MSSQL/Oracle karşılaştırması, Backend Process vs shared_preload_libraries yükleme modelleri, Background Worker ve C Hook mekanizması.*
 
+6. **[PostgreSQL Küme Yapısı: Cluster, OID, System Catalog ve PGDATA Anatomisi](/posts/postgresql-cluster-oid-ve-pgdata)**  
+   *Cluster/Database/Schema hiyerarşisi, OID vs relfilenode ayrımı, pg_catalog vs information_schema, $PGDATA dizinleri, FSM/VM fork'ları, TOAST ve Tablespace.*
+
+7. **[PostgreSQL İç Kilit Hiyerarşisi: Spinlock, LWLock, BufferPin ve Wait Events](/posts/postgresql-ic-kilitler-ve-wait-events)**  
+   *Spinlock, LWLock ve Heavyweight Lock katmanları, Buffer Manager kilit sırası, BufferPin ve pg_stat_activity üzerinden wait_event teşhisi.*
+
+8. **[PostgreSQL Arka Plan Süreçleri: Archiver, PG15+ Shared Memory Stats ve Logical Replication Worker](/posts/postgresql-arka-plan-surecleri)**  
+   *WAL Archiver (.ready/.done), PG14 Stats Collector'dan PG15+ Shared Memory Stats'a geçiş, Autovacuum Launcher/Worker ve Logical Replication Worker çiftleri.*
+
 ---
 
 ## Mimari Özet

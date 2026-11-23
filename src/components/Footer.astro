@@ -1,6 +1,32 @@
 ---
 import { SITE_META } from '../data/siteMeta';
+import { getCollection } from 'astro:content';
+
 const currentYear = new Date().getFullYear();
+
+// Build sırasında tüm posts ve cases içeriklerini tarayarak en güncel yayın/güncelleme tarihini bulma
+const allPosts = await getCollection('posts');
+const allCases = await getCollection('cases');
+
+let latestTimestamp = 0;
+
+[...allPosts, ...allCases].forEach((item) => {
+  const dateStr = item.data?.date;
+  if (dateStr) {
+    const time = new Date(dateStr).getTime();
+    if (!isNaN(time) && time > latestTimestamp) {
+      latestTimestamp = time;
+    }
+  }
+});
+
+const turkishMonths = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
+
+const latestDate = latestTimestamp > 0 ? new Date(latestTimestamp) : new Date();
+const lastUpdatedFormatted = `${turkishMonths[latestDate.getMonth()]} ${latestDate.getFullYear()}`;
 ---
 
 <footer class="w-full border-t border-[var(--border)] bg-[var(--bg)] text-xs font-mono py-6 transition-colors">
@@ -13,7 +39,7 @@ const currentYear = new Date().getFullYear();
         <span class="text-[var(--text-dim)]">·</span>
         <span class="text-[var(--text-dim)]">Veritabanı & Depolama Notları</span>
         <span class="text-[var(--text-dim)] hidden md:inline">·</span>
-        <span class="text-[var(--text-dim)] hidden md:inline">Son güncelleme: Nisan 2026</span>
+        <span class="text-[var(--text-dim)] hidden md:inline">Son güncelleme: {lastUpdatedFormatted}</span>
       </div>
 
       <!-- Links & Navigation -->

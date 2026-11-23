@@ -47,6 +47,11 @@ order: 1 # Parent altındaki sıralama sırası (1, 2, 3...)
   3. **Otoriter Referans / Kitap:** Hironobu Suzuki (*The Internals of PostgreSQL*), Bruce Momjian veya PostgreSQL committer'larının teknik incelemeleri.
 - **Bileşen Kullanımı:** Kaynakça için `<References items={[...]} />` bileşeni tercih edilmelidir (gereksiz kart ve renkli rozet kutuları barındırmayan, sade, minimalist ve numaralı tipografik liste düzeni).
 
+### 1.5. Güncellik ve Tarih Standartları (Footer & Metadata)
+- **Statik Tarih Yasağı:** Sayfa altındaki (Footer) "Son güncelleme: [Ay Yıl]" alanı asla statik/sabit metin olarak bırakılamaz.
+- **Build Sırasında Otomatik Hesaplama:** `Footer.astro` bileşeni, tüm makale (`posts`) ve vaka analizlerinin (`cases`) frontmatter tarihlerini (`data.date`) tarayarak sistemdeki en güncel dökümanın tarihini ("Ay Yıl" formatında Türkçe olarak, örn. "Kasım 2026") derleme (build) sırasında dinamik hesaplamalıdır.
+- **Push Öncesi Güncellik Doğrulaması:** Her yeni yazı eklendiğinde veya döküman güncellendiğinde, depoya push edilmeden önce son güncelleme tarihinin en yeni içerik tarihiyle tam uyumlu olduğu doğrulanmalıdır.
+
 ---
 
 ## 2. Görselleştirme ve Şema Standartları

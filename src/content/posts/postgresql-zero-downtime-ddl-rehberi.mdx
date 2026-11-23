@@ -1,0 +1,144 @@
+---
+title: "Zero-Downtime DDL Rehberi: Lock Queue Starvation ve Güvenli Migrasyon"
+slug: "postgresql-zero-downtime-ddl-rehberi"
+date: "2026-11-23"
+lang: "tr"
+summary: "Production PostgreSQL ortamlarında kesintisiz şema değişimi, Lock Queue Starvation tuzağı, CONCURRENTLY indeksleme, NOT VALID kısıtları ve lock_timeout ile retry deseni."
+tags: ["PostgreSQL", "DDL", "Zero-Downtime", "Migrasyon", "Laboratuvar"]
+parent: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+order: 5
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+Canlı bir PostgreSQL veritabanında `ALTER TABLE` veya `CREATE INDEX` gibi DDL komutları çalıştırmak, yanlış yönetildiğinde saniyeler içinde tüm API sunucularının bağlantı havuzlarını doldurabilir ve tam bir servis kesintisine (downtime) yol açabilir.
+
+---
+
+## 1. En Büyük Tehlike: Lock Queue Starvation
+
+Bir `ALTER TABLE` komutu sadece 1 milisaniyelik bir işlem yapsa dahi `AccessExclusiveLock` talep eder. Eğer o anda tabloda 30 saniye süren uzun bir `SELECT` varsa, DDL işlemi bu sorgunun bitmesini beklemek üzere kilit kuyruğuna girer.
+
+**Tehlike şudur:** PostgreSQL, kilit açlığını önlemek için kuyrukta bekleyen `AccessExclusiveLock` talebinden sonra gelen **tüm yeni `SELECT` sorgularını da bloke eder!**
+
+<Mermaid
+  title="1. Lock Queue Starvation (Kilit Kuyruğu Boğulması)"
+  ariaLabel="Uzun süren bir okuma sorgusunun arkasında bekleyen ALTER TABLE'ın yeni gelen tüm SELECT'leri durdurması"
+  code={`
+flowchart LR
+    S1["1. Aktif Uzun SELECT<br/>(AccessShare Tutuyor)"] --> Q["Kilit Kuyruğu"]
+    DDL["2. ALTER TABLE<br/>(AccessExclusive Bekliyor)"] --> Q
+    S2["3. Yeni Gelen SELECT'ler<br/>(DDL Arkasında Bekliyor!)"] --> Q
+
+    classDef blocker fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef danger fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#991B1B
+    classDef victim fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class S1 blocker
+    class DDL danger
+    class S2 victim
+`}
+  summarySteps={[
+    "1. S1 oturumu uzun süren bir analitik okuma yapmaktadır.",
+    "2. Geliştirici veya migration aracı bir ALTER TABLE gönderir ve S1'in bitmesini bekler.",
+    "3. Web trafiğinden gelen yüzlerce yeni SELECT, DDL arkasında kuyruğa girer ve tüm uygulama kilitlenir."
+  ]}
+/>
+
+---
+
+## 2. Kesintisiz DDL İçin Dört Altın Kural
+
+### Kural 1: Daima `CREATE INDEX CONCURRENTLY` Kullanın
+Standart `CREATE INDEX`, tabloya yazma (`INSERT/UPDATE/DELETE`) yapılmasını engeller. `CONCURRENTLY` anahtar kelimesi ise iki aşamalı çalışarak DML trafiğini engellemez:
+- Bir transaksiyon bloğu (`BEGIN ... COMMIT`) içinde çalıştırılamaz.
+- Başarısız olursa indeksi `INVALID` bırakır (`DROP INDEX CONCURRENTLY` ile temizlenmelidir).
+
+### Kural 2: İki Adımlı Constraint: `NOT VALID` + `VALIDATE`
+Milyonlarca satırlık bir tabloya doğrudan `ADD CONSTRAINT ... FOREIGN KEY` eklemek tüm tabloyu tararken `AccessExclusiveLock` tutar. Bunun yerine:
+
+```sql
+-- 1. Adım: Sadece yeni yazılan satırları denetler (Kilit süresi: < 1ms)
+ALTER TABLE orders ADD CONSTRAINT fk_user
+FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID;
+
+-- 2. Adım: Eski satırları doğrular (ShareUpdateExclusiveLock: SELECT ve INSERT engellenmez!)
+ALTER TABLE orders VALIDATE CONSTRAINT fk_user;
+```
+
+### Kural 3: PostgreSQL 11+ İle `DEFAULT` Kolon Ekleme
+PostgreSQL 11 ve sonrasında sabit bir varsayılan değerle sütun eklemek (`ALTER TABLE t ADD col text DEFAULT 'active'`) fiziksel satırları yeniden yazmaz; katalog metadata'sını günceller. Saniyeler değil milisaniyeler sürer.
+
+---
+
+## 3. Production Migration Şablonu: Kısa `lock_timeout` ve Retry
+
+Bir migrasyon scripti asla sınırsız kilit beklememelidir. Kısa bir `lock_timeout` atanmalı, kilit anında alınamazsa kuyruk temizlenmeli ve işlem tekrar denenmelidir:
+
+```sql
+-- Güvenli Migrasyon Wrapper Deseni
+DO $$
+DECLARE
+    attempts int := 0;
+BEGIN
+    LOOP
+        BEGIN
+            -- Kilidi en fazla 2 saniye bekle, alamıyorsan vazgeç:
+            SET LOCAL lock_timeout = '2s';
+            
+            ALTER TABLE orders ADD COLUMN priority int DEFAULT 1;
+            EXIT; -- Başarılı ise döngüden çık
+        EXCEPTION
+            WHEN lock_not_available THEN
+                attempts := attempts + 1;
+                IF attempts > 5 THEN
+                    RAISE EXCEPTION 'Migrasyon kilit alamadı, işlem iptal edildi.';
+                END IF;
+                PERFORM pg_sleep(2); -- 2 saniye bekle ve tekrar dene
+        END;
+    END LOOP;
+END $$;
+```
+
+---
+
+## 4. Laboratuvar: `NOT VALID` Constraint Deneyimi
+
+### Adım 1: Büyük Tablo ve Kısıt Eklenmesi
+```sql
+CREATE TABLE users (id int PRIMARY KEY);
+INSERT INTO users VALUES (1), (2);
+
+CREATE TABLE orders (id int PRIMARY KEY, user_id int);
+INSERT INTO orders SELECT g, 1 FROM generate_series(1, 100000) g;
+```
+
+### Adım 2: Hızlı Kilit ve Arka Planda Doğrulama
+```sql
+-- Kilitlenmeyi sıfıra indiren adım:
+ALTER TABLE orders 
+ADD CONSTRAINT fk_orders_user 
+FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID;
+
+-- Tablo aktif trafik alırken arka planda güvenle doğrulanır:
+ALTER TABLE orders VALIDATE CONSTRAINT fk_orders_user;
+```
+
+Bu yöntemle canlı veritabanlarında milyarlarca satırlık tablolara dahi tek bir kullanıcı isteğini düşürmeden veri bütünlüğü kuralları eklenebilir.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Building Indexes Concurrently",
+      url: "https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY"
+    },
+    {
+      title: "PostgreSQL Documentation: ALTER TABLE (NOT VALID)",
+      url: "https://www.postgresql.org/docs/current/sql-altertable.html"
+    },
+    {
+      title: "GitLab Handout: Zero-downtime Database Migrations",
+      url: "https://docs.gitlab.com/ee/development/database/avoiding_downtime_in_migrations.html"
+    }
+  ]}
+/>

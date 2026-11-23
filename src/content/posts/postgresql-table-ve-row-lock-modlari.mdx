@@ -1,0 +1,141 @@
+---
+title: "Table & Row Lock Modları: Çakışma Matrisi ve DDL Kilit Seviyeleri"
+slug: "postgresql-table-ve-row-lock-modlari"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'in 8 tablo kilit modu, DDL komutlarının talep ettiği kilit seviyeleri, 4 satır kilit modu (FOR UPDATE, FOR NO KEY UPDATE) ve uygulamalı lab senaryosu."
+tags: ["PostgreSQL", "Kilitler", "DDL", "Eşzamanlılık", "Laboratuvar"]
+parent: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+order: 1
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+PostgreSQL'de veritabanı nesneleri üzerinde işlem yapılırken hem tablo hem de satır düzeyinde koruma sağlanır. Bir sorgu çalıştığında önce ilgili tablo üzerinde uygun bir **Table-Level Lock**, ardından gerekiyorsa satırlar üzerinde **Row-Level Lock** talep edilir.
+
+---
+
+## 1. Table-Level Lock Modları ve Çakışma Matrisi
+
+PostgreSQL 8 farklı tablo kilit seviyesi sunar. En hafif mod `AccessShareLock`, en ağır mod ise tabloya okuma dahil tüm erişimleri kesen `AccessExclusiveLock` modudur.
+
+| Kilit Modu | Temsil Ettiği Temel Komutlar | Çakıştığı Kilitler |
+| :--- | :--- | :--- |
+| **`AccessShareLock`** | `SELECT` | Yalnızca `AccessExclusiveLock` |
+| **`RowShareLock`** | `SELECT FOR UPDATE`, `SELECT FOR SHARE` | `ExclusiveLock`, `AccessExclusiveLock` |
+| **`RowExclusiveLock`** | `UPDATE`, `DELETE`, `INSERT` | `ShareLock` ve üzerindeki tüm kilitler |
+| **`ShareUpdateExclusiveLock`** | `VACUUM` (standart), `ANALYZE`, `CREATE INDEX CONCURRENTLY` | Kendisi dahil `ShareUpdateExclusive` ve üzeri |
+| **`ShareLock`** | `CREATE INDEX` (standart) | `RowExclusive`, `ShareUpdateExclusive` ve üzeri |
+| **`ShareRowExclusiveLock`** | `CREATE TRIGGER`, bazı `ALTER TABLE` | `RowExclusive` ve üzeri tüm kilitler |
+| **`ExclusiveLock`** | `REFRESH MATERIALIZED VIEW CONCURRENTLY` | `RowShare` ve üzeri tüm kilitler |
+| **`AccessExclusiveLock`** | `DROP TABLE`, `TRUNCATE`, `VACUUM FULL`, `ALTER TABLE` | **TÜM** kilit modları (SELECT dahil) |
+
+---
+
+## 2. Hangi DDL Komutu Hangi Kilidi Alır?
+
+Production ortamında en sık yapılan hata, basit bir `ALTER TABLE` veya `CREATE INDEX` komutunun okuma trafiğini engelleyeceğini hesaba katmamaktır:
+
+<Mermaid
+  title="1. Kritik DDL ve Bakım Komutlarının Kilit Ağırlıkları"
+  ariaLabel="Farklı DDL komutlarının SELECT ve UPDATE işlemlerine karşı kilit engelleme hiyerarşisi"
+  code={`
+flowchart LR
+    subgraph NonBlocking["Düşük Kilit: SELECT ve INSERT Engellenmez"]
+        C1["CREATE INDEX CONCURRENTLY"] -->|"ShareUpdateExclusive"| T1["Tablo"]
+        C2["VACUUM (Standart)"] -->|"ShareUpdateExclusive"| T1
+        C3["ALTER TABLE ... VALIDATE CONSTRAINT"] -->|"ShareUpdateExclusive"| T1
+    end
+
+    subgraph Blocking["Yüksek Kilit: SELECT Dahil Her Şeyi Durdurur"]
+        B1["ALTER TABLE ADD COLUMN / RENAME"] -->|"AccessExclusive"| T2["Tablo"]
+        B2["VACUUM FULL"] -->|"AccessExclusive"| T2
+        B3["TRUNCATE / DROP TABLE"] -->|"AccessExclusive"| T2
+    end
+
+    classDef low fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef high fill:#EFF6FF,stroke:#1D4ED8,stroke-width:1.5px,color:#0F172A
+
+    class C1,C2,C3 low
+    class B1,B2,B3 high
+`}
+  summarySteps={[
+    "1. CONCURRENTLY anahtar kelimesiyle çalıştırılan indeksleme SELECT ve DML işlemlerini engellemez.",
+    "2. Standart ALTER TABLE veya VACUUM FULL işlemleri AccessExclusiveLock alarak tüm trafiği bloke eder."
+  ]}
+/>
+
+---
+
+## 3. Row-Level Lock Modları
+
+Satır kilitleri bellek yerine disk üzerindeki tuple header alanlarında (`t_infomask` ve `t_xmax`) tutulur. Dört seviye mevcuttur:
+
+1. **`FOR UPDATE`:** Satırı silme veya birincil anahtar/benzersiz sütunu güncelleme niyeti taşır. Tüm diğer satır kilitleriyle çakışır.
+2. **`FOR NO KEY UPDATE`:** Yabancı anahtar veya birincil anahtar etkilenmeyen standart sütun güncellemelerinde (`UPDATE`) çekirdek tarafından otomatik alınır. `FOR KEY SHARE` ile çakışmaz!
+3. **`FOR SHARE`:** Satırın silinmesini engeller ancak başka oturumların `FOR SHARE` veya `FOR KEY SHARE` almasına izin verir.
+4. **`FOR KEY SHARE`:** Bir yabancı anahtar (FK) kontrolü yapılırken referans verilen ana tablo satırında alınır. Bu sayede ana tablodaki bir satır başka bir oturum tarafından normal güncellenirken (`FOR NO KEY UPDATE`), alt tabloya yeni kayıt eklenebilir.
+
+---
+
+## 4. Laboratuvar: DDL Kilit Çatışması ve Row-Lock Davranışı
+
+Aşağıdaki senaryoyu iki ayrı `psql` terminali açarak test edebilirsiniz.
+
+### Adım 1: Test Tablosunu Hazırlama
+```sql
+CREATE TABLE accounts (
+    id int PRIMARY KEY,
+    owner text NOT NULL,
+    balance numeric NOT NULL
+);
+INSERT INTO accounts VALUES (1, 'Ahmet', 1000), (2, 'Mehmet', 2500);
+```
+
+### Adım 2: Tablo Düzeyi Kilit Çakışması (AccessShare vs AccessExclusive)
+```sql
+-- Terminal 1: Açık bir transaksiyonda SELECT yapıp bekleyelim (AccessShareLock)
+BEGIN;
+SELECT * FROM accounts WHERE id = 1;
+-- Transaksiyonu bilerek COMMIT etmiyoruz!
+
+-- Terminal 2: Tabloya yeni bir sütun eklemeyi deneyelim (AccessExclusiveLock)
+ALTER TABLE accounts ADD COLUMN status text DEFAULT 'active';
+-- Terminal 2 ANINDA BLOKE OLUR ve Terminal 1 COMMIT/ROLLBACK yapana kadar bekler!
+```
+
+### Adım 3: Satır Seviyesi Non-Key Update Eşzamanlılığı
+```sql
+-- Terminal 1'de ROLLBACK yaptıktan sonra:
+-- Terminal 1: Satırda FOR KEY SHARE kilidi alalım (FK kontrolü simülasyonu)
+BEGIN;
+SELECT * FROM accounts WHERE id = 1 FOR KEY SHARE;
+
+-- Terminal 2: Satırın anahtar olmayan 'balance' sütununu güncelleyelim (FOR NO KEY UPDATE)
+BEGIN;
+UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+-- UPDATE BLOKE OLMADAN ANINDA BAŞARILI OLUR!
+COMMIT;
+
+-- Terminal 1:
+COMMIT;
+```
+
+Bu mekanizma, PostgreSQL'in yüksek eşzamanlı OLTP sistemlerinde yabancı anahtar kontrolleri nedeniyle gereksiz kilit tıkanıklığı yaşamasını engeller.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Docs: Table-level Locks & Row-level Locks",
+      url: "https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES"
+    },
+    {
+      title: "PostgreSQL Source: src/include/storage/lockdefs.h",
+      url: "https://github.com/postgres/postgres/blob/master/src/include/storage/lockdefs.h"
+    },
+    {
+      title: "2ndQuadrant: PostgreSQL Row Locks Under the Hood",
+      url: "https://www.enterprisedb.com/blog/postgresql-row-locks-under-hood"
+    }
+  ]}
+/>

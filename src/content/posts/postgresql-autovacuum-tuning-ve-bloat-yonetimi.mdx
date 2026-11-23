@@ -1,0 +1,113 @@
+---
+title: "Autovacuum ve Bloat Yönetimi: Tuning, FSM, HOT ve pg_repack"
+slug: "postgresql-autovacuum-tuning-ve-bloat-yonetimi"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL autovacuum tetikleme formülü, cost-based delay optimizasyonu, fillfactor ile HOT başarısı, bloat tespiti ve pg_repack ile kesintisiz temizlik."
+tags: ["PostgreSQL", "Autovacuum", "Bloat", "HOT", "Performans", "Laboratuvar"]
+parent: "postgresql-mvcc-transaction-ve-vacuum"
+order: 3
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+PostgreSQL'de silinen veya güncellenen satırlar diskten anında uçurulmaz; data page içinde **Dead Tuple** olarak kalır. Bu ölü satırların zamanında temizlenmemesi, tablonun ve indekslerin fiziksel olarak şişmesine (**Table/Index Bloat**) ve `Seq Scan` sürelerinin uzamasına yol açar.
+
+---
+
+## 1. `VACUUM`, `VACUUM FULL` ve `ANALYZE` Farkları
+
+- **`VACUUM` (Standart):** Tablodaki dead tuple alanlarını boşaltır ve boşlukları **FSM (Free Space Map)** içine kaydeder. Dosya boyutunu işletim sistemine geri vermez; ancak yeni `INSERT` işlemlerinin bu boşlukları doldurmasını sağlar. Trafiği engellemez (`ShareUpdateExclusiveLock`).
+- **`VACUUM FULL`:** Tabloyu ve tüm indekslerini sıfırdan yeni bir fiziksel dosyaya kopyalar. Alanı diske iade eder ancak tablo üzerinde **`AccessExclusiveLock`** tutar (tüm okuma ve yazmaları durdurur) ve diskte geçici olarak tablonun iki katı kadar boş yer gerektirir. **Canlı production sistemlerinde kesinlikle önerilmez.**
+- **`ANALYZE`:** Query Planner için istatistikleri (`pg_statistic`) günceller.
+
+---
+
+## 2. Autovacuum Tetikleme Formülü ve Tuning
+
+Autovacuum bir tablo üzerinde çalışıp çalışmayacağına şu formülle karar verir:
+
+```text
+Tetikleme Eşiği = autovacuum_vacuum_threshold + (autovacuum_vacuum_scale_factor × reltuples)
+```
+
+Varsayılan değerlerle (`threshold = 50`, `scale_factor = 0.2`):
+- 10.000 satırlık tabloda: `50 + (0.2 × 10.000) = 2.050` ölü satırda devreye girer.
+- 50.000.000 satırlık tabloda: `50 + (0.2 × 50.000.000) = 10.000.050` ölü satır birikene kadar **hiç çalışmaz!**
+
+Büyük tablolarda autovacuum'un geç kalmasını önlemek için tablo bazında override uygulanmalıdır:
+```sql
+ALTER TABLE large_orders SET (
+    autovacuum_vacuum_scale_factor = 0.02, -- %2 ölü satırda tetikle
+    autovacuum_vacuum_threshold = 1000
+);
+```
+
+### Cost-Based Delay Parametreleri
+Modern NVMe SSD sunucularda autovacuum varsayılan I/O kısıtlamaları nedeniyle çok yavaş çalışabilir. Bu darboğazı çözmek için `postgresql.conf` içinde ayarlanmalıdır:
+```ini
+autovacuum_vacuum_cost_delay = 2ms        # Her I/O sınırında bekleme süresi
+autovacuum_vacuum_cost_limit = 1000       # Bir döngüde tüketilecek I/O bütçesi (Varsayılan 200 düşüktür)
+```
+
+---
+
+## 3. HOT (Heap-Only Tuple) ve `fillfactor` Stratejisi
+
+Eğer bir tablodaki `UPDATE` işlemleri indeksli sütunlara dokunmuyorsa ve mevcut 8KB data page içinde boş alan varsa, PostgreSQL indekse dokunmadan satırı aynı sayfa içine yazar (**HOT Update**).
+
+Varsayılan olarak data page'ler %100 dolana kadar satır kabul eder (`fillfactor = 100`). Sık güncellenen tablolarda sayfa içinde %15-20 rezerv boşluk bırakmak HOT başarı oranını zirveye çıkarır:
+
+```sql
+-- Sık güncellenen tabloya %80 doluluk oranı verelim:
+ALTER TABLE accounts SET (fillfactor = 80);
+```
+
+---
+
+## 4. Laboratuvar: Dead Tuple Üretimi ve Autovacuum İzleme
+
+### Adım 1: Test Tablosu Açma ve Dead Tuple Üretme
+```sql
+CREATE TABLE bloat_test (id int PRIMARY KEY, payload text) WITH (autovacuum_enabled = false);
+
+INSERT INTO bloat_test SELECT g, 'veri_' || g FROM generate_series(1, 20000) g;
+
+-- 10.000 satırı güncelleyerek dead tuple oluşturalım:
+UPDATE bloat_test SET payload = 'guncel_' || id WHERE id <= 10000;
+```
+
+### Adım 2: Dead Tuple Oranını İnceleme
+```sql
+SELECT relname, n_live_tup, n_dead_tup,
+       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct
+FROM pg_stat_user_tables
+WHERE relname = 'bloat_test';
+```
+Çıktıda 10.000 canlı satır ve 10.000 dead tuple (`dead_pct = 50.00%`) görünür.
+
+### Adım 3: Autovacuum'u Manuel Tetikleme ve Sonuç
+```sql
+VACUUM VERBOSE bloat_test;
+```
+Konsolda kaç adet dead tuple'ın temizlendiği ve kaç byte alanın geri kazanıldığı adım adım listelenir.
+
+> [!TIP]
+> Production ortamında şişmiş bir tabloyu sıfır kilit ve kesintisiz (`online`) küçültmek için `VACUUM FULL` yerine topluluk standardı olan **`pg_repack`** eklentisi kullanılmalıdır.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Routine Vacuuming",
+      url: "https://www.postgresql.org/docs/current/routine-vacuuming.html"
+    },
+    {
+      title: "PostgreSQL Documentation: Cost-based Vacuum Delay",
+      url: "https://www.postgresql.org/docs/current/runtime-config-resource.html#RUNTIME-CONFIG-RESOURCE-VACUUM-COST"
+    },
+    {
+      title: "pg_repack GitHub Repository: Reorganize tables in PostgreSQL online with minimal locks",
+      url: "https://github.com/reorg/pg_repack"
+    }
+  ]}
+/>

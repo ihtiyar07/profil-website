@@ -1,0 +1,128 @@
+---
+title: "Deadlock ve Timeout Yönetimi: Algılama Döngüsü ve Savunma Parametreleri"
+slug: "postgresql-deadlock-ve-timeout-yonetimi"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'de deadlock algılama döngüsü, deadlock_timeout mekanizması, log grafiklerinin analizi, lock_timeout ve idle_in_transaction_session_timeout ile savunma."
+tags: ["PostgreSQL", "Deadlock", "Timeout", "Eşzamanlılık", "Laboratuvar"]
+parent: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+order: 3
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+İki veya daha fazla transaksiyonun birbirlerinin tuttuğu kilitleri karşılıklı olarak talep ettiği ve hiçbirinin ilerleyemediği döngüsel kilitlenme durumuna **Deadlock** denir.
+
+PostgreSQL, deadlock durumunu çözmek için otomatik bir tespit algoritması koşturur ve döngüyü kırmak için transaksiyonlardan birini kurban (**victim transaction**) seçerek hata ile sonlandırır (`ERROR: deadlock detected`).
+
+---
+
+## 1. Deadlock Algılama Mekanizması (`deadlock_timeout`)
+
+Her kilit talebinde deadlock kontrolü çalıştırmak yüksek CPU yükü yaratır. Bu nedenle PostgreSQL iki aşamalı bir strateji izler:
+
+1. Bir süreç kilit alamadığında önce uyku moduna geçer ve Lock Wait kuyruğunda bekler.
+2. Bekleme süresi **`deadlock_timeout`** (varsayılan: `1s`) değerini aştığında, çekirdek bir döngüsel bağımlılık (Wait-For Graph) olup olmadığını kontrol eder.
+3. Döngü tespit edilirse, sistem maliyeti en düşük olan transaksiyonu `ROLLBACK` ettirir ve diğerinin devam etmesini sağlar.
+
+<Mermaid
+  title="1. Klasik Çapraz Deadlock Döngüsü"
+  ariaLabel="İki transaksiyonun karşılıklı olarak birbirinin kilitlediği satırları güncellemeye çalışması"
+  code={`
+sequenceDiagram
+    autonumber
+    actor T1 as Transaksiyon 1
+    actor T2 as Transaksiyon 2
+    T1->>DB: UPDATE accounts SET balance = ... WHERE id = 1 (Kilit Alındı)
+    T2->>DB: UPDATE accounts SET balance = ... WHERE id = 2 (Kilit Alındı)
+    T1->>DB: UPDATE accounts SET balance = ... WHERE id = 2 (Bekliyor...)
+    T2->>DB: UPDATE accounts SET balance = ... WHERE id = 1 (Bekliyor...)
+    Note over T1,T2: deadlock_timeout süresi dolar (1s)
+    DB-->>T2: ERROR: deadlock detected (Kurban Seçildi / Rollback)
+    DB-->>T1: Kilit Verildi ve İşlem Devam Etti
+`}
+  summarySteps={[
+    "1. T1 Satır 1'i, T2 Satır 2'yi kilitler.",
+    "2. Ardından T1 Satır 2'yi, T2 ise Satır 1'i güncellemek ister ve her ikisi de bloklanır.",
+    "3. deadlock_timeout süresi dolduğunda Postgres döngüyü fark eder ve T2'yi abort ederek T1'in önünü açar."
+  ]}
+/>
+
+---
+
+## 2. Savunma Katmanı: Üç Hayati Timeout Parametresi
+
+Deadlock ve kilitlenme risklerine karşı production veritabanında üç parametrenin mutlaka yapılandırılması gerekir:
+
+| Parametre | Önerilen Değer | Görevi ve Önemi |
+| :--- | :--- | :--- |
+| **`lock_timeout`** | `2s` - `5s` | Bir kilit edinmek için beklenebilecek maksimum süre. Aşılırsa sorgu anında düşürülür (Lock bekleme kuyruğunda yığılmayı önler). |
+| **`statement_timeout`** | `30s` - `60s` | Sorgunun toplam çalışma süresi sınırı. Sonsuz döngüye giren veya çok uzun süren sorguları öldürür. |
+| **`idle_in_transaction_session_timeout`** | `10s` - `30s` | `BEGIN` dedikten sonra açık bırakılan atıl oturumları otomatik sonlandırır. Deadlock ve bloat'un 1 numaralı düşmanıdır. |
+
+---
+
+## 3. Laboratuvar: Deadlock Simülasyonu ve `lock_timeout`
+
+### Adım 1: Deadlock Döngüsü Tetikleme
+İki ayrı terminalde aşağıdaki komutları sıra numaralarına göre çalıştırın:
+
+```sql
+-- Terminal 1 (Adım 1):
+BEGIN;
+UPDATE accounts SET balance = balance + 10 WHERE id = 1;
+
+-- Terminal 2 (Adım 2):
+BEGIN;
+UPDATE accounts SET balance = balance + 20 WHERE id = 2;
+
+-- Terminal 1 (Adım 3):
+UPDATE accounts SET balance = balance + 10 WHERE id = 2;
+-- (Terminal 1 beklemeye geçer...)
+
+-- Terminal 2 (Adım 4):
+UPDATE accounts SET balance = balance + 20 WHERE id = 1;
+-- (Deadlock tetiklendi!)
+```
+
+Yaklaşık 1 saniye sonra Terminal 2'de aşağıdaki hata görünür:
+```text
+ERROR:  deadlock detected
+DETAIL:  Process 41250 waits for ShareLock on transaction 892; blocked by process 41240.
+Process 41240 waits for ShareLock on transaction 893; blocked by process 41250.
+HINT:  See server log for query details.
+```
+
+### Adım 2: `lock_timeout` ile Fail-Fast Koruması
+Deadlock tespitinin 1 saniye beklemesini istemiyorsanız veya yoğun trafikte sorgunun kuyruğu tıkamadan hemen vazgeçmesini istiyorsanız oturum bazında `lock_timeout` tanımlayabilirsiniz:
+
+```sql
+-- Terminal 2'de:
+SET lock_timeout = '200ms';
+BEGIN;
+UPDATE accounts SET balance = balance + 50 WHERE id = 1;
+```
+
+Eğer Terminal 1 satırı tutuyorsa Terminal 2 tam 200 ms sonra beklemeden çıkar:
+```text
+ERROR:  canceling statement due to lock timeout
+```
+
+Bu pratik, mikroservis ve API mimarilerinde connection pool tükenmesini engelleyen en kritik resilience desenidir.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Deadlocks",
+      url: "https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-DEADLOCKS"
+    },
+    {
+      title: "PostgreSQL Documentation: Lock Management Run-time Config",
+      url: "https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-LOCK-TIMEOUT"
+    },
+    {
+      title: "PostgreSQL Source Code: src/backend/storage/lmgr/deadlock.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/storage/lmgr/deadlock.c"
+    }
+  ]}
+/>

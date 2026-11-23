@@ -1,0 +1,153 @@
+---
+title: "Lock ve Blocking Analizi: pg_locks, pg_stat_activity ve pg_blocking_pids"
+slug: "postgresql-lock-ve-blocking-analizi"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'de kilit beklemelerinin pg_locks ve pg_stat_activity ile izlenmesi, pg_blocking_pids() ile bloklayan sorgu zincirinin tespiti ve güvenli müdahale yöntemleri."
+tags: ["PostgreSQL", "Kilitler", "Performans", "Blocking", "Laboratuvar"]
+parent: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+order: 2
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+Canlı bir veritabanında bağlantı sayısının aniden fırlaması veya sorguların yanıt vermeyi durdurması çoğunlukla CPU ya da disk yetersizliğinden değil; bir oturumun edindiği kilidin arkasında onlarca oturumu sıraya dizmesinden (**Lock Waiting / Blocking**) kaynaklanır.
+
+---
+
+## 1. Sistem Katalogları: `pg_locks` ve `pg_stat_activity`
+
+Kilit analizinde iki temel katalog birlikte değerlendirilir:
+
+- **`pg_locks`:** Çekirdeğin Lock Manager'ı tarafından tutulan tüm kilit girdilerini listeler. `granted = true` kilidin edinildiğini, `granted = false` ise oturumun kuyrukta beklediğini gösterir.
+- **`pg_stat_activity`:** Hangi `pid`'in hangi sorguyu çalıştırdığını, transaksiyon başlangıç zamanını (`xact_start`) ve oturum durumunu (`active`, `idle in transaction`) sunar.
+
+<Mermaid
+  title="1. Blocking Zinciri ve pg_blocking_pids İlişkisi"
+  ariaLabel="Bir transaksiyonun tabloyu kilitlemesi ve arkasındaki sorguların bekleme kuyruğunda sıralanması"
+  code={`
+flowchart LR
+    P1["PID: 101 (idle in transaction)<br/>Tablo Kilidini Tutuyor<br/>(granted=true)"] 
+    P2["PID: 102 (UPDATE bekliyor)<br/>Kilit Beklemede<br/>(granted=false)"]
+    P3["PID: 103 (SELECT bekliyor)<br/>102'nin Arkasında Bekliyor"]
+
+    P2 -.->|"pg_blocking_pids = {101}"| P1
+    P3 -.->|"pg_blocking_pids = {102}"| P2
+
+    classDef blocker fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#991B1B
+    classDef waiting fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+
+    class P1 blocker
+    class P2,P3 waiting
+`}
+  summarySteps={[
+    "1. PID 101 kilit almış ancak transaksiyonunu kapatmamıştır (idle in transaction).",
+    "2. PID 102 bu kilit nedeniyle bloke olmuştur; PID 103 ise PID 102'nin arkasına takılmıştır.",
+    "3. pg_blocking_pids(102) fonksiyonu doğrudan kök neden olan 101 değerini döndürür."
+  ]}
+/>
+
+---
+
+## 2. Production Blocking Analiz Sorgusu
+
+PostgreSQL 9.6 ile gelen `pg_blocking_pids()` fonksiyonu sayesinde karmaşık `self-join` sorgularına gerek kalmadan bloklayan ve bekleyen tüm oturumlar tek bir sorguyla filtrelenebilir:
+
+```sql
+SELECT
+    blocked.pid AS blocked_pid,
+    blocked.usename AS blocked_user,
+    now() - blocked.query_start AS waiting_duration,
+    blocked.wait_event_type,
+    blocked.wait_event,
+    blocking.pid AS blocking_pid,
+    blocking.usename AS blocking_user,
+    blocking.state AS blocking_state,
+    now() - blocking.xact_start AS blocking_xact_age,
+    left(blocking.query, 60) AS blocking_query,
+    left(blocked.query, 60) AS blocked_query
+FROM pg_stat_activity blocked
+JOIN unnest(pg_blocking_pids(blocked.pid)) AS blocker_pid ON true
+JOIN pg_stat_activity blocking ON blocking.pid = blocker_pid
+ORDER BY waiting_duration DESC;
+```
+
+---
+
+## 3. Müdahale: `pg_cancel_backend` vs `pg_terminate_backend`
+
+Sistemi tıkayan bir oturum tespit edildiğinde iki farklı sonlandırma aracı kullanılır:
+
+- **`pg_cancel_backend(pid)`:** Oturumun o an çalıştırdığı sorguya `SIGINT` sinyali göndererek yalnızca sorguyu iptal eder. Oturum bağlantısı açık kalır. Eğer sorun `idle in transaction` ise bu komut işe yaramaz.
+- **`pg_terminate_backend(pid)`:** Oturuma `SIGTERM` sinyali göndererek bağlantıyı tamamen koparır ve açık transaksiyonu `ROLLBACK` ettirir. Tıkanıklıkları çözmede en kesin yöntemdir.
+
+---
+
+## 4. Laboratuvar: Blocking Zinciri Oluşturma ve Teşhis
+
+Aşağıdaki adımlarla kontrollü bir kilit darboğazı oluşturup analiz sorgumuzla yakalayalım.
+
+### Adım 1: Test Ortamını Hazırlama
+```sql
+CREATE TABLE orders (id int PRIMARY KEY, total numeric, status text);
+INSERT INTO orders VALUES (1, 150.0, 'pending');
+```
+
+### Adım 2: Kilit Oluşturma ve Bekleme
+```sql
+-- Terminal 1 (Bloklayan Oturum):
+BEGIN;
+UPDATE orders SET total = 200.0 WHERE id = 1;
+-- Bilerek COMMIT yapmıyoruz, transaksiyon açık kalıyor!
+
+-- Terminal 2 (Bekleyen Oturum):
+UPDATE orders SET total = 300.0 WHERE id = 1;
+-- Terminal 2 kilit nedeniyle askıda kalır (Lock beklemesi).
+```
+
+### Adım 3: Terminal 3'te Analiz ve Müdahale
+Üçüncü bir terminal açarak teşhis sorgumuzu çalıştıralım:
+
+```sql
+-- Hangi PID kimi blokluyor?
+SELECT blocked.pid AS blocked_pid,
+       blocking.pid AS blocking_pid,
+       blocking.state AS blocker_state,
+       blocked.wait_event
+FROM pg_stat_activity blocked
+JOIN unnest(pg_blocking_pids(blocked.pid)) AS blocker_pid ON true
+JOIN pg_stat_activity blocking ON blocking.pid = blocker_pid;
+```
+
+Örnek çıktı:
+```text
+ blocked_pid | blocking_pid |    blocker_state    | wait_event 
+-------------+--------------+---------------------+------------
+       41205 |        41189 | idle in transaction | tuple
+```
+
+Görüldüğü gibi `blocking_pid = 41189`, transaksiyonu açık bırakıp unuttuğu için (`idle in transaction`) diğer oturumu `tuple` kilidinde bekletmektedir.
+
+```sql
+-- Düğümü çözmek için bloklayan oturumu sonlandıralım:
+SELECT pg_terminate_backend(41189);
+```
+
+Komut çalıştırıldığı anda Terminal 1 oturumu düşürülür, Terminal 2'deki `UPDATE` anında başarıyla tamamlanır.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Viewing Locks (pg_locks)",
+      url: "https://www.postgresql.org/docs/current/view-pg-locks.html"
+    },
+    {
+      title: "PostgreSQL Documentation: System Administration Functions",
+      url: "https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADMIN-SIGNAL"
+    },
+    {
+      title: "Cybertec PostgreSQL: Understanding pg_blocking_pids",
+      url: "https://www.cybertec-postgresql.com/en/understanding-pg_blocking_pids/"
+    }
+  ]}
+/>

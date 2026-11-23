@@ -1,0 +1,77 @@
+---
+title: "PostgreSQL MVCC ve Vacuum Mimarisi: Çoklu Sürüm, İzolasyon ve Alan Yönetimi"
+slug: "postgresql-mvcc-transaction-ve-vacuum"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'in MVCC çoklu sürüm modeli, snapshot izolasyonu, autovacuum döngüsü, transaction ID wraparound ve bloat yönetimi üzerine kapsamlı mimari rehber."
+tags: ["PostgreSQL", "MVCC", "Transaction", "Vacuum", "Eşzamanlılık", "Mimari"]
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+İlişkisel veritabanlarında eşzamanlı okuma ve yazma işlemlerinin birbirini kilitlemeden yüksek hızda çalışabilmesi, modern veri mimarilerinin temel gereksinimidir. PostgreSQL bu kabiliyeti **MVCC (Multi-Version Concurrency Control)** mimarisiyle sağlar.
+
+Ancak güncellemeleri yerinde ezmek yerine yeni satır sürümleri (`tuples`) üretmek; arkasında eski sürümlerin temizlenmesi (**Autovacuum**), disk alanının geri kazanılması (**Bloat**), 32-bit transaction sayaçlarının donması (**Freeze/Wraparound**) ve açık kalan oturumların sistemi tıkamaması gibi hayati operasyonel sorumluluklar getirir.
+
+---
+
+## 1. MVCC ve Yaşam Döngüsü Mimarisi
+
+PostgreSQL'de bir transaksiyon başladığında o anki sistem durumunu temsil eden bir **Snapshot** alır ve yalnızca bu snapshot'a uygun satır sürümlerini görür:
+
+<Mermaid
+  title="1. PostgreSQL MVCC, Snapshot ve Autovacuum Yaşam Döngüsü"
+  ariaLabel="Transaksiyon snapshot'ından tuple versiyonlarına ve autovacuum temizliğine uzanan MVCC yaşam döngüsü"
+  code={`
+flowchart TD
+    Tx["Transaction Başlangıcı"] --> Snap["1. Snapshot Alımı (xmin, xmax, xip_list)"]
+    Snap --> Read["2. Tuple Görünürlük Kontrolü (t_xmin / t_xmax)"]
+    Read --> Update["3. UPDATE / DELETE (Yeni Tuple Ekleme)"]
+    Update --> Dead["4. Eski Satır Dead Tuple Haline Gelir"]
+    Dead --> AV["5. Autovacuum Çalışır"]
+    AV --> FSM["6. Boş Alan FSM'ye Yazılır (Yeniden Kullanım)"]
+    AV --> Freeze["7. Yaşlanan Tuple'lar Freeze Edilir (HEAP_XMIN_FROZEN)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class Tx,Snap primary
+    class Read,Update,Dead process
+    class AV,FSM,Freeze storage
+`}
+  summarySteps={[
+    "1. Her transaksiyon aktif durumdaki transaksiyon ID sınırlarını kaydeden bir Snapshot edinir.",
+    "2. Güncellemeler yerinde yapılmaz; yeni tuple eklenir ve eski tuple commit sonrası dead tuple olur.",
+    "3. Autovacuum bu ölü satırları temizleyip alanı FSM'ye yazar ve eski satırları freeze ederek wraparound'ı önler."
+  ]}
+/>
+
+---
+
+## 2. Rehber Alt Konuları ve İnceleme Modülleri
+
+PostgreSQL MVCC ve Vacuum mekanizmasını uçtan uca incelemek ve laboratuvar senaryolarını test etmek için hazırlanan modüller:
+
+1. **[Tuple Görünürlüğü & xmin](/posts/postgresql-mvcc-ve-tuple-gorunurlugu):** `t_xmin`, `t_xmax`, `t_cid`, infomask bayrakları, snapshot hesaplama algoritması ve `pageinspect` lab'ı.
+2. **[İzolasyon Seviyeleri & SSI](/posts/postgresql-transaction-izolasyon-seviyeleri-ve-ssi):** Read Committed, Repeatable Read ve Serializable seviyeleri, SIREAD kilitleri, anomaliler ve SSI lab'ı.
+3. **[Autovacuum & Bloat Yönetimi](/posts/postgresql-autovacuum-tuning-ve-bloat-yonetimi):** Autovacuum cost-based delay tuning, `fillfactor` ile HOT optimizasyonu, bloat tespiti ve `pg_repack` lab'ı.
+4. **[Wraparound & Freeze Yönetimi](/posts/postgresql-transaction-wraparound-ve-freeze):** 2 milyar XID sınırı, `datfrozenxid`, `autovacuum_freeze_max_age`, multixact döngüsü ve acil durum tek kullanıcılı mod kurtarma prosedürü.
+5. **[Vacuum Bloklayıcıları & XMIN](/posts/postgresql-autovacuum-engelleyicileri-ve-multixact):** Autovacuum'u felç eden uzun transaksiyonlar, `idle in transaction`, replication slot `catalog_xmin`, multixact kilitleri ve `track_commit_timestamp` adli bilişim lab'ı.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Concurrency Control (Chapter 13)",
+      url: "https://www.postgresql.org/docs/current/mvcc.html"
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 5 - Concurrency Control (Hironobu Suzuki)",
+      url: "https://www.interdb.jp/pg/pgsql05.html"
+    },
+    {
+      title: "PostgreSQL Source Code: src/backend/utils/time/snapmgr.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/utils/time/snapmgr.c"
+    }
+  ]}
+/>

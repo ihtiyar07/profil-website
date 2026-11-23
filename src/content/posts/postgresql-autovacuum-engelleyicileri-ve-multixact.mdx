@@ -1,0 +1,132 @@
+---
+title: "Autovacuum Bloklayıcıları: Uzun Transaksiyonlar, Slotlar ve Multixact"
+slug: "postgresql-autovacuum-engelleyicileri-ve-multixact"
+date: "2026-11-23"
+lang: "tr"
+summary: "Autovacuum'un dead tuple temizlemesini engelleyen faktörler (idle in transaction, replication slots, 2PC), multixact mimarisi ve commit timestamp adli analizi."
+tags: ["PostgreSQL", "Autovacuum", "Replication", "Multixact", "Laboratuvar"]
+parent: "postgresql-mvcc-transaction-ve-vacuum"
+order: 5
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+Autovacuum arka planda sürekli çalışıyor görünmesine rağmen tablolardaki `n_dead_tup` sayısı düşmüyor ve disk dolmaya devam ediyorsa, sistemde **Oldest Active Snapshot xmin** değerinin ilerlemesini engelleyen bir bloklayıcı vardır.
+
+---
+
+## 1. Dead Tuple Temizliğini Engelleyen Dört Büyük Faktör
+
+Autovacuum bir ölü satırı ancak ve ancak **sistemdeki hiçbir aktif transaksiyonun o satırı görme ihtimali kalmadığında** temizleyebilir. Bunu engelleyen başlıca kaynaklar şunlardır:
+
+1. **Uzun Süren Sorgular:** Saatlerce süren bir analitik sorgu başladığı andaki `xmin` değerini tutar; bu süreç bitene kadar ondan sonra üretilen hiçbir dead tuple silinemez.
+2. **`idle in transaction` Oturumlar:** Bir uygulamanın `BEGIN` deyip unuttuğu atıl oturumlar tüm veritabanının temizliğini durdurur.
+3. **Geride Kalan Replikasyon Slotları (`pg_replication_slots`):** Mantıksal veya fiziksel replikasyon abonesi koptuğunda veya geride kaldığında, slot `catalog_xmin` veya `xmin` değerini dondurur ve WAL ile dead tuple temizliğini felç eder.
+4. **Hazırlanmış Transaksiyonlar (Orphan Prepared Transactions):** İki fazlı commit (2PC) mimarisinde `PREPARE TRANSACTION` ile askıda bırakılan işlemler `ROLLBACK PREPARED` edilene kadar horizon'u kilitler.
+
+<Mermaid
+  title="1. Autovacuum Temizlik Sınırı (Oldest XMIN Horizon)"
+  ariaLabel="Eski bir transaksiyonun xmin değerini tutması nedeniyle autovacuum'un ölü satırları temizleyememesi"
+  code={`
+flowchart LR
+    T1["PID 100 (idle in transaction)<br/>xmin = 500 (Horizon Burada Kilitli)"] 
+    D1["Dead Tuple (xmin=505, xmax=510)"]
+    D2["Dead Tuple (xmin=520, xmax=525)"]
+    AV["Autovacuum<br/>(500'den Sonrasını SİLEMEZ!)"]
+
+    T1 -.->|"Horizon İlerleyemiyor"| AV
+    AV -.->|"Temizlik Engellendi"| D1
+    AV -.->|"Temizlik Engellendi"| D2
+
+    classDef blocker fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#991B1B
+    classDef dead fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef vacuum fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+
+    class T1 blocker
+    class D1,D2 dead
+    class AV vacuum
+`}
+  summarySteps={[
+    "1. PID 100 oturumu xmin = 500 ile açık kalmıştır.",
+    "2. Sonradan üretilen dead tuple'lar (505, 520) teknik olarak 500 numaralı transaksiyonun görüş alanındadır.",
+    "3. Autovacuum bu satırlara dokunamaz; tablo şişmeye ve disk dolmaya devam eder."
+  ]}
+/>
+
+---
+
+## 2. Multixact ve `track_commit_timestamp`
+
+### Multixact Mimarisi (`pg_multixact`)
+Bir satırın başlığında tek bir `t_xmax` alanı bulunur. Eğer birden fazla transaksiyon aynı anda aynı satır üzerinde paylaşımlı kilit alırsa (`FOR SHARE` veya `FOR KEY SHARE`), PostgreSQL tekil bir XID yazamaz. Bunun yerine bir **MultiXactId** üretir ve bu kimliğe dahil olan transaksiyonları `$PGDATA/pg_multixact` dizininde eşler.
+
+### `track_commit_timestamp` ile Adli Bilişim (Forensics)
+`postgresql.conf` içinde `track_commit_timestamp = on` açıldığında çekirdek her transaksiyonun kesin onaylanma saatini kaydeder. Böylece bir satırın ne zaman veritabanına girdiği sorgulanabilir:
+
+```sql
+SELECT id, name,
+       pg_xact_commit_timestamp(xmin) AS olusturulma_zamani
+FROM customers;
+```
+
+---
+
+## 3. Laboratuvar: Autovacuum'un Engellenmesini Kanıtlama
+
+### Adım 1: Test Tablosu Hazırlama
+```sql
+CREATE TABLE vacuum_block_test (id int, val text);
+INSERT INTO vacuum_block_test VALUES (1, 'ilk_hali');
+```
+
+### Adım 2: Terminal 1'de Transaksiyonu Açık Tutma
+```sql
+-- Terminal 1:
+BEGIN;
+SELECT * FROM vacuum_block_test;
+-- Transaksiyon açık kalır, COMMIT yapılmaz!
+```
+
+### Adım 3: Terminal 2'de Güncelleme ve Temizlik Denemesi
+```sql
+-- Terminal 2:
+UPDATE vacuum_block_test SET val = 'ikinci_hali';
+UPDATE vacuum_block_test SET val = 'ucuncu_hali';
+
+-- Manuel VACUUM çalıştıralım:
+VACUUM VERBOSE vacuum_block_test;
+```
+
+Konsol çıktısında:
+```text
+INFO:  "vacuum_block_test": found 2 removable, 2 nonremovable row versions in 1 out of 1 pages
+DETAIL:  2 dead row versions cannot be removed yet, because they are still required for other transactions.
+```
+Görüldüğü gibi 2 adet dead tuple **Terminal 1 açık olduğu için silinemedi!**
+
+### Adım 4: Engelleyiciyi Kapatıp Temizliği Tamamlama
+```sql
+-- Terminal 1'de:
+COMMIT;
+
+-- Terminal 2'de tekrar çalıştıralım:
+VACUUM VERBOSE vacuum_block_test;
+-- INFO: 2 dead row versions removed. Artık tamamen temizlendi!
+```
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Managing Replication Slots",
+      url: "https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS"
+    },
+    {
+      title: "PostgreSQL Source Code: src/backend/access/transam/multixact.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/access/transam/multixact.c"
+    },
+    {
+      title: "Percona Blog: How an Idle Transaction Can Impact PostgreSQL Performance",
+      url: "https://www.percona.com/blog/how-an-idle-transaction-can-impact-postgresql-performance/"
+    }
+  ]}
+/>

@@ -1,0 +1,125 @@
+---
+title: "İzolasyon Seviyeleri ve SSI: Read Committed, Repeatable Read ve Serializable"
+slug: "postgresql-transaction-izolasyon-seviyeleri-ve-ssi"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL transaction izolasyon seviyeleri, statement vs transaction snapshot farkı, SSI (Serializable Snapshot Isolation) mimarisi ve serialization failure laboratuvarı."
+tags: ["PostgreSQL", "Transaction", "İzolasyon", "SSI", "Eşzamanlılık", "Laboratuvar"]
+parent: "postgresql-mvcc-transaction-ve-vacuum"
+order: 2
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+SQL standardı 4 transaction izolasyon seviyesi tanımlar. Ancak PostgreSQL'in MVCC çekirdeğinde **`Read Uncommitted` bulunmaz**; kirli okuma (**Dirty Read**) mimari gereği imkansız olduğu için bu seviyede talep edilen transaksiyonlar doğrudan `Read Committed` olarak çalıştırılır.
+
+---
+
+## 1. PostgreSQL İzolasyon Matrisi ve Anomaliler
+
+PostgreSQL çekirdeğinde 3 gerçek izolasyon seviyesi bulunur:
+
+| İzolasyon Seviyesi | Snapshot Alınma Zamanı | Dirty Read | Non-Repeatable Read | Phantom Read | Serialization Anomaly (Write Skew) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`Read Committed`** (Varsayılan) | **Her SQL ifadesinin başında** yeni snapshot | İmkansız | Mümkün | Mümkün | Mümkün |
+| **`Repeatable Read`** | **Transaksiyonun ilk sorgusunda** tek snapshot | İmkansız | İmkansız | İmkansız | Mümkün |
+| **`Serializable` (SSI)** | İlk sorguda snapshot + SIREAD kilit takibi | İmkansız | İmkansız | İmkansız | **Engellenir** |
+
+---
+
+## 2. SSI (Serializable Snapshot Isolation) Nasıl Çalışır?
+
+Klasik veritabanları tam seri hale getirilebilirliği (Serializability) sağlamak için tüm okunan satırları kilitleyen ağır **Two-Phase Locking (2PL)** mekanizmasını kullanır. Bu da okuyucuların yazıcıları engellemesine ve performansın çökmesine yol açar.
+
+PostgreSQL ise **SSI** ile okuma kilitleri koymaz:
+1. Okunan satırlara ve sayfalara bellek içi **SIREAD Locks** bayrağı koyar (bu bir bekleme kilidi değildir, sadece işaretçidir).
+2. Çekirdek, bu işaretçileri kullanarak oturumlar arasındaki bağımlılık grafiğini (**Dependency Graph**) izler.
+3. İki transaksiyon arasında bir döngüsel bağımlılık (**rw-antidependency cycle / Write Skew**) oluşursa, PostgreSQL transaksiyonlardan birini iptal eder:
+   `ERROR: could not serialize access due to read/write dependencies among transactions`
+
+<Mermaid
+  title="1. Statement Snapshot vs Transaction Snapshot Davranışı"
+  ariaLabel="Read Committed seviyesinde her sorguda yeni snapshot alınması ile Repeatable Read seviyesinde sabit snapshot kalması"
+  code={`
+sequenceDiagram
+    autonumber
+    actor T1 as Transaksiyon 1 (Read Committed)
+    actor T2 as Transaksiyon 2 (Yazıcı)
+    T1->>DB: SELECT count(*) -> 10 (Snapshot 1)
+    T2->>DB: INSERT INTO users ... (COMMIT Edildi)
+    T1->>DB: SELECT count(*) -> 11 (Yeni Snapshot: Değişimi Gördü!)
+    Note over T1,T2: Repeatable Read olsaydı T1 hala 10 görecekti.
+`}
+  summarySteps={[
+    "1. Read Committed seviyesinde T1 her sorgu koşturduğunda anlık yeni bir Snapshot edinir.",
+    "2. T2 araya girip kayıt eklediğinde T1 sonraki sorgusunda bu değişikliği doğrudan görür.",
+    "3. Repeatable Read seviyesinde ise T1 tüm transaksiyon boyunca ilk snapshot'ına sadık kalır."
+  ]}
+/>
+
+---
+
+## 3. Laboratuvar: Repeatable Read ve Serializable Çatışması
+
+### Adım 1: Test Tablosunu Hazırlama
+```sql
+CREATE TABLE doctor_on_call (
+    id int PRIMARY KEY,
+    doctor_name text,
+    on_call boolean
+);
+INSERT INTO doctor_on_call VALUES (1, 'Dr. Ali', true), (2, 'Dr. Ayşe', true);
+```
+*Kural:* Hastanede en az bir doktor nöbette kalmalıdır (`on_call = true`).
+
+### Adım 2: Serializable Write Skew Çatışması
+İki terminalde aynı anda `SERIALIZABLE` transaksiyon başlatıp iki doktorun da nöbetten çıkmak istediğini simüle edelim:
+
+```sql
+-- Terminal 1:
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- Nöbette kaç kişi var kontrol edelim:
+SELECT count(*) FROM doctor_on_call WHERE on_call = true; -- (Sonuç: 2)
+
+-- Terminal 2:
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT count(*) FROM doctor_on_call WHERE on_call = true; -- (Sonuç: 2)
+
+-- Terminal 1 (Ali nöbetten çıkar):
+UPDATE doctor_on_call SET on_call = false WHERE id = 1;
+
+-- Terminal 2 (Ayşe de nöbetten çıkar):
+UPDATE doctor_on_call SET on_call = false WHERE id = 2;
+
+-- Terminal 1:
+COMMIT; -- (Başarılı!)
+
+-- Terminal 2:
+COMMIT; -- (HATA ALIR!)
+```
+
+Terminal 2 `COMMIT` ettiği anda PostgreSQL döngüsel bağımlılığı yakalar ve verinin bozulmasını engeller:
+```text
+ERROR:  could not serialize access due to read/write dependencies among transactions
+DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+HINT:  The transaction might succeed if retried.
+```
+
+Bu mekanizma sayesinde veritabanında aynı anda iki doktorun da nöbetten çıkması ve nöbetçi doktor sayısının sıfıra düşmesi (Write Skew) önlenmiş olur. Uygulama bu hatayı aldığında transaksiyonu baştan denemelidir (`retry`).
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Transaction Isolation",
+      url: "https://www.postgresql.org/docs/current/transaction-iso.html"
+    },
+    {
+      title: "PostgreSQL Wiki: SSI (Serializable Snapshot Isolation)",
+      url: "https://wiki.postgresql.org/wiki/SSI"
+    },
+    {
+      title: "Cahill et al.: Serializable Isolation for Snapshot Databases (ACM SIGMOD)",
+      url: "https://dl.acm.org/doi/10.1145/1376616.1376690"
+    }
+  ]}
+/>

@@ -1,0 +1,123 @@
+---
+title: "MVCC & Tuple Görünürlüğü: xmin, xmax ve Snapshot Mimarisi"
+slug: "postgresql-mvcc-ve-tuple-gorunurlugu"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'in MVCC tuple başlığı alanları (t_xmin, t_xmax, t_infomask), snapshot görünürlük algoritması ve pageinspect ile canlı bellek analizi."
+tags: ["PostgreSQL", "MVCC", "Tuple", "Snapshot", "Laboratuvar"]
+parent: "postgresql-mvcc-transaction-ve-vacuum"
+order: 1
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+PostgreSQL'de her satır (tuple), diske yalnızca kullanıcının tanımladığı sütun değerleriyle yazılmaz. Çekirdek, çoklu sürüm kontrolünü (**MVCC**) yönetebilmek için her satırın başına **23 baytlık bir `HeapTupleHeader`** ekler.
+
+---
+
+## 1. Tuple Header Anatomisi: `t_xmin`, `t_xmax` ve Infomask
+
+Bir satırın o anki oturuma görünüp görünmeyeceğini belirleyen 4 temel başlık alanı vardır:
+
+- **`t_xmin`:** Bu satırı ekleyen (`INSERT`) transaksiyonun Transaction ID (`XID`) değeri.
+- **`t_xmax`:** Bu satırı güncelleyen veya silen (`UPDATE` / `DELETE`) transaksiyonun `XID` değeri (aktif satırlarda `0`'dır).
+- **`t_cid` (Command Identifier):** Aynı transaksiyon içinde birden fazla SQL komutu çalıştırıldığında satırın hangi komut tarafından üretildiğini belirten sıra numarası.
+- **`t_infomask` (16-bit):** Satırın durum bayraklarıdır. Satırı ekleyen transaksiyonun commit edip etmediğini anlamak için her seferinde `pg_xact` (CLOG) tablosuna gitmek ciddi I/O yaratır. Bu nedenle ilk okuyan süreç durumu buraya bir **Hint Bit** olarak yazar (`HEAP_XMIN_COMMITTED`, `HEAP_XMIN_INVALID`, `HEAP_XMAX_COMMITTED`).
+
+<Mermaid
+  title="1. UPDATE Sonrası Tuple Sürüm Zinciri ve Header Değişimi"
+  ariaLabel="Eski tuple t_xmax değerinin yeni transaction ID alması ve yeni tuple t_xmin değerine bağlanması"
+  code={`
+flowchart LR
+    LP1["Line Pointer 1"] --> T1["Tuple v1 (Eski)<br/>t_xmin = 100<br/>t_xmax = 105 (Güncellendi)<br/>t_ctid = (0, 2)"]
+    LP2["Line Pointer 2"] --> T2["Tuple v2 (Yeni)<br/>t_xmin = 105<br/>t_xmax = 0 (Canlı)<br/>t_ctid = (0, 2)"]
+    T1 -.->|"Zincirleme (Indirection)"| LP2
+
+    classDef old fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef current fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef lp fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+
+    class LP1,LP2 lp
+    class T1 old
+    class T2 current
+`}
+  summarySteps={[
+    "1. XID 105 satırı güncellediğinde eski tuple silinmez; t_xmax alanına 105 yazılır.",
+    "2. Yeni tuple t_xmin = 105 ve t_xmax = 0 olarak sayfaya eklenir.",
+    "3. Eski satırın t_ctid değeri yeni satırın fiziksel adresini gösterecek şekilde güncellenir."
+  ]}
+/>
+
+---
+
+## 2. Snapshot Yapısı: `xmin:xmax:xip_list`
+
+Bir sorgu çalıştığında veritabanının anlık fotoğrafını temsil eden bir Snapshot üretilir. Formatı: `xmin:xmax:xip_list` şeklindedir:
+- **`snapshot.xmin`:** Henüz tamamlanmamış en eski aktif transaksiyon ID'si. Bu değerden küçük tüm XID'ler kesinlikle tamamlanmıştır (committed veya aborted).
+- **`snapshot.xmax`:** Snapshot alındığı anda henüz atanmamış ilk XID. Bu değere eşit veya büyük tüm XID'ler geleceğe aittir ve sorguya görünmez.
+- **`xip_list`:** `xmin` ile `xmax` arasında o an henüz `COMMIT` etmemiş (hala koşan) aktif transaksiyonların listesi.
+
+---
+
+## 3. Laboratuvar: `pageinspect` ile Canlı Tuple Header Analizi
+
+PostgreSQL'in dahili `pageinspect` eklentisini kullanarak diske yazılan gerçek `t_xmin` ve `t_xmax` değerlerini okuyalım.
+
+### Adım 1: Eklentiyi Açma ve Tablo Oluşturma
+```sql
+CREATE EXTENSION IF NOT EXISTS pageinspect;
+
+CREATE TABLE customers (id int, name text);
+INSERT INTO customers VALUES (1, 'Ahmet');
+```
+
+### Adım 2: İlk Tuple'ın Fiziksel Durumunu Okuma
+```sql
+SELECT lp, t_xmin, t_xmax, t_ctid, 
+       to_hex(t_infomask) AS infomask_hex,
+       to_hex(t_infomask2) AS infomask2_hex
+FROM heap_page_items_get(get_raw_page('customers', 0));
+```
+
+Örnek Çıktı:
+```text
+ lp | t_xmin | t_xmax | t_ctid | infomask_hex | infomask2_hex 
+----+--------+--------+--------+--------------+---------------
+  1 |    742 |      0 | (0,1)  | 0900         | 0002
+```
+Burada `t_xmax = 0` olduğu için satır henüz silinmemiş veya güncellenmemiştir. `t_ctid = (0,1)` ise satırın 0 numaralı sayfanın 1. line pointer'ında bulunduğunu belirtir.
+
+### Adım 3: Satırı Güncelleyip Versiyon Zincirini İnceleme
+```sql
+UPDATE customers SET name = 'Ahmet İhtiyar' WHERE id = 1;
+
+-- Sayfadaki tüm satırları tekrar okuyalım:
+SELECT lp, t_xmin, t_xmax, t_ctid
+FROM heap_page_items_get(get_raw_page('customers', 0));
+```
+
+Yeni Çıktı:
+```text
+ lp | t_xmin | t_xmax | t_ctid 
+----+--------+--------+--------
+  1 |    742 |    743 | (0,2)
+  2 |    743 |      0 | (0,2)
+```
+Görüldüğü gibi 1. satır silinmemiş, `t_xmax = 743` ile işaretlenmiş ve `t_ctid = (0,2)` diyerek yeni sürüme bağlanmıştır. Sayfada artık 1 canlı ve 1 ölü (`Dead Tuple`) satır bulunmaktadır.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: pageinspect extension",
+      url: "https://www.postgresql.org/docs/current/pageinspect.html"
+    },
+    {
+      title: "PostgreSQL Documentation: Database Physical Storage - Page Header Layout",
+      url: "https://www.postgresql.org/docs/current/storage-page-layout.html"
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 5.2 - Tuple Header Formats",
+      url: "https://www.interdb.jp/pg/pgsql05.html#_5.2."
+    }
+  ]}
+/>

@@ -1,0 +1,133 @@
+---
+title: "Transaction ID Wraparound ve Freeze: 2 Milyar Sınırı ve Acil Kurtarma"
+slug: "postgresql-transaction-wraparound-ve-freeze"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'in 32-bit transaction sayacı, dairesel aritmetik, datfrozenxid izleme, freeze mekanizması ve tek kullanıcılı modda acil durum kurtarma prosedürü."
+tags: ["PostgreSQL", "Wraparound", "Freeze", "XID", "Operasyon", "Laboratuvar"]
+parent: "postgresql-mvcc-transaction-ve-vacuum"
+order: 4
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+PostgreSQL'in MVCC mekanizması transaksiyon kimlikleri (**XID**) üzerine kuruludur. Ancak çekirdekteki XID sayacı **32-bit işaretsiz bir tamsayıdır** (`2^32 ≈ 4.29 milyar` transaksiyon).
+
+Bu sayaç dairesel aritmetik (**Modulo 2^32**) ile çalışır: Herhangi bir XID için önceki 2 milyar işlem "geçmiş", sonraki 2 milyar işlem ise "gelecek" kabul edilir. Eğer veritabanı 2 milyardan fazla işlem görür ve eski satırlar dondurulmazsa (**Freeze**), eski veriler birden geleceğe aitmiş gibi görünerek **aniden tüm tablolardan kaybolur!**
+
+---
+
+## 1. Dairesel Aritmetik ve Freeze Çözümü
+
+PostgreSQL bu felaketi önlemek için satırları **dondurur (Freeze)**:
+
+1. Bir satırın `t_xmin` yaşı **`vacuum_freeze_min_age`** (varsayılan: 50 milyon) değerini aştığında, `VACUUM` bu satırın başlığına **`HEAP_XMIN_FROZEN`** bayrağını yazar.
+2. Dondurulan bir satır artık spesifik bir XID ile karşılaştırılmaz; sistemdeki tüm aktif ve gelecekteki transaksiyonlardan daha eski olduğu kabul edilir.
+3. Böylece 32-bit sayaç dönüp başa gelse dahi donmuş satırlar asla görünmezlik tehlikesi yaşamaz.
+
+<Mermaid
+  title="1. 32-Bit Dairesel XID Alanı ve Wraparound Koruma Eşiği"
+  ariaLabel="32-bit transaksiyon uzayında geçmiş ve gelecek ayrımı ile autovacuum_freeze_max_age tetikleyicisi"
+  code={`
+flowchart TD
+    Current["Mevcut XID (Örn: 2.1 Milyar)"]
+    Past["Geçmiş Alanı (2 Milyar İşlem)"]
+    Future["Gelecek Alanı (2 Milyar İşlem)"]
+    Limit["Kritik Eşik: autovacuum_freeze_max_age (200 Milyon)"]
+
+    Current --> Past
+    Current --> Future
+    Past --> Limit
+    Limit -->|"Aşılırsa"| Force["Zorunlu Agresif Autovacuum (İptal Edilemez)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef warn fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef danger fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#991B1B
+
+    class Current primary
+    class Past,Future warn
+    class Limit,Force danger
+`}
+  summarySteps={[
+    "1. Sistem dairesel 2 milyar geçmiş ve 2 milyar gelecek mantığıyla çalışır.",
+    "2. Bir tablonun yaşı autovacuum_freeze_max_age değerini aştığında Postgres agresif freeze başlatır.",
+    "3. Bu agresif temizlik kullanıcı tarafından kapatılamaz ve tabloyu korumaya alır."
+  ]}
+/>
+
+---
+
+## 2. Wraparound Riski Nasıl İzlenir?
+
+Bir veritabanındaki en yaşlı dondurulmamış işlem `pg_database.datfrozenxid` alanında tutulur:
+
+```sql
+SELECT datname,
+       age(datfrozenxid) AS xid_age,
+       2147483648 - age(datfrozenxid) AS remaining_xid,
+       round(100.0 * age(datfrozenxid) / 2147483648, 2) AS wraparound_risk_pct
+FROM pg_database
+ORDER BY xid_age DESC;
+```
+
+Eğer `xid_age` değeri **200 milyonu (`autovacuum_freeze_max_age`)** aşarsa Postgres sistemi korumak için zorunlu agresif autovacuum başlatır.
+
+---
+
+## 3. Acil Durum Prosedürü: Sistem Kilitlenirse Ne Yapılır?
+
+Eğer limit 2 milyara yaklaşırsa (son 3 milyon XID kaldığında), PostgreSQL veritabanını **salt okunur (read-only)** moda alır ve yeni hiçbir yazma/transaksiyon kabul etmez:
+```text
+PANIC: could not locate a valid checkpoint record
+FATAL: database is not accepting commands to avoid wraparound data loss in database "postgres"
+HINT: Stop the postmaster and vacuum that database in single-user mode.
+```
+
+### Acil Kurtarma Adımları (Single-User Mode):
+1. PostgreSQL servisini durdurun:
+   ```bash
+   systemctl stop postgresql
+   ```
+2. Tek kullanıcılı modda arka plan süreçleri olmadan doğrudan cluster'ı başlatın:
+   ```bash
+   postgres --single -D /var/lib/postgresql/data postgres
+   ```
+3. Tekil konsolda zorunlu freeze çalıştırın:
+   ```sql
+   VACUUM FREEZE VERBOSE;
+   ```
+4. İşlem bitince `Ctrl+D` ile çıkıp normal servisi başlatın:
+   ```bash
+   systemctl start postgresql
+   ```
+
+---
+
+## 4. Laboratuvar: Freeze Operasyonunu Gözlemleme
+
+```sql
+-- Mevcut veritabanının XID yaşını kontrol edelim:
+SELECT age(datfrozenxid) FROM pg_database WHERE datname = current_database();
+
+-- Belirli bir tabloda tüm satırları hemen donduralım:
+VACUUM (FREEZE, VERBOSE) bloat_test;
+```
+
+Bu komut sayesinde tablodaki tüm eski satırlar `HEAP_XMIN_FROZEN` ile mühürlenir ve tablonun XID yaşı sıfırlanır.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Preventing Transaction ID Wraparound Failures",
+      url: "https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-FOR-WRAPAROUND"
+    },
+    {
+      title: "PostgreSQL Source Code: src/backend/commands/vacuum.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/commands/vacuum.c"
+    },
+    {
+      title: "AWS Database Blog: Managing Transaction ID Wraparound in PostgreSQL",
+      url: "https://aws.amazon.com/blogs/database/managing-transaction-id-wraparound-in-amazon-rds-for-postgresql-and-amazon-aurora-postgresql/"
+    }
+  ]}
+/>

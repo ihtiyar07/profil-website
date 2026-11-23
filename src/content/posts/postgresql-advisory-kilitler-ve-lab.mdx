@@ -1,0 +1,116 @@
+---
+title: "Advisory Kilitler: Uygulama Düzeyi Dağıtık Senkronizasyon ve Lab"
+slug: "postgresql-advisory-kilitler-ve-lab"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL advisory kilitleri, session vs transaction seviyesi farkları, non-blocking pg_try_advisory_lock kullanımı ve dağıtık worker senkronizasyon laboratuvarı."
+tags: ["PostgreSQL", "Advisory Locks", "Eşzamanlılık", "Mimari", "Laboratuvar"]
+parent: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+order: 4
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+Her kilit bir tabloya veya fiziksel satıra bağlı olmak zorunda değildir. PostgreSQL, uygulama mimarlarının Redis veya Zookeeper gibi harici bir dağıtık kilit yöneticisine ihtiyaç duymadan uygulama düzeyinde kaynakları senkronize edebilmesi için **Advisory Lock (Danışma Kilitleri)** mekanizmasını sunar.
+
+---
+
+## 1. Advisory Lock Mimarisi ve Kapsam Türleri
+
+Advisory kilitler tamamen uygulama tarafından tanımlanan bir `bigint` (veya iki adet 32-bit integer) anahtar üzerinden çalışır. Tablo veya disk I/O operasyonu içermez, doğrudan paylaşılan bellekte tutulur ve son derece hızlıdır.
+
+İki farklı yaşam döngüsü kapsamı bulunur:
+
+1. **Transaction-Level (`pg_advisory_xact_lock`):** Kilit yalnızca mevcut transaksiyon boyunca tutulur. Transaksiyon `COMMIT` veya `ROLLBACK` olduğunda PostgreSQL kilidi **otomatik olarak** serbest bırakır. En güvenli kullanım şeklidir.
+2. **Session-Level (`pg_advisory_lock`):** Kilit oturum (bağlantı) açık kaldığı sürece tutulur. Transaksiyon kapansa dahi kilit düşmez! Oturumun manuel olarak `pg_advisory_unlock()` çağırması veya bağlantının kopması gerekir. Connection pooling (PgBouncer) kullanılan mimarilerde connection sızıntısına (lock leak) yol açabileceği için dikkatle kullanılmalıdır.
+
+---
+
+## 2. Bloklayan vs Bloklamayan (`try`) Fonksiyonlar
+
+<Mermaid
+  title="1. pg_try_advisory_xact_lock Karar Mantığı"
+  ariaLabel="Cron job veya worker sürecinin advisory kilit alırken bloklanmadan hızlıca dönmesi"
+  code={`
+flowchart TD
+    W["Worker / Cron Job Başladı"] --> Try{"pg_try_advisory_xact_lock(ID)"}
+    Try -->|"true (Kilit Alındı)"| Job["Görevi Güvenle İcra Et"]
+    Try -->|"false (Kilit Başkasında)"| Skip["Beklemeden Atla (Skip & Exit)"]
+    Job --> Finish["COMMIT / Otomatik Kilit Bırakma"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef success fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef neutral fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class W primary
+    class Try,Job,Finish success
+    class Skip neutral
+`}
+  summarySteps={[
+    "1. Worker süreci işe başlamadan önce belirlenen ID için kilit dener.",
+    "2. Kilit boşsa true döner ve işi yürütür; transaksiyon bitince kilit kendiliğinden düşer.",
+    "3. Kilit dolaysa false döner; worker bekleyip sistemi tıkamak yerine zarifçe sonlanır."
+  ]}
+/>
+
+---
+
+## 3. Laboratuvar: Dağıtık Cron Worker Tekilleştirme
+
+Birden fazla pod/sunucu üzerinde aynı anda çalışan bir cron job senaryosunu iki ayrı `psql` oturumunda test edelim.
+
+### Senaryo Anahtarı
+Görevimiz: `daily_invoice_job` (ID olarak `hashtext('daily_invoice_job')` veya sabit bir sayı `999001` kullanalım).
+
+### Adım 1: Worker 1 İşi Devralır
+```sql
+-- Terminal 1 (Worker 1):
+BEGIN;
+
+-- Kilidi deneyelim:
+SELECT pg_try_advisory_xact_lock(999001);
+-- Sonuç: TRUE (Kilit Worker 1 tarafından alındı!)
+
+-- Uzun süren iş simülasyonu:
+SELECT pg_sleep(10);
+```
+
+### Adım 2: Worker 2 Aynı Anda İşi Almaya Çalışır
+Terminal 1 çalışırken, Terminal 2'de ikinci worker'ı tetikleyelim:
+
+```sql
+-- Terminal 2 (Worker 2):
+BEGIN;
+
+SELECT pg_try_advisory_xact_lock(999001);
+-- Sonuç: FALSE ! (Asla bloklanmaz, anında döner)
+
+-- Uygulama false aldığını görür görmez transaksiyonu kapatır:
+ROLLBACK;
+-- Worker 2 işi yapmadan güvenle çıkar; mükerrer fatura kesimi engellenir!
+```
+
+### Adım 3: Transaksiyon Sonu Otomatik Temizlik
+Terminal 1'deki 10 saniyelik işlem bittiğinde:
+```sql
+-- Terminal 1:
+COMMIT;
+```
+Transaksiyon bittiği anda `999001` kilidi bellekten tamamen silinir. Herhangi bir `unlock` komutu yazmaya gerek kalmaz ve bağlantı kopsa bile sistem kilitli kalmaz.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Advisory Locks",
+      url: "https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS"
+    },
+    {
+      title: "PostgreSQL Documentation: Advisory Lock Functions",
+      url: "https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS"
+    },
+    {
+      title: "Baeldung: Distributed Locking with PostgreSQL Advisory Locks",
+      url: "https://www.baeldung.com/postgres-advisory-locks"
+    }
+  ]}
+/>

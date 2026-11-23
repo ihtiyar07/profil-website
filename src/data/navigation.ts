@@ -110,6 +110,58 @@ export const navSections: NavSection[] = [
             href: '/posts/postgresql-parametre-gruplari-ve-tuning'
           }
         ]
+      },
+      {
+        title: 'Kilitler & Eşzamanlılık',
+        href: '/posts/postgresql-kilit-mekanizmalari-ve-eszamanlilik',
+        children: [
+          {
+            title: 'Table & Row Lock Modları',
+            href: '/posts/postgresql-table-ve-row-lock-modlari'
+          },
+          {
+            title: 'Lock & Blocking Analizi',
+            href: '/posts/postgresql-lock-ve-blocking-analizi'
+          },
+          {
+            title: 'Deadlock & Timeout Yönetimi',
+            href: '/posts/postgresql-deadlock-ve-timeout-yonetimi'
+          },
+          {
+            title: 'Advisory Kilitler & Lab',
+            href: '/posts/postgresql-advisory-kilitler-ve-lab'
+          },
+          {
+            title: 'Zero-Downtime DDL Rehberi',
+            href: '/posts/postgresql-zero-downtime-ddl-rehberi'
+          }
+        ]
+      },
+      {
+        title: 'MVCC & Vacuum Mimarisi',
+        href: '/posts/postgresql-mvcc-transaction-ve-vacuum',
+        children: [
+          {
+            title: 'Tuple Görünürlüğü & xmin',
+            href: '/posts/postgresql-mvcc-ve-tuple-gorunurlugu'
+          },
+          {
+            title: 'İzolasyon Seviyeleri & SSI',
+            href: '/posts/postgresql-transaction-izolasyon-seviyeleri-ve-ssi'
+          },
+          {
+            title: 'Autovacuum & Bloat Yönetimi',
+            href: '/posts/postgresql-autovacuum-tuning-ve-bloat-yonetimi'
+          },
+          {
+            title: 'Wraparound & Freeze Yönetimi',
+            href: '/posts/postgresql-transaction-wraparound-ve-freeze'
+          },
+          {
+            title: 'Vacuum Bloklayıcıları & XMIN',
+            href: '/posts/postgresql-autovacuum-engelleyicileri-ve-multixact'
+          }
+        ]
       }
     ]
   },

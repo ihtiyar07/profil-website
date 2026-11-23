@@ -1,0 +1,82 @@
+---
+title: "PostgreSQL Kilit Mekanizmaları: Lock Hiyerarşisi, Teşhis ve Zero-Downtime DDL"
+slug: "postgresql-kilit-mekanizmalari-ve-eszamanlilik"
+date: "2026-11-23"
+lang: "tr"
+summary: "PostgreSQL'in nesne ve satır seviyesi kilit hiyerarşisi, pg_locks ile bloklama teşhisi, deadlock yönetimi, advisory kilitler ve production ortamında sıfır kesintili DDL stratejileri."
+tags: ["PostgreSQL", "Kilitler", "Eşzamanlılık", "DDL", "Performans"]
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+PostgreSQL'de MVCC kuralı *"okuyucular yazıcıları engellemez, yazıcılar da okuyucuları engellemez"* ilkesini garanti etse de, aynı satırları değiştiren sorgular (`DML`), veritabanı şemasını dönüştüren operasyonlar (`DDL`) ve paylaşılan bellek alanları kaçınılmaz olarak **kilit mekanizmalarına (Locks)** ihtiyaç duyar.
+
+Bu rehber dizisi; tablo ve satır kilitlerinin çakışma kurallarını, kilitlenmelerin `pg_locks` ve `pg_stat_activity` üzerinden anlık tespitini, deadlock savunma mekanizmalarını ve production'da trafiği kesintiye uğratmadan şema değişikliği (Zero-Downtime DDL) yapma pratiklerini laboratuvar senaryolarıyla ele alır.
+
+---
+
+## 1. PostgreSQL Kilit Katmanları
+
+PostgreSQL çekirdeğinde kilitler iki ana alanda yönetilir:
+
+1. **Internal Locks (Bellekçi Kilitler):** `shared_buffers` ve paylaşımlı bellek yapılarını koruyan, saniyeden kısa süren mikro kilitlerdir (`Spinlock`, `LWLock`, `BufferPin`). Detayları [İç Kilitler & Wait Events](/posts/postgresql-ic-kilitler-ve-wait-events) altında incelenmiştir.
+2. **Heavyweight Locks (SQL Kilitleri):** SQL tabloları, satırlar, indeksler ve transaksiyon kimlikleri (`XID`) üzerinde çalışan, transaksiyon süresince tutulan ve `pg_locks` görünümünde izlenen kilitlerdir.
+
+<Mermaid
+  title="1. PostgreSQL Heavyweight Lock Karar ve Çatışma Akışı"
+  ariaLabel="SQL sorgularının Lock Manager üzerinde tablo, satır veya advisory kilit edinme akışı"
+  code={`
+flowchart TD
+    SQL["SQL Operasyonu (DML / DDL)"] --> LM["Lock Manager (pg_locks)"]
+    LM --> TabLock["1. Table-Level Lock (8 Mod)"]
+    LM --> RowLock["2. Row-Level Lock (4 Mod)"]
+    LM --> AdvLock["3. Advisory Lock (Uygulama)"]
+
+    TabLock -->|"Çakışma Yok"| Exec["Sorgu İcrası"]
+    TabLock -->|"Çakışma Var"| WaitQ["Lock Wait Kuyruğu"]
+    WaitQ -->|"deadlock_timeout"| DeadlockCheck["Deadlock Algılama Algoritması"]
+    WaitQ -->|"lock_timeout"| Abort["Transaction İptali (Abort)"]
+
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+
+    class SQL,LM primary
+    class TabLock,RowLock,AdvLock process
+    class WaitQ,DeadlockCheck,Abort storage
+`}
+  summarySteps={[
+    "1. Her SQL komutu öncelikle hedef tablo üzerinde belirli bir Table-Level Lock modu talep eder.",
+    "2. Eğer tabloda bir çakışma yoksa ve operasyon belirli satırları etkiliyorsa Row-Level Lock devreye girer.",
+    "3. Kilit anında edinilemezse backend Lock Wait kuyruğuna girer; belirlenen timeout sınırları aşılırsa işlem düşürülür."
+  ]}
+/>
+
+---
+
+## 2. Rehber Alt Konuları ve İnceleme Modülleri
+
+PostgreSQL kilit mimarisini derinlemesine incelemek ve laboratuvar adımlarını uygulamak için hazırlanan modüller:
+
+1. **[Table & Row Lock Modları](/posts/postgresql-table-ve-row-lock-modlari):** 8 tablo kilit modu, DDL komutlarının aldığı kilit seviyeleri, `FOR UPDATE` / `FOR NO KEY UPDATE` farkı ve laboratuvar simülasyonu.
+2. **[Lock & Blocking Analizi](/posts/postgresql-lock-ve-blocking-analizi):** `pg_locks`, `pg_stat_activity` ve `pg_blocking_pids()` ile kilit beklemelerini ve blocking zincirlerini tek sorguyla analiz etme.
+3. **[Deadlock & Timeout Yönetimi](/posts/postgresql-deadlock-ve-timeout-yonetimi):** Deadlock döngüleri, log grafikleri, `lock_timeout`, `statement_timeout` ve `idle_in_transaction_session_timeout` koruması.
+4. **[Advisory Kilitler & Lab](/posts/postgresql-advisory-kilitler-ve-lab):** Uygulama seviyesinde dağıtık kilit yönetimi, session vs transaksiyon kilitleri, non-blocking `pg_try_advisory_lock` pratikleri.
+5. **[Zero-Downtime DDL Rehberi](/posts/postgresql-zero-downtime-ddl-rehberi):** `Lock Queue Starvation` riskini önleme, `CONCURRENTLY` indeksleme, `NOT VALID` constraint ve safe retry migration kalıbı.
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Explicit Locking (Chapter 13.3)",
+      url: "https://www.postgresql.org/docs/current/explicit-locking.html"
+    },
+    {
+      title: "PostgreSQL Source Code: src/backend/storage/lmgr/lock.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/storage/lmgr/lock.c"
+    },
+    {
+      title: "Bruce Momjian: Locking in PostgreSQL",
+      url: "https://momjian.us/main/writings/pgsql/locking.pdf"
+    }
+  ]}
+/>

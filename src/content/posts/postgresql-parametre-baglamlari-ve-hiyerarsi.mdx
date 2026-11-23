@@ -9,6 +9,7 @@ parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
 order: 2
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'de bir parametrenin değiştirilme yöntemi ve etkisi, çekirdeğin o parametreye atadığı **bağlam (context)** tarafından dikte edilir. Bazı ayarlar sıfır kesintiyle anında yürürlüğe girerken, bazıları işletim sistemi paylaşımlı bellek yapısını değiştirdiği için tam sunucu yeniden başlatması (`restart`) gerektirir.
 
@@ -137,3 +138,31 @@ WHERE name IN ('work_mem', 'statement_timeout', 'shared_buffers');
 ```
 
 `source = 'database'` ayarın `ALTER DATABASE`, `source = 'user'` ayarın `ALTER ROLE`, `source = 'session'` ise anlık `SET` komutu ile belirlendiğini gösterir.
+
+---
+
+<References
+  items={[
+    {
+      title: "View pg_settings and Configuration Contexts",
+      url: "https://www.postgresql.org/docs/current/view-pg-settings.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "internal, postmaster, sighup, superuser, user ve backend parametre bağlamlarının kapsam ve sınırları."
+    },
+    {
+      title: "PostgreSQL Core Header: guc.h",
+      url: "https://github.com/postgres/postgres/blob/master/src/include/utils/guc.h",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "enum GucContext ve GucSource C veri yapıları, bayrak tanımları ve bağlam kontrol makroları."
+    },
+    {
+      title: "How PostgreSQL Configuration Parameters Work",
+      url: "https://www.cybertec-postgresql.com/en/postgresql-configuration-parameters-how-they-work/",
+      type: "article",
+      author: "Laurenz Albe",
+      note: "GUC parametre bağlamlarının pratik analizi, pg_reload_conf() işleyişi ve oturum düzeyi kısıtlar."
+    }
+  ]}
+/>

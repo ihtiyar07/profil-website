@@ -1,251 +1,13 @@
 ---
 import { SITE_META } from '../data/siteMeta';
-
-interface NavArticleItem {
-  title: string;
-  href: string;
-  children?: NavArticleItem[];
-}
-
-interface NavSection {
-  id: string;
-  title: string;
-  overviewHref?: string;
-  items: NavArticleItem[];
-}
-
-const navSections: NavSection[] = [
-  {
-    id: 'postgresql',
-    title: 'PostgreSQL',
-    overviewHref: '/posts/postgresql-mimarisi-ve-calisma-prensipleri',
-    items: [
-      {
-        title: 'Mimari & Süreç Modeli',
-        href: '/posts/postgresql-mimarisi-ve-calisma-prensipleri',
-        children: [
-          {
-            title: 'Bellek & shared_buffers',
-            href: '/posts/postgresql-bellek-yonetimi'
-          },
-          {
-            title: '8KB Page & Tuple Düzeni',
-            href: '/posts/postgresql-data-page-ve-tuple'
-          },
-          {
-            title: 'MVCC, Autovacuum & WAL',
-            href: '/posts/postgresql-mvcc-ve-wal'
-          },
-          {
-            title: 'Sorgu Yaşam Döngüsü',
-            href: '/posts/postgresql-sorgu-yasam-dongusu'
-          },
-          {
-            title: 'Cluster, OID & PGDATA',
-            href: '/posts/postgresql-cluster-oid-ve-pgdata'
-          },
-          {
-            title: 'İç Kilitler & Wait Events',
-            href: '/posts/postgresql-ic-kilitler-ve-wait-events'
-          },
-          {
-            title: 'Arka Plan Süreçleri',
-            href: '/posts/postgresql-arka-plan-surecleri'
-          }
-        ]
-      },
-      {
-        title: 'Kurulum & Servis Yönetimi',
-        href: '/posts/postgresql-kurulum-ve-servis-yonetimi',
-        children: [
-          {
-            title: 'PGDG, Kaynak Kod & initdb',
-            href: '/posts/postgresql-kurulum-yontemleri-ve-initdb'
-          },
-          {
-            title: 'systemd & Disk Yerleşimi',
-            href: '/posts/postgresql-servis-yonetimi-ve-disk-yerlesimi'
-          },
-          {
-            title: 'Multi-Instance & ICU',
-            href: '/posts/postgresql-multi-instance-pgwrapper-ve-collation'
-          }
-        ]
-      },
-      {
-        title: 'Konfigürasyon & Parametreler',
-        href: '/posts/postgresql-konfigurasyon-ve-parametre-yonetimi',
-        children: [
-          {
-            title: 'postgresql.conf & HBA',
-            href: '/posts/postgresql-konfigurasyon-dosyalari-ve-hba'
-          },
-          {
-            title: 'Bağlamlar & SIGHUP/Restart',
-            href: '/posts/postgresql-parametre-baglamlari-ve-hiyerarsi'
-          },
-          {
-            title: 'Parametre Tuning Rehberi',
-            href: '/posts/postgresql-parametre-gruplari-ve-tuning'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'pg-extensions',
-    title: 'PostgreSQL Eklentileri',
-    overviewHref: '/posts/postgresql-extension-mimarisi-ve-c-hooks',
-    items: [
-      {
-        title: 'Extension Mimarisi & Hooks',
-        href: '/posts/postgresql-extension-mimarisi-ve-c-hooks'
-      },
-      {
-        title: 'TimescaleDB: Genel Bakış',
-        href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
-        children: [
-          {
-            title: 'Hypertable & Chunk Boyutu',
-            href: '/posts/timescaledb-hypertable-ve-chunk-mimarisi'
-          },
-          {
-            title: 'Columnar Sıkıştırma & Retention',
-            href: '/posts/timescaledb-columnar-sikistirma-ve-retention'
-          },
-          {
-            title: 'Continuous Aggs & Analitik',
-            href: '/posts/timescaledb-continuous-aggregates-ve-analitik'
-          },
-          {
-            title: 'Production Tuning & Operasyon',
-            href: '/posts/timescaledb-production-tuning-ve-operasyon'
-          },
-          {
-            title: 'Parallel Copy & Bulk Ingest',
-            href: '/posts/timescaledb-parallel-copy-ve-bulk-ingest'
-          },
-          {
-            title: 'SkipScan & BRIN İndeksleme',
-            href: '/posts/timescaledb-sorgu-optimizasyonu-skipscan-ve-indeksleme'
-          },
-          {
-            title: 'Patroni HA & Katmanlı Depolama',
-            href: '/posts/timescaledb-ha-replikasyon-ve-katmanli-depolama'
-          },
-          {
-            title: 'pgvectorscale & DiskANN',
-            href: '/posts/pgvectorscale-ve-timescaledb-hibrit-vektor-mimarisi'
-          }
-        ]
-      },
-      {
-        title: 'Patroni: HA & Failover',
-        href: '/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover'
-      },
-      {
-        title: 'PostgREST: Otomatik API',
-        href: '/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api'
-      }
-    ]
-  },
-  {
-    id: 'storage',
-    title: 'Depolama & Altyapı',
-    overviewHref: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi',
-    items: [
-      {
-        title: 'ZFS & Depolama Düzeni',
-        href: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi'
-      },
-      {
-        title: 'Arrow ile Zero-Copy',
-        href: '/posts/arrow-ile-dbden-tarayiciya-zero-copy'
-      },
-      {
-        title: 'Apache Arrow Vaka Dosyası',
-        href: '/cases/apache-arrow'
-      },
-      {
-        title: 'Proxmox VE: Ağ & ZFS',
-        href: '/posts/dedicated-sunucuya-sifirdan-proxmox-ag-ve-firewall-notlari'
-      },
-      {
-        title: 'JWT vs Redis O(1) Yetki',
-        href: '/posts/jwtde-yetki-tasimak-neden-her-zaman-iyi-fikir-degil'
-      }
-    ]
-  },
-  {
-    id: 'general',
-    title: 'Genel Sayfalar',
-    overviewHref: '/',
-    items: [
-      {
-        title: 'Ana Sayfa',
-        href: '/'
-      },
-      {
-        title: 'Yazılar & Notlar',
-        href: '/#articles'
-      },
-      {
-        title: 'İletişim & Kanallar',
-        href: '/#contact'
-      }
-    ]
-  }
-];
+import {
+  navSections,
+  getSectionTheme,
+  type NavSection,
+  type NavArticleItem
+} from '../data/navigation';
 
 const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
-
-interface SectionColorRole {
-  dot: string;
-  headerBg: string;
-  headerText: string;
-  toggleText: string;
-  treeBorder: string;
-  groupBorder: string;
-}
-
-const sectionThemes: Record<string, SectionColorRole> = {
-  postgresql: {
-    dot: 'bg-blue-600 dark:bg-blue-400',
-    headerBg: 'bg-blue-50/75 hover:bg-blue-100/80 dark:bg-blue-950/35 dark:hover:bg-blue-900/45',
-    headerText: 'text-blue-950 dark:text-blue-100',
-    toggleText: 'text-blue-700 group-hover:text-blue-900 dark:text-blue-300 dark:group-hover:text-blue-100',
-    treeBorder: 'border-blue-300/80 dark:border-blue-700/60',
-    groupBorder: 'border-blue-200/70 dark:border-blue-900/40'
-  },
-  'pg-extensions': {
-    dot: 'bg-teal-600 dark:bg-teal-400',
-    headerBg: 'bg-teal-50/75 hover:bg-teal-100/80 dark:bg-teal-950/35 dark:hover:bg-teal-900/45',
-    headerText: 'text-teal-950 dark:text-teal-100',
-    toggleText: 'text-teal-700 group-hover:text-teal-900 dark:text-teal-300 dark:group-hover:text-teal-100',
-    treeBorder: 'border-teal-300/80 dark:border-teal-700/60',
-    groupBorder: 'border-teal-200/70 dark:border-teal-900/40'
-  },
-  storage: {
-    dot: 'bg-indigo-600 dark:bg-indigo-400',
-    headerBg: 'bg-indigo-50/75 hover:bg-indigo-100/80 dark:bg-indigo-950/35 dark:hover:bg-indigo-900/45',
-    headerText: 'text-indigo-950 dark:text-indigo-100',
-    toggleText: 'text-indigo-700 group-hover:text-indigo-900 dark:text-indigo-300 dark:group-hover:text-indigo-100',
-    treeBorder: 'border-indigo-300/80 dark:border-indigo-700/60',
-    groupBorder: 'border-indigo-200/70 dark:border-indigo-900/40'
-  },
-  general: {
-    dot: 'bg-slate-500 dark:bg-slate-400',
-    headerBg: 'bg-[var(--bg-subtle)]/80 hover:bg-[var(--bg-subtle)]',
-    headerText: 'text-[var(--text-muted)]',
-    toggleText: 'text-[var(--text-dim)] group-hover:text-[var(--text)]',
-    treeBorder: 'border-[var(--border)]',
-    groupBorder: 'border-[var(--border)]/60'
-  }
-};
-
-function getSectionTheme(id: string): SectionColorRole {
-  return sectionThemes[id] || sectionThemes.general;
-}
 ---
 
 <!-- Desktop Sticky Sidebar (Left Column: docking at >=768px) -->
@@ -254,12 +16,17 @@ function getSectionTheme(id: string): SectionColorRole {
     <!-- Top: Identity & Collapsible Topic Tree -->
     <div class="space-y-5">
       <!-- Identity & Brand Header -->
-      <a href="/" class="flex flex-col group focus:outline-none px-3 py-2.5 rounded-[2px] border border-[var(--border)]/80 bg-[var(--bg-subtle)]/65 hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors" aria-label="Ahmet İhtiyar — Ana Sayfa">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
-          <span class="font-sans text-[13px] font-semibold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-            Ahmet İhtiyar
-          </span>
+      <a href="/" class="flex flex-col group focus:outline-none px-3 py-2.5 rounded-[2px] border border-[var(--border)]/80 bg-[var(--bg-subtle)]/65 hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors relative" title="Ana Sayfaya Dön" aria-label="Ahmet İhtiyar — Ana Sayfa">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-[1px] bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
+            <span class="font-sans text-[13px] font-semibold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+              Ahmet İhtiyar
+            </span>
+          </div>
+          <svg class="w-3.5 h-3.5 text-[var(--text-dim)] group-hover:text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
         </div>
         <p class="font-mono text-[11px] text-[var(--text-dim)] mt-0.5 pl-4">
           Veritabanı & Depolama

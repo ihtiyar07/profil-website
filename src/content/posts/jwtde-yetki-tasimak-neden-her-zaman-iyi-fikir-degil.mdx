@@ -6,6 +6,8 @@ lang: "tr"
 summary: "Durumsuz (stateless) JWT iddiası ile kurumsal yetki iptali ihtiyacı arasındaki temel uyuşmazlık, token şişmesi ve Redis destekli versiyonlanmış yetki modeli."
 tags: ["Güvenlik", "JWT", "Redis", "Mimari"]
 ---
+import References from '../../components/References.astro';
+
 
 Durumsuz (stateless) mimari, modern web dünyasının en çekici vaatlerinden biri: "Veritabanına sormadan, sadece kriptografik imzayı doğrulayarak yetkilendirme yapın." 
 
@@ -65,3 +67,31 @@ Ulusal medya ödeme motoru ve Diventra projelerinde uyguladığım çözüm, JWT
 - Yetki, zamanla değişen bir **durumdur (state)**; JWT ise durumsuz bir **belgedir (claim)**.
 - Değişebilir bir durumu durumsuz bir belgenin içine mühürlemek, güvenlik ile performans arasında sahte bir uzlaşma yaratır.
 - Kimliği kriptografik olarak dağıtın; fakat operasyonel yetki iptalini milisaniyeler içinde sağlayan ince bir bellek katmanından kaçınmayın.
+
+---
+
+<References
+  items={[
+    {
+      title: "RFC 7519: JSON Web Token (JWT) Specification",
+      url: "https://datatracker.ietf.org/doc/html/rfc7519",
+      type: "official",
+      author: "IETF OAuth Working Group",
+      note: "JWT yapısı, imzalama şemaları, standart claim'ler (iss, sub, exp) ve durumsuz (stateless) token prensipleri."
+    },
+    {
+      title: "RFC 8725: JSON Web Token Best Current Practices",
+      url: "https://datatracker.ietf.org/doc/html/rfc8725",
+      type: "official",
+      author: "IETF",
+      note: "JWT güvenliği, algoritma doğrulama zafiyetleri, token ömrü kısıtlamaları ve anahtar rotasyon pratikleri."
+    },
+    {
+      title: "Stop Using JWT for Sessions: Why Permissions in Tokens Cause Stale Access Issues",
+      url: "https://apisyouwonthate.com/blog/jwt-revocation-and-session-management",
+      type: "article",
+      author: "Phil Sturgeon",
+      note: "Stateless token'larda dinamik yetki taşımanın tehlikeleri, revocation problemi, token şişkinliği ve hibrit oturum modelleri."
+    }
+  ]}
+/>

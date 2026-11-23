@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 1
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Kullanıcı açısından tek bir SQL tablosu gibi görünen **Hypertable**, arka planda PostgreSQL'in doğal tablo miras/bölümleme altyapısını yöneten bir sanal soyutlamadır. Gelen her satır, zaman damgasına göre **`_timescaledb_internal`** şeması altında oluşturulan bağımsız fiziksel alt tablolara (**Chunk**) yönlendirilir.
 
@@ -109,3 +110,31 @@ WHERE device_id = 42
 ```
 
 Çıktıda `Custom Scan (ChunkAppend)` altında `Chunks excluded during startup` veya yalnızca 1–2 adet `_hyper_*_chunk` düğümünün tarandığı ve `shared read` değerinin minimumda kaldığı görülür.
+
+---
+
+<References
+  items={[
+    {
+      title: "About Hypertables and Chunks",
+      url: "https://docs.timescale.com/use-timescale/latest/hypertables/about-hypertables/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Zaman ve mekan boyutunda 2D bölümleme, chunk boyutu boyutlandırma rehberi ve chunk exclusion algoritmaları."
+    },
+    {
+      title: "TimescaleDB Core Source: dimension_slice.c",
+      url: "https://github.com/timescale/timescaledb/blob/master/src/dimension_slice.c",
+      type: "source",
+      author: "Timescale Team",
+      note: "Boyutsal dilimleme (dimension slicing), zaman aralıklarının hash ve range sınırlarına haritalanması."
+    },
+    {
+      title: "Time-series Data Architecture: Partitioning at Scale",
+      url: "https://www.timescale.com/resources/whitepapers",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Geleneksel deklaratif PostgreSQL bölümlemesi ile otomatikleştirilmiş dinamik chunk mimarisinin karşılaştırmalı analizi."
+    }
+  ]}
+/>

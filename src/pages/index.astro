@@ -1,17 +1,21 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
+import FeaturedShowcase from '../components/FeaturedShowcase.astro';
 import ArticlesSection from '../components/ArticlesSection.astro';
 import ContactSection from '../components/ContactSection.astro';
 ---
 
 <BaseLayout>
-  <!-- Hero -->
+  <!-- 1. Üst Blok (Hero): Başlık + Kısa açıklama + Aksiyon butonu & Çerçeveli kompakt fotoğraf kartı -->
   <Hero />
 
-  <!-- Yazılar & Notlar -->
+  <!-- 2. Orta Blok (Vitrin): Öne Çıkan Rehberler (01-05) (Sol) & Mimari Prensipler (Sağ) -->
+  <FeaturedShowcase />
+
+  <!-- 3. Alt Blok (Arşiv): Yazılar & Notlar + Toplam yazı sayısı rozeti + Filtreler + 2 Sütunlu Kart Grid'i -->
   <ArticlesSection />
 
-  <!-- İletişim -->
+  <!-- 4. İletişim: Doğrudan İletişim Kanalları -->
   <ContactSection />
 </BaseLayout>

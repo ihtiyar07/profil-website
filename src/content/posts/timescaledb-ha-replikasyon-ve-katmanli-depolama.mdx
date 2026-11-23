@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 7
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 TimescaleDB tek sunucuda dikey olarak yüksek hacimleri kaldırabilse de üretim ortamında donanım arızalarına karşı **Yüksek Erişilebilirlik (HA)** ve büyüyen geçmiş veri için **Hot/Cold Depolama Katmanlaması (Tiering)** gerektirir. PostgreSQL üzerine kurulu olduğu için HA mimarisi doğrudan **[Patroni ve Streaming Replication](/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover)** altyapısıyla bütünleşir; ancak Chunk kataloğu ve arka plan işçileri (Background Workers) nedeniyle dikkat edilmesi gereken kritik noktalar vardır.
 
@@ -116,3 +117,31 @@ WHERE c.relname LIKE '_hyper_1_%_chunk';
 ```
 
 > **Sıkıştırma vs Tablespace Sırası:** Eğer Chunk sıkıştırılacaksa önce `compress_chunk()` uygulayıp ardından sıkıştırılmış (~%90 küçülmüş) Chunk'ı `move_chunk()` ile soğuk diske taşımak diskler arası kopyalanan bayt miktarını 10 kata kadar azaltır.
+
+---
+
+<References
+  items={[
+    {
+      title: "Replication and High Availability with TimescaleDB",
+      url: "https://docs.timescale.com/self-hosted/latest/replication-and-ha/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Fiziksel akış replikasyonu, Patroni entegrasyonu ve hypertable kataloglarının replika senkronizasyonu."
+    },
+    {
+      title: "Tiered Storage Architecture: Transparent S3 Offloading",
+      url: "https://docs.timescale.com/use-timescale/latest/tiered-storage/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Soğuk zaman serisi verilerinin nesne depolamaya (S3/GCS) katmanlanması ve şeffaf sorgulanabilirlik."
+    },
+    {
+      title: "Tiered Storage: Bottomless PostgreSQL Storage",
+      url: "https://www.timescale.com/blog/tiered-storage-bottomless-postgresql-storage/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Nesne depolama katmanında Parquet biçimlendirmesi, önbellekleme katmanları ve sorgu gecikmesi optimizasyonları."
+    }
+  ]}
+/>

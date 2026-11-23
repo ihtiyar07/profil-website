@@ -39,6 +39,14 @@ order: 1 # Parent altındaki sıralama sırası (1, 2, 3...)
   - ✅ **Tuple, Line Pointer, Buffer Pool, Shared Buffers, WAL, Indirection, Spill to Disk, Clock Sweep** doğrudan kullanılmalıdır.
 - **Mühendislik Tonu:** "Devrimsel", "harika", "kusursuz", "rakipsiz" gibi AI klişeleri ve boş övgü sıfatları kesinlikle yasaktır. Cümleler sakin, kısa, spesifik ve ölçülebilir teknik gerçeklere dayanmalıdır.
 
+### 1.4. Kaynakça ve Referans Standartları
+- **Referanssız Döküman Yasağı:** Her teknik makale ve mimari rehberin sonunda, incelenen sistemi doğrulayan en az 2–3 yetkin teknik referans bulunmalıdır.
+- **Zorunlu Referans Kategorileri:**
+  1. **Resmi Dokümantasyon:** İlgili özelliğin resmi kılavuz sayfası (`postgresql.org/docs/...`).
+  2. **Çekirdek Kaynak Kodu:** PostgreSQL açık kaynak C kodundaki ilişkili dosya (`src/backend/storage/buffer/bufmgr.c`, `src/backend/access/transam/xlog.c` vb.).
+  3. **Otoriter Referans / Kitap:** Hironobu Suzuki (*The Internals of PostgreSQL*), Bruce Momjian veya PostgreSQL committer'larının teknik incelemeleri.
+- **Bileşen Kullanımı:** Kaynakça için `<References items={[...]} />` bileşeni tercih edilmelidir (gereksiz kart ve renkli rozet kutuları barındırmayan, sade, minimalist ve numaralı tipografik liste düzeni).
+
 ---
 
 ## 2. Görselleştirme ve Şema Standartları
@@ -58,6 +66,10 @@ order: 1 # Parent altındaki sıralama sırası (1, 2, 3...)
 - Eşit genişlikte kutularla bellek anlatılamaz (Header 24B ile 8KB'lık Free Space eşit kutu çizilemez).
 - `DataPageAnatomy.astro` örneğinde olduğu gibi orantılı fiziksel şeritler, yönlü oklar ve görsel zoom (projeksiyon) hissi verilmelidir.
 - Monospace font sadece alan adlarında (`t_xmin`, `pd_lower`, `lp_off`) kullanılır; açıklamalar sans-serif okunmalıdır.
+
+### 2.3. Diyagram ve Görsel Referanslama (Attribution)
+- **Hazır Şema / Görsel Kullanımı (`Figure.astro`):** Her diyagramı sıfırdan Mermaid ile çizmek zorunlu değildir. Otoriter kaynaklardan (Suzuki, resmi PG dokümantasyonu, topluluk sunumları) alınan teknik çizimler `<Figure src="..." alt="..." caption="..." source="..." sourceUrl="..." />` bileşeniyle atıf verilerek kullanılabilir.
+- **Mermaid Şemalarında Atıf:** Eğer bir Mermaid şeması harici bir kitaptan veya makaleden esinlenildiyse veya uyarlandıysa, `<Mermaid source="..." sourceUrl="..." />` prop'ları ile şema altında kaynak referansı belirtilmelidir.
 
 ---
 

@@ -7,6 +7,7 @@ summary: "postgresql.conf'tan ALTER SYSTEM ve pg_hba.conf kurallarına; postmast
 tags: ["PostgreSQL", "Konfigürasyon", "Operasyon", "Tuning", "Performans"]
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'de yüksek performans ve güvenilirlik, donanım kaynaklarının motor parametreleriyle uyumuna bağlıdır. Çekirdek yüzlerce ayar barındırır; ancak bu ayarların geçerlilik kazanma zamanı (`context`), tanımlandığı hiyerarşik katman (`file`, `database`, `user`, `session`) ve ağ güvenlik kuralları (`pg_hba.conf`) birbirinden bağımsız dinamiklerle çalışır.
 
@@ -98,3 +99,31 @@ PostgreSQL konfigürasyon ve parametre ekosistemi aşağıdaki üç teknik rehbe
 
 3. **[PostgreSQL Parametre Grupları ve Tuning Metodolojisi: Bellek, WAL ve Autovacuum](/posts/postgresql-parametre-gruplari-ve-tuning)**  
    *Bellek (`shared_buffers`, `work_mem`), bağlantı, WAL/Checkpoint, autovacuum ve logging parametreleri; PGTune sınırları ve metrik odaklı üretim tuning metodolojisi.*
+
+---
+
+<References
+  items={[
+    {
+      title: "Setting Parameters: Configuration Files and Runtime",
+      url: "https://www.postgresql.org/docs/current/config-setting.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "postgresql.conf, ALTER SYSTEM, komut satırı ve session seviyesi parametre öncelik sıralaması."
+    },
+    {
+      title: "PostgreSQL Core Source: guc.c (Grand Unified Configuration)",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/utils/misc/guc.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "GUC motoru C mimarisi, parametrelerin türleri, doğrulama kancaları (assign hooks) ve hiyerarşik değer çözümleme."
+    },
+    {
+      title: "Tuning PostgreSQL Server Configuration",
+      url: "https://momjian.us/main/writings/pgsql/hw_performance/",
+      type: "article",
+      author: "Bruce Momjian",
+      note: "Sunucu donanım kaynaklarına göre kritik PostgreSQL çekirdek parametrelerinin optimizasyon rehberi."
+    }
+  ]}
+/>

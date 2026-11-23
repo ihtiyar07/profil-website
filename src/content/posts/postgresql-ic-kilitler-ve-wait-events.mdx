@@ -6,9 +6,10 @@ lang: "tr"
 summary: "PostgreSQL çekirdeğindeki üç katmanlı kilit hiyerarşisi (Spinlock, LWLock, Heavyweight Lock), BufferPin beklemesi ve pg_stat_activity üzerinden wait_event_type / wait_event teşhisi."
 tags: ["PostgreSQL", "Eşzamanlılık", "Performans", "Mimari"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
-order: 6
+order: 8
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'de bir backend süreci ortak bellek yapılarına (`shared_buffers`, `ProcArray`, `wal_buffers`) veya tablolara erişirken tek bir kilit mekanizması kullanmaz. Bekleme süresine, korunan verinin boyutuna ve eşzamanlılık maliyetine göre tasarlanmış **üç katmanlı bir kilit hiyerarşisi** vardır: **Spinlock**, **LWLock (Lightweight Lock)** ve **Heavyweight Lock**.
 
@@ -143,3 +144,31 @@ WHERE pid = pg_backend_pid();
  relation   | pg_locks | AccessShareLock | t
  virtualxid |          | ExclusiveLock   | t
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "Explicit Locking and Lock Management",
+      url: "https://www.postgresql.org/docs/current/explicit-locking.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Heavyweight lock modları (RowShare, AccessExclusive vb.), pg_locks kataloğu ve kilit çakışma matrisi."
+    },
+    {
+      title: "PostgreSQL Core Source: lwlock.c & lock.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/storage/lmgr/lock.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "Spinlock, Lightweight Lock (LWLock) ve Heavyweight Lock hiyerarşisi ile deadlock tespit motoru."
+    },
+    {
+      title: "PostgreSQL Wait Events and Performance Troubleshooting",
+      url: "https://www.postgresql.org/docs/current/monitoring-stats.html#WAIT-EVENT-TABLE",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "pg_stat_activity bekleme olayları: IPC, IO, Lock, LWLock tipleri ve sistem darboğaz analizleri."
+    }
+  ]}
+/>

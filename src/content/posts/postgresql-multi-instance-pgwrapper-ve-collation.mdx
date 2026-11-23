@@ -9,6 +9,7 @@ parent: "postgresql-kurulum-ve-servis-yonetimi"
 order: 3
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Tek bir fiziksel sunucuda birden fazla bağımsız PostgreSQL kümesi (cluster) çalıştırmak; major sürüm yükseltmeleri (`pg_upgrade`), farklı iş yüklerinin izole edilmesi veya çoklu test ortamlarının barındırılması için yaygın bir pratiktir. Ancak aynı makinede paylaşılan `RAM` ve işletim sistemi `glibc` güncellemeleri dikkatle yönetilmelidir.
 
@@ -112,3 +113,31 @@ WHERE datname = 'postgres';
 ```
 
 * Eğer sunucuda `libicu` veya `glibc` majör sürümü yükselirse PostgreSQL açılış/bağlantı anında `collation "tr-TR" has version mismatch` uyarısı üretir; etkilenen veritabanı veya sütun indeksleri `REINDEX DATABASE` ile yeniden kurulduktan sonra `ALTER DATABASE ... REFRESH COLLATION VERSION;` komutuyla mühür güncellenir.
+
+---
+
+<References
+  items={[
+    {
+      title: "Debian/Ubuntu PostgreSQL Multi-Cluster Architecture",
+      url: "https://wiki.debian.org/PostgreSQL",
+      type: "official",
+      author: "Debian PostgreSQL Maintainers",
+      note: "pg_createcluster, pg_dropcluster, pg_lsclusters ve pg_wrapper komut yönlendirme mimarisi."
+    },
+    {
+      title: "PostgreSQL Documentation: Collation Support",
+      url: "https://www.postgresql.org/docs/current/collation.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "İşletim sistemi libc collation bağımlılığı, glibc yükseltmelerinde indeks bozulmaları ve modern ICU collation kullanımı."
+    },
+    {
+      title: "Debian postgresql-common Source: pg_wrapper",
+      url: "https://salsa.debian.org/postgresql/postgresql-common",
+      type: "source",
+      author: "Debian PostgreSQL Packaging Team",
+      note: "Port, PGCLUSTER ortam değişkeni ve konfigürasyon dosyalarına göre cluster seçim mantığı."
+    }
+  ]}
+/>

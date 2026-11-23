@@ -7,6 +7,7 @@ summary: "MySQL, MSSQL ve Oracle'a kıyasla PostgreSQL'de eklentilerin neden çe
 tags: ["PostgreSQL", "Mimari", "Extension", "C Hooks"]
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL çekirdeğinin üçüncü parti eklentilerle yeni veri tiplerinden sorgu planlayıcıya, indeks motorlarından özel depolama katmanlarına kadar genişletilebilmesi iki mimari temele dayanır: **katalog güdümlü (Catalog-Driven) tasarım** ve **sorgu hattı boyunca açılmış C Hook noktaları**.
 
@@ -196,3 +197,31 @@ Bu katalog güdümlü ve kancalı çekirdek altyapısı üzerine inşa edilen po
 * **[TimescaleDB Mimarisi ve Kullanım Rehberi](/posts/timescaledb-mimarisi-ve-kullanim-rehberi):** Zaman serisi verileri için Hypertables, chunk pruning, continuous aggregates ve columnar sıkıştırma motoru.
 * **[Patroni ile HA ve Otomatik Failover](/posts/patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover):** Dağıtık konsensüs (etcd), split-brain koruması ve yüksek erişilebilirlik mimarisi.
 * **[PostgREST ile Sıfır Kodla REST API](/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api):** PostgreSQL katalog şemasından anında derlenen yüksek performanslı REST API ve RLS güvenlik katmanı.
+
+---
+
+<References
+  items={[
+    {
+      title: "Packaging Related Objects into an Extension",
+      url: "https://www.postgresql.org/docs/current/extend-extensions.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Control dosyaları (.control), SQL kurulum/yükseltme scriptleri, relocatable extension ve PGXS derleme sistemi."
+    },
+    {
+      title: "PostgreSQL Core Header: executor.h & planner.h (C Hooks)",
+      url: "https://github.com/postgres/postgres/blob/master/src/include/executor/executor.h",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "ExecutorStart_hook, ExecutorRun_hook, ExecutorFinish_hook ve planner_hook fonksiyon göstericisi (function pointer) tanımları."
+    },
+    {
+      title: "PostgreSQL Extension Development and C Hook Architecture",
+      url: "https://michael.otacoo.com/postgresql-2/postgres-hooks/",
+      type: "article",
+      author: "Michael Paquier",
+      note: "PostgreSQL çekirdeğine dinamik kütüphane bağlama, paylaşımlı bellek tahsisi (shmem_request_hook) ve kanca mimarisi."
+    }
+  ]}
+/>

@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 3
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Aylık veya yıllık dashboard grafiklerini çizerken her istekte on milyonlarca ham sensör satırını `GROUP BY` ile toplamak CPU ve RAM tüketimini hızla doyuma ulaştırır. Standart PostgreSQL `MATERIALIZED VIEW` nesneleri ise `REFRESH` sırasında tüm tabloyu baştan hesapladığı için zaman serisi akışlarında pratik değildir.
 
@@ -120,3 +121,31 @@ WHERE device_id = 42 AND time >= NOW() - INTERVAL '24 hours'
 GROUP BY bucket
 ORDER BY bucket DESC;
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "About Continuous Aggregates",
+      url: "https://docs.timescale.com/use-timescale/latest/continuous-aggregates/about-continuous-aggregates/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Materyalize hypertable yapısı, watermark takibi ve geçmişe dönük veri güncellemelerinin yönetimi."
+    },
+    {
+      title: "TimescaleDB Core Source: continuous_agg.c",
+      url: "https://github.com/timescale/timescaledb/blob/master/src/continuous_agg.c",
+      type: "source",
+      author: "Timescale Team",
+      note: "Geçersiz kılma eşikleri (invalidation thresholds), aggregate view planlayıcı optimizasyonu ve yenileme döngüsü."
+    },
+    {
+      title: "Real-time Aggregates: How Continuous Aggregates Work Behind the Scenes",
+      url: "https://www.timescale.com/blog/real-time-aggregates-continuous-aggregates-timescaledb/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Materyalize edilmiş tarihsel veriler ile henüz diske yazılmamış canlı verileri tek sorguda birleştiren birleşim mekanizması."
+    }
+  ]}
+/>

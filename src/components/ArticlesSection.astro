@@ -6,14 +6,6 @@ const allPosts = await getCollection('posts');
 const posts = allPosts
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
-// Collect all tags and counts
-const tagCounts = new Map<string, number>();
-posts.forEach(post => {
-  post.data.tags.forEach(tag => {
-    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-  });
-});
-
 // Primary topic tags for focused filtering:
 const coreTopicTags = [
   { name: 'PostgreSQL', label: 'PostgreSQL' },
@@ -24,21 +16,13 @@ const coreTopicTags = [
 
 const filterTags = coreTopicTags.map(topic => ({
   name: topic.name,
-  label: topic.label,
-  count: tagCounts.get(topic.name) || 0
+  label: topic.label
 }));
-
-function calculateReadingTime(content: string): number {
-  if (!content) return 5;
-  const cleanText = content.replace(/<[^>]*>/g, '').replace(/[#*`_~[\]()]/g, '');
-  const words = cleanText.trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200));
-}
 ---
 
-<section id="articles" class="py-10 sm:py-14 border-b border-[var(--border)] scroll-mt-16">
+<section id="articles" class="py-8 sm:py-10 border-b border-[var(--border)] scroll-mt-16">
   <!-- Section Title & Narrative -->
-  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
     <div class="space-y-1.5 max-w-3xl">
       <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
         Yazılar & Notlar
@@ -57,11 +41,7 @@ function calculateReadingTime(content: string): number {
   </div>
 
   <!-- Interactive Tag Filtering Bar (Horizontal scroll on mobile without wrapping) -->
-  <div class="mb-6 flex items-center gap-2 overflow-x-auto flex-nowrap whitespace-nowrap pb-2 scrollbar-none select-none" role="toolbar" aria-label="Yazı etiket filtreleri">
-    <span class="text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider mr-1 shrink-0">
-      Filtre:
-    </span>
-
+  <div class="mb-6 flex items-center gap-2 overflow-x-auto flex-nowrap whitespace-nowrap pb-1 scrollbar-none select-none" role="toolbar" aria-label="Yazı etiket filtreleri">
     <!-- "Tümü" Button -->
     <button
       type="button"
@@ -69,7 +49,7 @@ function calculateReadingTime(content: string): number {
       class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--accent)] text-white font-medium border border-[var(--accent)] shadow-2xs is-active shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       aria-pressed="true"
     >
-      Tümü ({posts.length})
+      Tümü
     </button>
 
     <!-- Tag Buttons -->
@@ -80,7 +60,7 @@ function calculateReadingTime(content: string): number {
         class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text-dim)] shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         aria-pressed="false"
       >
-        #{tag.label} <span class="text-[10px] opacity-75">({tag.count})</span>
+        {tag.label}
       </button>
     ))}
   </div>
@@ -100,24 +80,21 @@ function calculateReadingTime(content: string): number {
     </button>
   </div>
 
-  <!-- Editorial Articles Directory (Equal Height Cards with Sticky Footer) -->
-  <div id="articles-list" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <!-- Editorial Articles Directory (2-Column Grid with Equal Height Cards) -->
+  <div id="articles-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
     {posts.map((post) => {
       const slug = getPostSlug(post);
       const postUrl = `/posts/${slug}`;
       const postTagsAttr = post.data.tags.join(',');
-      const readingMinutes = calculateReadingTime(post.body || '');
       return (
         <article
           class="article-item group relative border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--accent)] transition-all duration-150 p-5 sm:p-6 rounded-[2px] flex flex-col justify-between h-full hover:-translate-y-0.5 shadow-2xs focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:border-transparent"
           data-tags={postTagsAttr}
         >
           <div class="flex-1 space-y-3 mb-4">
-            <!-- Date & Reading Time -->
-            <div class="font-mono text-xs text-[var(--text-dim)] flex items-center gap-2">
+            <!-- Date -->
+            <div class="font-mono text-xs text-[var(--text-dim)]">
               <time datetime={post.data.date} style={`view-transition-name: post-date-${slug};`}>{post.data.date}</time>
-              <span class="text-[var(--border-strong)]" aria-hidden="true">·</span>
-              <span>{readingMinutes} dk okuma</span>
             </div>
 
             <!-- Title with full-card clickable ::after link and shared-element view-transition-name -->

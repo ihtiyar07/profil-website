@@ -4,8 +4,8 @@ date: "2025-09-15"
 summary: "PostgreSQL şemasını doğrudan yüksek performanslı, JWT ve Row-Level Security (RLS) korumalı REST API'ye dönüştürme: Resource embedding, lateral join CTE derlemesi, RPC fonksiyonları ve Docker üzerinde üretim mimarisi."
 tags: ["PostgreSQL", "PostgREST", "Docker", "Veritabanı", "Mimari", "Performans"]
 ---
-
 import PostgrestInteractiveExplorer from '../../components/PostgrestInteractiveExplorer.astro';
+import References from '../../components/References.astro';
 
 Modern web ve veri altyapılarında en çok tekrarlanan ve en çok kaynak tüketen katman genellikle "CRUD backend" katmanıdır: Bir **client** HTTP isteği atar, web çatısı (Spring, Express, FastAPI, ASP.NET) isteği karşılar, yetkiyi kontrol eder, ORM ile SQL üretir, veritabanına sorgu atar, gelen satırları bellekte nesnelere (DTO/Entity) dönüştürür ve ardından tekrar JSON'a serileştirip HTTP soketine yazar.
 
@@ -306,3 +306,31 @@ Dönen yanıt doğrudan hesaplanmış JSON sonucudur:
 
 ### Ne Zaman Tercih Edilmemeli?
 * Ağır üçüncü parti API orkestrasyonu gerektiren (örneğin aynı anda Stripe, Twilio ve AWS S3 çağrısı yapan) iş akışları. (Bu gibi durumlar için PostgREST önüne hafif bir API Gateway veya Lambda yerleştirmek en iyi pratiktir).
+
+---
+
+<References
+  items={[
+    {
+      title: "PostgREST Documentation: Architecture and Schema Cache",
+      url: "https://postgrest.org/en/stable/references/architecture.html",
+      type: "official",
+      author: "PostgREST Community",
+      note: "Şema önbellekleme (schema cache), JWT ile rol tabanlı erişim, RLS entegrasyonu ve otomatik OpenAPI çıktısı."
+    },
+    {
+      title: "PostgREST Core Source: Sql.hs",
+      url: "https://github.com/PostgREST/postgrest/blob/main/src/PostgREST/Query/Sql.hs",
+      type: "source",
+      author: "PostgREST Maintainers",
+      note: "HTTP istek parametrelerini tek bir optimize PostgreSQL SQL sorgusuna (JSON CTE ve aggregates) dönüştüren AST derleyici."
+    },
+    {
+      title: "In-Database Authorization and REST API Design",
+      url: "https://postgrest.org/en/stable/auth.html",
+      type: "article",
+      author: "Joe Nelson & Steve Chavez",
+      note: "JWT claim'lerinin GUC değişkenlerine aktarılması, request.jwt.claims ve veritabanı içi güvenlik modeli."
+    }
+  ]}
+/>

@@ -9,6 +9,7 @@ parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
 order: 1
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'de sistem parametreleri ve ağ erişim izinleri doğrudan motorun okuduğu yapılandırma dosyaları üzerinden belirlenir. Bu dosyaların diskteki yerleşimi, yüklenme sırası ve birbirini ezme kuralları; hem konfigürasyon sürüklenmesini (configuration drift) engellemek hem de ağ güvenliğini sağlamak için kritik öneme sahiptir.
 
@@ -143,3 +144,31 @@ ORDER BY sourcefile, sourceline;
 ```
 
 Yukarıdaki gerçek sorgu çıktısında görüldüğü gibi, `01.conf` içindeki 32MB değeri `applied = f` olarak işaretlenmiş; çünkü `auto.conf` içindeki 64MB değeri onu ezmiştir (`applied = t`). Dosyada geçersiz bir parametre değeri varsa `error` sütununda gösterilir ve `pg_reload_conf()` çalıştırılmadan önce hata güvenle tespit edilir.
+
+---
+
+<References
+  items={[
+    {
+      title: "The pg_hba.conf File and Client Authentication",
+      url: "https://www.postgresql.org/docs/current/auth-pg-hba-conf.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Bağlantı türleri (host, local), IP filtreleri, scram-sha-256 doğrulama protokolü ve kural eşleşme sırası."
+    },
+    {
+      title: "PostgreSQL Core Source: hba.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/libpq/hba.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "pg_hba.conf ve pg_ident.conf ayrıştırıcı (parser) fonksiyonları ve istemci token doğrulama mantığı."
+    },
+    {
+      title: "Configuration File Inspection Views (pg_file_settings & pg_hba_file_rules)",
+      url: "https://www.postgresql.org/docs/current/view-pg-file-settings.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Konfigürasyon sözdizimi hatalarının sunucuyu yeniden başlatmadan doğrulanması ve dinamik kural denetimi."
+    }
+  ]}
+/>

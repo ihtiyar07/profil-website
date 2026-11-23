@@ -6,9 +6,10 @@ lang: "tr"
 summary: "Cluster, Database, Schema ve Relation hiyerarşisi; OID ile relfilenode ayrımı, pg_catalog ve information_schema farkı, PGDATA dizin yapısı, Relation Fork'ları (_fsm, _vm), TOAST stratejileri ve Tablespace."
 tags: ["PostgreSQL", "Depolama", "Mimari", "PGDATA"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
-order: 5
+order: 7
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'in mantıksal nesneleri (`Database`, `Schema`, `Table`) ile disk üzerindeki fiziksel dosyaları birebir aynı isimlerle tutulmaz. Bir tablonun sorgu planlayıcıdaki mantıksal kimliği ile `$PGDATA` altındaki dosya adı farklı katmanlarda yönetilir; bu ayrım yeniden yazma (`TRUNCATE`, `VACUUM FULL`, `REINDEX`) operasyonlarının atomik yürütülmesini sağlar.
 
@@ -185,3 +186,31 @@ Bir `HeapTuple` tek bir 8KB sayfa sınırını aşamaz; satır genişliği `TOAS
 ### Tablespace (`pg_tblspc`) Kullanım Kuralı
 
 `CREATE TABLESPACE` komutu, bir tablo veya indeksi `$PGDATA/base` dışındaki ayrı bir dosya sistemi dizinine yönlendirir. Modern NVMe/SAN veya LVM altyapılarında tek hızlı havuz varken ek Tablespace açmak yedekleme (`pg_basebackup` path mapping) ve restore yönetimini zorlaştırır; yalnızca soğuk arşiv tabloları ile sıcak indeksleri farklı fiziksel disk sınıflarına (ör. NVMe vs HDD) ayırma ihtiyacı olduğunda tercih edilmelidir.
+
+---
+
+<References
+  items={[
+    {
+      title: "File Layout and System Catalogs Inside PGDATA",
+      url: "https://www.postgresql.org/docs/current/storage-file-layout.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "base, global, pg_wal dizin hiyerarşisi, OID, filenode ve relation çatal (fork) dosyalarının diskteki karşılığı."
+    },
+    {
+      title: "PostgreSQL Core Source: catalog.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/catalog/catalog.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "RelFileNode veri yapısı, katalog OID tahsis mantığı ve pg_class.relfilenode fiziksel dosya çözümlemesi."
+    },
+    {
+      title: "PostgreSQL Physical Storage & Internal Tables",
+      url: "https://momjian.us/main/writings/pgsql/internalpics.pdf",
+      type: "article",
+      author: "Bruce Momjian",
+      note: "PostgreSQL veri tabanı dizin yapısı, OID mimarisi ve diskteki tablo çatallarının fiziksel şeması."
+    }
+  ]}
+/>

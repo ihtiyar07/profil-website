@@ -9,6 +9,7 @@ parent: "postgresql-kurulum-ve-servis-yonetimi"
 order: 2
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Kurulum tamamlandıktan sonra PostgreSQL süreçlerinin yaşam döngüsü tek bir otorite tarafından yönetilmelidir. Aynı anda hem işletim sistemi servis yöneticisini (`systemd`) hem de doğrudan çekirdek aracını (`pg_ctl`) kullanmak süreç takibini bozar.
 
@@ -104,3 +105,31 @@ flowchart LR
 $ ls -ld /var/lib/postgresql/17/analytics/pg_wal
 lrwxrwxrwx 1 postgres postgres 33 Nov 12 16:32 /var/lib/postgresql/17/analytics/pg_wal -> /var/lib/postgresql/wal_analytics
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "Starting the Server and Signal Handling",
+      url: "https://www.postgresql.org/docs/current/server-start.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Postmaster sinyal mekanizmaları (SIGTERM, SIGINT, SIGQUIT, SIGHUP) ve systemd Type=notify entegrasyonu."
+    },
+    {
+      title: "PostgreSQL Tablespaces and Storage Isolation",
+      url: "https://www.postgresql.org/docs/current/manage-ag-tablespaces.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "pg_tblspc sembolik bağları, pg_wal ayrık disk bağlama prensipleri ve I/O ayrıştırma stratejileri."
+    },
+    {
+      title: "PostgreSQL Core Source: server loop and signals in postmaster.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/postmaster/postmaster.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "Signal handler fonksiyonları, smart vs fast shutdown akışı ve çocuk süreç yönetimi."
+    }
+  ]}
+/>

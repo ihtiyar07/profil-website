@@ -9,6 +9,7 @@ parent: "postgresql-kurulum-ve-servis-yonetimi"
 order: 1
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL ikili dosyalarının sisteme hangi kaynaktan kurulduğu bakım kolaylığını, `initdb` aşamasında verilen parametreler ise veritabanı kümesinin yaşam boyu karakter setini ve veri bütünlüğü garantisini belirler.
 
@@ -187,3 +188,31 @@ Blocks scanned:  2884
 Bad checksums:  0
 Data checksum version: 1
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: initdb",
+      url: "https://www.postgresql.org/docs/current/app-initdb.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Veri kümesi başlatma parametreleri, --data-checksums bayrağı, template veritabanları ve encoding ayarları."
+    },
+    {
+      title: "PostgreSQL Core Source: initdb.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/bin/initdb/initdb.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "Bootstrap modunda katalog tablolarının oluşturulması, sistem view'larının yüklenmesi ve disk şablonlama adımları."
+    },
+    {
+      title: "PostgreSQL Build System with Meson",
+      url: "https://peter.eisentraut.org/blog/2022/11/01/meson-in-postgresql-16",
+      type: "article",
+      author: "Peter Eisentraut",
+      note: "Modern Meson derleme altyapısı, Autotools farkları ve optimize PostgreSQL binary üretimi."
+    }
+  ]}
+/>

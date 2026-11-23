@@ -8,6 +8,8 @@ tags: ["PostgreSQL", "TimescaleDB", "Performans", "Operasyon"]
 parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 4
 ---
+import References from '../../components/References.astro';
+
 
 TimescaleDB'yi geliştirme ortamından üretim ortamına taşırken karşılaşılan hataların çoğu SQL sözdiziminden değil; varsayılan PostgreSQL kilit/bellek limitlerinden, tekil `INSERT` trafiğinden veya background worker havuzunun tıkanmasından kaynaklanır.
 
@@ -72,3 +74,31 @@ psql -U postgres -d telemetry_db -c "SELECT timescaledb_post_restore();"
 ```
 
 `timescaledb_pre_restore()` arka plan worker'larını ve trigger kilitlerini geçici olarak durdurur; `timescaledb_post_restore()` ise `_timescaledb_catalog` kimlik eşlemelerini yeniden bağlar.
+
+---
+
+<References
+  items={[
+    {
+      title: "Configuring TimescaleDB: Resource Allocation and timescaledb-tune",
+      url: "https://docs.timescale.com/self-hosted/latest/configuration/timescaledb-tune/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Zaman serisi yüklerine özel shared_buffers, work_mem ve max_worker_processes donanım boyutlandırma rehberi."
+    },
+    {
+      title: "timescaledb-tune Source: tuning.go",
+      url: "https://github.com/timescale/timescaledb-tune/blob/main/pkg/tstune/tuning.go",
+      type: "source",
+      author: "Timescale Team",
+      note: "CPU çekirdek sayısı, RAM boyutu ve disk türüne göre otomatik konfigürasyon hesaplama algoritmaları."
+    },
+    {
+      title: "PostgreSQL Configuration Tuning for Time-Series Workloads",
+      url: "https://www.timescale.com/blog/postgres-configuration-tuning-timescaledb/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Arka plan worker concurrency parametreleri, checkpoint aralıkları ve I/O doygunluğunu engelleme stratejileri."
+    }
+  ]}
+/>

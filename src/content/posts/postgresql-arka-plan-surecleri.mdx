@@ -6,9 +6,10 @@ lang: "tr"
 summary: "postmaster süreç ağacı altında Checkpointer, BGWriter, WAL Archiver (.ready/.done), Autovacuum Launcher/Worker, PG15+ Shared Memory Stats mimarisi ve Logical Replication Worker görev dağılımı."
 tags: ["PostgreSQL", "Mimari", "WAL", "Replikasyon", "Performans"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
-order: 7
+order: 9
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL sunucusu başlatıldığında `postmaster` yalnızca gelen Client bağlantılarını (`Backend Process`) karşılamaz; disk dayanıklılığı, vakum bakımı, istatistik toplama ve replikasyon akışını yürüten özelleşmiş **arka plan süreçlerini (Background / Auxiliary Processes)** de yönetir. Tüm aktif süreçler `pg_stat_activity` görünümünde `backend_type` sütunuyla izlenebilir.
 
@@ -107,3 +108,31 @@ ORDER BY pid;
     1256 | logical replication launcher            |       | Activity        | LogicalLauncherMain
  1537853 | client backend                          | idle  | Client          | ClientRead
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "Routine Vacuuming and Autovacuum Daemon",
+      url: "https://www.postgresql.org/docs/current/routine-vacuuming.html#AUTOVACUUM",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Autovacuum launcher ve worker mimarisi, table bloat önleme, freeze döngüleri ve transaction wraparound koruması."
+    },
+    {
+      title: "PostgreSQL Core Source: bgwriter.c & checkpointer.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/postmaster/bgwriter.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "Background Writer ve Checkpointer süreçlerinin ana döngüleri, kirli sayfa temizleme stratejileri."
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 6 - Vacuum Processing",
+      url: "https://www.interdb.jp/pg/ch6.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "Dead tuple temizleme adımları, visibility map güncellemeleri ve vacuum freeze mekanizmasının fiziksel işleyişi."
+    }
+  ]}
+/>

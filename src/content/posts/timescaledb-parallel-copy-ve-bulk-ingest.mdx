@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 5
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'in yerleşik `COPY ... FROM` komutu tek bir transaction içinde ve tek thread üzerinden çalışır. On milyonlarca geçmiş sensör kaydını veya CSV/S3 yığınını yeni bir Hypertable'a taşırken tekil `COPY` hattı tek bir CPU çekirdeğine takılır; hata alındığında tüm işlem geri sarılır (**rollback**).
 
@@ -108,3 +109,31 @@ psql "$SOURCE_DSN" -c "COPY (SELECT time, device_id, cpu_usage, temperature FROM
 - **Sütun Eşleme:** CSV başlıkları tablo sütunlarından farklıysa `--column-mapping "ts:time,temp:temperature"` veya birebir aynıysa `--auto-column-mapping` kullanılabilir.
 - **Sıralı Girdi Avantajı:** Kaynak veriyi zaman sütununa göre sıralı (`ORDER BY time`) akıtmak ve mümkünse `--enable-client-side-sorting` kullanmak, worker'ların aynı anda onlarca farklı eski Chunk açmasını önler.
 - **Sıkıştırılmış Chunk'a Backfill:** Güncel TimescaleDB sürümlerinde `timescaledb-parallel-copy` varsayılan olarak sıkıştırılmış Chunk'lara doğrudan yazmayı destekler; eğer yoğun geçmiş backfill sırasında CPU/bellek baskısı oluşursa `--disable-direct-compress` ile test edilebilir veya hedef Chunk'lar geçici olarak açılabilir.
+
+---
+
+<References
+  items={[
+    {
+      title: "Ingesting Data with timescaledb-parallel-copy",
+      url: "https://docs.timescale.com/self-hosted/latest/tooling/timescaledb-parallel-copy/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Toplu veri yükleme mimarisi, worker thread yönetimi ve CSV/TSV formatlarında kopyalama performansı."
+    },
+    {
+      title: "timescaledb-parallel-copy Source: main.go",
+      url: "https://github.com/timescale/timescaledb-parallel-copy/blob/master/cmd/timescaledb-parallel-copy/main.go",
+      type: "source",
+      author: "Timescale Team",
+      note: "Bağımsız Go eşzamanlılık havuzu (goroutine worker pool) ve PostgreSQL COPY protokolü akış yönetimi."
+    },
+    {
+      title: "10x Faster Data Ingestion in PostgreSQL with Parallel Copy",
+      url: "https://www.timescale.com/blog/10x-faster-data-ingestion-in-postgresql-timescaledb/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Tek thread COPY kısıtlamalarını aşma, kilit çekişmesini en aza indirme ve chunk yerleşimine duyarlı toplu veri aktarımı."
+    }
+  ]}
+/>

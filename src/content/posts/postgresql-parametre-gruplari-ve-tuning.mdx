@@ -9,6 +9,7 @@ parent: "postgresql-konfigurasyon-ve-parametre-yonetimi"
 order: 3
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL varsayılan konfigürasyonu, en mütevazı donanımlarda bile sorunsuz başlayabilmesi için son derece tutucu parametrelerle gelir (ör. `shared_buffers = 128MB`). Üretim sunucularında donanım kapasitesini tam kullanabilmek için motor parametrelerinin iş yüküne göre optimize edilmesi şarttır.
 
@@ -97,3 +98,31 @@ flowchart LR
    - `pg_stat_database.blks_hit / (blks_hit + blks_read)` ile Buffer Cache Hit oranının **%99+** olup olmadığı kontrol edilir.
    - `pg_stat_statements` ile en çok `temp_blks_written` (Spill to Disk) üreten sorgular tespit edilip yalnızca o kullanıcı veya sorgu bazında `work_mem` artırılır.
    - `pg_statio_user_tables` ile indeks kullanım oranları izlenir.
+
+---
+
+<References
+  items={[
+    {
+      title: "Resource Consumption Configuration (Memory & Disk)",
+      url: "https://www.postgresql.org/docs/current/runtime-config-resource.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "shared_buffers, work_mem, maintenance_work_mem ve effective_cache_size kaynak tahsis standartları."
+    },
+    {
+      title: "PostgreSQL Core Source: tuplesort.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/utils/sort/tuplesort.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "work_mem aşımında devreye giren external merge sort algoritması ve geçici disk dosyaları (temp files)."
+    },
+    {
+      title: "PostgreSQL 9.0 High Performance",
+      url: "https://www.packtpub.com/en-us/product/postgresql-90-high-performance-9781849510301",
+      type: "book",
+      author: "Gregory Smith",
+      note: "İşletim sistemi bellek mimarisi, OS Page Cache, çift önbellekleme (double caching) ve disk parametre tuning prensipleri."
+    }
+  ]}
+/>

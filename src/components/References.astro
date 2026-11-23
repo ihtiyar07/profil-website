@@ -1,0 +1,89 @@
+---
+export interface ReferenceItem {
+  title: string;
+  url: string;
+  type?: 'official' | 'source' | 'book' | 'article' | 'paper';
+  author?: string;
+  note?: string;
+}
+
+interface Props {
+  items: ReferenceItem[];
+  title?: string;
+}
+
+const { items, title = "Kaynaklar ve İleri Okuma" } = Astro.props;
+
+const typeLabels: Record<string, string> = {
+  official: "Resmi Döküman",
+  source: "Çekirdek C Kodu",
+  book: "Kitap / Kılavuz",
+  article: "Teknik İnceleme",
+  paper: "Akademik Makale"
+};
+---
+
+<section
+  id="kaynaklar"
+  aria-labelledby="references-heading"
+  class="not-prose mt-12 p-4 sm:p-5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/35 space-y-3.5 scroll-mt-24"
+>
+  <div class="border-b border-[var(--border)]/70 pb-2.5">
+    <h2
+      id="references-heading"
+      class="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--text)] flex items-center gap-2"
+    >
+      <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+      <span>{title}</span>
+    </h2>
+  </div>
+
+  <ol class="space-y-2.5 list-none p-0 m-0">
+    {items.map((ref, idx) => {
+      let hostname = '';
+      try {
+        hostname = new URL(ref.url).hostname.replace(/^www\./, '');
+      } catch (_) {
+        hostname = '';
+      }
+      const label = ref.type ? typeLabels[ref.type] : null;
+
+      return (
+        <li class="flex items-start gap-2.5 text-xs sm:text-[13px] leading-relaxed group">
+          <span class="font-mono text-[11px] text-[var(--text-dim)] shrink-0 select-none mt-0.5 w-5 text-right font-medium">
+            [{idx + 1}]
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <a
+                href={ref.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="font-medium text-[var(--text)] group-hover:text-[var(--accent)] underline decoration-[var(--border-strong)] group-hover:decoration-[var(--accent)] underline-offset-2 transition-colors inline-flex items-baseline gap-1"
+              >
+                <span>{ref.title}</span>
+                <span class="text-[10px] font-mono text-[var(--text-dim)] group-hover:text-[var(--accent)]" aria-hidden="true">↗</span>
+              </a>
+              {hostname && (
+                <span class="font-mono text-[11px] text-[var(--text-dim)]">
+                  ({hostname})
+                </span>
+              )}
+              {label && (
+                <span class="font-mono text-[10.5px] text-[var(--text-dim)]">
+                  · {label}
+                </span>
+              )}
+            </div>
+            {(ref.author || ref.note) && (
+              <p class="text-[12px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                {ref.author && <span class="font-medium text-[var(--text)]">{ref.author} — </span>}
+                {ref.note}
+              </p>
+            )}
+          </div>
+        </li>
+      );
+    })}
+  </ol>
+</section>

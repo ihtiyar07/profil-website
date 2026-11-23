@@ -7,6 +7,7 @@ summary: "Client bağlantı modelinden Shared Buffers ve Local Memory yapısına
 tags: ["PostgreSQL", "Veritabanı", "Mimari", "Performans"]
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gereken gerçek şudur: PostgreSQL, MySQL veya SQL Server gibi **çok iş parçacıklı (multi-threaded)** bir motor değil; **ayrı işletim sistemi süreçlerine (process-based)** dayanan klasik ve tavizsiz bir Unix mimarisidir.
 
@@ -216,16 +217,22 @@ PostgreSQL mimarisinin kritik alt bileşenleri ayrı teknik dökümanlar halinde
 3. **[PostgreSQL Eşzamanlılık ve Güvenlik: MVCC, Autovacuum ve WAL Mekanizması](/posts/postgresql-mvcc-ve-wal)**  
    *MVCC çoklu sürüm prensibi, dead tuples, table bloat tespiti, autovacuum döngüsü, HOT optimizasyonu ve crash recovery adımları.*
 
-4. **[PostgreSQL Sorgu İşleme: Parser, Planner ve Executor Yaşam Döngüsü](/posts/postgresql-sorgu-yasam-dongusu)**  
+4. **[PostgreSQL WAL ve Checkpoint Mimarisi: LSN, fsync ve Veri Güvenliği](/posts/postgresql-wal-ve-checkpoint-mimarisi)**  
+   *Sequential WAL I/O ilkeleri, 64-bit LSN ve pd_lsn ilişkisi, Checkpointer flushing dinamikleri, fsync, synchronous_commit seviyeleri ve torn page koruması.*
+
+5. **[PostgreSQL Crash Recovery ve WAL Yönetimi: REDO, Segmentler ve pg_waldump](/posts/postgresql-crash-recovery-ve-wal-yonetimi)**  
+   *REDO fazı ve pd_lsn idempotency temelli crash recovery, 16MB WAL segment döngüsü, replication slot ve arşiv kaynaklı disk dolması sebepleri, pg_waldump ve wal_compression.*
+
+6. **[PostgreSQL Sorgu İşleme: Parser, Planner ve Executor Yaşam Döngüsü](/posts/postgresql-sorgu-yasam-dongusu)**  
    *Parser/Analyze, Rewriter, Cost-Based Optimizer maliyet hesabı, Volcano Executor yürütme modeli ve EXPLAIN (ANALYZE, BUFFERS) teşhisi.*
 
-5. **[PostgreSQL Küme Yapısı: Cluster, OID, System Catalog ve PGDATA Anatomisi](/posts/postgresql-cluster-oid-ve-pgdata)**  
+7. **[PostgreSQL Küme Yapısı: Cluster, OID, System Catalog ve PGDATA Anatomisi](/posts/postgresql-cluster-oid-ve-pgdata)**  
    *Cluster/Database/Schema hiyerarşisi, OID vs relfilenode ayrımı, pg_catalog vs information_schema, $PGDATA dizinleri, FSM/VM fork'ları, TOAST ve Tablespace.*
 
-6. **[PostgreSQL İç Kilit Hiyerarşisi: Spinlock, LWLock, BufferPin ve Wait Events](/posts/postgresql-ic-kilitler-ve-wait-events)**  
+8. **[PostgreSQL İç Kilit Hiyerarşisi: Spinlock, LWLock, BufferPin ve Wait Events](/posts/postgresql-ic-kilitler-ve-wait-events)**  
    *Spinlock, LWLock ve Heavyweight Lock katmanları, Buffer Manager kilit sırası, BufferPin ve pg_stat_activity üzerinden wait_event teşhisi.*
 
-7. **[PostgreSQL Arka Plan Süreçleri: Archiver, PG15+ Shared Memory Stats ve Logical Replication Worker](/posts/postgresql-arka-plan-surecleri)**  
+9. **[PostgreSQL Arka Plan Süreçleri: Archiver, PG15+ Shared Memory Stats ve Logical Replication Worker](/posts/postgresql-arka-plan-surecleri)**  
    *WAL Archiver (.ready/.done), PG14 Stats Collector'dan PG15+ Shared Memory Stats'a geçiş, Autovacuum Launcher/Worker ve Logical Replication Worker çiftleri.*
 
 > **Eklenti ve Ekosistem Genişletilebilirliği:** PostgreSQL'in C hook'ları, `TableAM`/`IndexAM` ve eklenti yaşam döngüsü mimarisi için kapsamlı rehber: **[PostgreSQL Extension Mimarisi: Katalog Güdümlü Çekirdek, Süreç Modeli ve C Hook'ları](/posts/postgresql-extension-mimarisi-ve-c-hooks)**.
@@ -235,3 +242,31 @@ PostgreSQL mimarisinin kritik alt bileşenleri ayrı teknik dökümanlar halinde
 ## Mimari Özet
 
 PostgreSQL; process izolasyonu, öngörülebilir bellek havuzları, 8KB data page düzeni ve katı ACID garantileriyle kurulmuş sağlam bir Unix kalesidir. Onu doğru çalıştırmanın anahtarı; bağlantı sayısını kontrol altında tutmak, `shared_buffers` ile OS page cache dengesini kurmak ve `autovacuum` süreçlerini yazma temposuna göre optimize etmektir.
+
+---
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Documentation: Architectural Overview",
+      url: "https://www.postgresql.org/docs/current/overview.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "İstemci-sunucu mimarisi, process modeli ve sorgu yürütme katmanlarının genel mimari çerçevesi."
+    },
+    {
+      title: "PostgreSQL Core Source: postmaster.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/postmaster/postmaster.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "Postmaster daemon ana döngüsü, bağlantı kabulü (ServerLoop) ve backend process çatallama (fork) mekanizması."
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 2 - Process and Memory Architecture",
+      url: "https://www.interdb.jp/pg/ch2.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "PostgreSQL arka plan süreçleri, shared memory yapıları ve backend süreçler arası IPC modelleri."
+    }
+  ]}
+/>

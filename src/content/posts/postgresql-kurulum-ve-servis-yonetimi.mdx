@@ -7,6 +7,7 @@ summary: "PGDG paket kurulumu, kaynak kod ve Docker seçenekleri; initdb paramet
 tags: ["PostgreSQL", "Kurulum", "Operasyon", "Mimari"]
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL üretim ortamının kararlılığı, ilk SQL sorgusu çalışmadan önce kurulum, `initdb`, dosya sistemi yerleşimi ve servis yönetimi aşamalarında belirlenir. Kurulum sonrasında kolayca değiştirilebilen parametreler olduğu gibi (`work_mem`, `max_connections`), **yeniden veri taşıma (`pg_dump`/`pg_upgrade`) gerektiren** geri dönüşsüz kararlar da bu fazda verilir.
 
@@ -92,3 +93,31 @@ Kurulum sırasında yapılan dört hata, sistem canlıya alındıktan sonra kesi
 2. **`--data-checksums` Özelliğini Açmayı Unutmak:** Checksum olmadan kurulan bir kümede sonradan etkinleştirme yapmak için servisi tamamen durdurup `pg_checksums --enable` çalıştırmak gerekir (terabayt ölçeğinde uzun kesinti demektir).
 3. **Veri, WAL ve Logların Aynı Kök Diske Konması:** Log fırtınası veya biriken `pg_wal` segmentleri `/` dosya sistemini doldurduğunda işletim sistemi ve veritabanı birlikte kilitlenir.
 4. **`systemd` ile `pg_ctl` Komutlarını Karıştırmak:** `systemd` üzerinden başlatılmış servisi manuel `pg_ctl` ile durdurup başlatmak PID ve cgroup takibini bozar; beklenmedik `OOM` veya çift servis başlatma riskine yol açar.
+
+---
+
+<References
+  items={[
+    {
+      title: "PostgreSQL Server Administration and Installation",
+      url: "https://www.postgresql.org/docs/current/admin.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "PostgreSQL sunucu kurulumu, veri kümesi başlatma ve işletim sistemi servis entegrasyonu rehberi."
+    },
+    {
+      title: "PostgreSQL Core Source: pg_ctl.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/bin/pg_ctl/pg_ctl.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "pg_ctl komut satırı aracı, servis başlatma/durdurma sinyalleri ve postmaster PID doğrulama mekanizması."
+    },
+    {
+      title: "PostgreSQL High Performance: Installation and Hardware Planning",
+      url: "https://www.packtpub.com/en-us/product/postgresql-90-high-performance-9781849510301",
+      type: "book",
+      author: "Gregory Smith",
+      note: "Sunucu donanımı, dosya sistemi seçimi ve paket yönetimi optimizasyonları."
+    }
+  ]}
+/>

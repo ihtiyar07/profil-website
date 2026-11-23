@@ -6,6 +6,8 @@ lang: "tr"
 summary: "Tek bir genel IPv4 ile bare-metal sunucuda Proxmox VE 8 kurulumu, routed bridge mimarisi, iptables/nftables NAT kuralları ve WireGuard yönetim tüneli."
 tags: ["Proxmox", "Linux", "DevOps", "Ağ Güvenliği", "ZFS"]
 ---
+import References from '../../components/References.astro';
+
 
 Hetzner, OVH veya yerel bir veri merkezinde dedicated (fiziksel) bir sunucu kiraladığınızda elinizde genellikle tek bir fiziksel Ethernet portu ve tek bir genel (public) IPv4 adresi olur.
 
@@ -62,3 +64,31 @@ Böylece sunucu yönetimi yalnızca şifrelenmiş WireGuard oturumu açıldığ�
 Fiziksel sunucuda NVMe diskler varsa, donanımsal RAID kartı yerine **ZFS RAID-1 (mirror)** seçilmelidir:
 - Periyodik `zpool scrub` ile diskteki sessiz bit bozulmaları (bit rot) otomatik tespit edilir ve onarılır.
 - Haftalık artımlı yedeklemeler Proxmox Backup Server'a gönderilir. PBS, blok seviyesinde deduplication (tekilleştirme) yaptığı için 500GB'lık 10 sanal makinenin günlük fark yedekleri sadece ~2-3GB yer tutar.
+
+---
+
+<References
+  items={[
+    {
+      title: "Proxmox VE Documentation: Network Configuration",
+      url: "https://pve.proxmox.com/pve-docs/pve-admin-guide.html#sysadmin_network_configuration",
+      type: "official",
+      author: "Proxmox Server Solutions GmbH",
+      note: "Linux Bridge (vmbr), VLAN tagging, bonded arayüzler ve yazılım tanımlı ağ (SDN) mimarisi."
+    },
+    {
+      title: "Proxmox VE Documentation: Firewall and Security Groups",
+      url: "https://pve.proxmox.com/pve-docs/pve-admin-guide.html#chapter_pve_firewall",
+      type: "official",
+      author: "Proxmox Server Solutions GmbH",
+      note: "Cluster, host ve sanal makine düzeyinde katmanlı güvenlik duvarı kuralları, iptables/nftables entegrasyonu."
+    },
+    {
+      title: "Debian Linux Network Configuration Manual",
+      url: "https://wiki.debian.org/NetworkConfiguration",
+      type: "official",
+      author: "Debian Project",
+      note: "/etc/network/interfaces yapılandırma sözdizimi, yönlendirme tabloları (ip route) ve NAT köprüleme kuralları."
+    }
+  ]}
+/>

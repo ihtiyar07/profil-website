@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 2
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL standart olarak satır tabanlı (**Row-based Heap**) çalışır; her 8KB'lık sayfada farklı cihazlara ait farklı kolonlar yan yana saklanır. Bu düzen `INSERT` hızında avantajlıdır ancak milyonlarca eski kaydın saklanmasında hem yüksek disk alanı tüketir hem de analitik taramalarda gereksiz kolonları belleğe taşır.
 
@@ -100,3 +101,31 @@ SELECT add_retention_policy('sensor_data_ts', INTERVAL '90 days');
 -- Manuel tek seferlik silme (< 40 ms, sıfır Dead Tuple)
 SELECT drop_chunks('sensor_data_ts', older_than => INTERVAL '90 days');
 ```
+
+---
+
+<References
+  items={[
+    {
+      title: "TimescaleDB Compression: Columnar Storage Format",
+      url: "https://docs.timescale.com/use-timescale/latest/compression/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "Chunk seviyesinde sıkıştırma mimarisi, segmentby ve orderby parametrelerinin veri yerleşimi üzerindeki etkisi."
+    },
+    {
+      title: "TimescaleDB Core Source: compression.c & delta.c",
+      url: "https://github.com/timescale/timescaledb/blob/master/src/compression/compression.c",
+      type: "source",
+      author: "Timescale Team",
+      note: "Gorilla (XOR), Delta-of-delta, Run-length encoding ve LZ4 algoritmalarının C implementasyonları."
+    },
+    {
+      title: "Building Columnar Compression in a Row-Oriented Database",
+      url: "https://www.timescale.com/blog/building-columnar-compression-in-a-row-oriented-database/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Satır tabanlı PostgreSQL veri sayfaları içinde sütun dizilerini sıkıştırılmış diziler olarak saklama mekanizması."
+    }
+  ]}
+/>

@@ -6,9 +6,10 @@ lang: "tr"
 summary: "Bir SQL sorgusunun Backend Process'e ulaştığı andan sonuç Tuple'larının Client'a dönmesine kadar geçtiği Parser, Analyze, Rewriter, Cost-Based Planner (Optimizer) ve Volcano Executor aşamaları."
 tags: ["PostgreSQL", "Sorgu İşleme", "Optimizer", "EXPLAIN", "Performans"]
 parent: "postgresql-mimarisi-ve-calisma-prensipleri"
-order: 4
+order: 6
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'de bir SQL sorgusu çalıştırıldığında motor doğrudan diskteki dosyalara gitmez. Client'tan gelen metin, ilgili `Backend Process` içinde dört aşamalı bir derleme ve yürütme hattından geçerek fiziksel veri erişim adımlarına dönüştürülür: **Parser / Analyze**, **Rewriter**, **Planner (Optimizer)** ve **Executor**.
 
@@ -176,3 +177,31 @@ PostgreSQL 18 üzerinde elde edilen gerçek yürütme çıktısı:
 2. **`Buffers: shared hit=263 read=15`:** 263 blok `shared_buffers` içinden karşılanmış, 15 blok ise diskten/OS page cache'ten okunmuştur (`read`).
 3. **`Index Only Scan` & `Heap Fetches: 326`:** `Visibility Map` üzerinde `ALL_VISIBLE` işaretlenmemiş sayfalar için heap'e inildiğini gösterir; `VACUUM` sonrası bu sayı düşer.
 4. **`Sort Method: top-N heapsort Memory: 26kB`:** Veri `work_mem` sınırına sığdığı için bellekte bitmiştir; eğer burada `external merge Disk` görülseydi `Spill to Disk` yaşanıyor olacaktı.
+
+---
+
+<References
+  items={[
+    {
+      title: "Overview of PostgreSQL Internals: Query Processing",
+      url: "https://www.postgresql.org/docs/current/overview.html#OVERVIEW-BACKEND",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Sorgunun parser, analyzer, rewriter, planner/optimizer ve executor aşamalarından geçiş rotası."
+    },
+    {
+      title: "PostgreSQL Core Source: postgres.c & execMain.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/tcop/postgres.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "exec_simple_query ve genişletilmiş sorgu protokolü (parse/bind/execute) C uygulama detayları."
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 3 - Query Processing",
+      url: "https://www.interdb.jp/pg/ch3.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "ParseTree, QueryTree ve PlanTree veri yapılarının dönüşümü ile maliyet tabanlı optimizasyon (Cost-Based Optimizer)."
+    }
+  ]}
+/>

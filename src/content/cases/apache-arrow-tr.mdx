@@ -18,6 +18,8 @@ metrics:
   - label: "GC Baskısı"
     value: "%95 Nesne Tahsis Düşüşü"
 ---
+import References from '../../components/References.astro';
+
 
 ## 1. Bağlam
 Büyük ölçekli analitik ve telemetri platformlarında kullanıcılar; 30 günlük yüksek frekanslı sensör geçmişini, borsa emir defterlerini veya makine telemetrisini yüksek çözünürlüklü grafikler üzerinde anlık olarak incelemek ister. 
@@ -65,3 +67,31 @@ Gelen ikili akış tarayıcıda bir `ArrayBuffer` olarak karşılanır. JavaScri
 | **Client UI Donması** | 850 ms (kilitli ekran) | < 15 ms (kesintisiz 60 FPS) | **56 Kat Hızlanma** |
 | **Sunucu GC Tahsisi** | 250.000 heap nesnesi | 1 adet contiguous buffer | **%95 GC Rahatlaması** |
 | **Serileştirme Yükü** | Ağır string dönüşümü | Saf ikili bellek kopyası | **8 Kat CPU Tasarrufu** |
+
+---
+
+<References
+  items={[
+    {
+      title: "Apache Arrow Columnar Format and Integration Specification",
+      url: "https://arrow.apache.org/docs/format/Columnar.html",
+      type: "official",
+      author: "Apache Software Foundation",
+      note: "SIMD uyumlu bellek dizilimi, buffer hizalaması, bitmap maskeleme ve RecordBatch IPC protokolü."
+    },
+    {
+      title: "Apache Arrow C++ Implementation Source: record_batch.cc",
+      url: "https://github.com/apache/arrow/blob/main/cpp/src/arrow/record_batch.cc",
+      type: "source",
+      author: "Apache Arrow Developers",
+      note: "RecordBatch C++ sınıfı, sütun dizileri bellek eşleme ve sıfır kopyalama dilimleme (slice) operasyonları."
+    },
+    {
+      title: "Wes McKinney: Data Structures for Statistical Computing in Python & Apache Arrow",
+      url: "https://wesmckinney.com/",
+      type: "article",
+      author: "Wes McKinney",
+      note: "Büyük veri analitiğinde veri transfer maliyetlerinin düşürülmesi ve çoklu dil ekosisteminde Arrow standartları."
+    }
+  ]}
+/>

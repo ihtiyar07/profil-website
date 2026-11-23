@@ -1,0 +1,57 @@
+---
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+  source?: string;
+  sourceUrl?: string;
+  fullWidth?: boolean;
+}
+
+const { src, alt, caption, source, sourceUrl, fullWidth = false } = Astro.props;
+---
+
+<figure class:list={[
+  "my-6 not-prose border border-[var(--accent-border)] rounded-[4px] bg-[var(--bg-card)] overflow-hidden shadow-xs transition-colors",
+  fullWidth ? "w-full" : "max-w-3xl mx-auto"
+]}>
+  <!-- Figure Image Area -->
+  <div class="p-3 sm:p-5 bg-[var(--bg-subtle)]/40 flex justify-center items-center overflow-x-auto">
+    <img
+      src={src}
+      alt={alt}
+      class="max-w-full h-auto rounded-[2px] object-contain border border-[var(--border)]"
+      loading="lazy"
+    />
+  </div>
+
+  <!-- Caption & Source Attribution Bar -->
+  {(caption || source) && (
+    <figcaption class="px-4 py-2.5 border-t border-[var(--accent-border)] bg-[var(--bg)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 text-xs font-sans text-[var(--text-muted)] select-none">
+      {caption && (
+        <span class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
+          <span class="font-medium text-[var(--text)]">{caption}</span>
+        </span>
+      )}
+      {source && (
+        <span class="font-mono text-[11px] text-[var(--text-dim)] shrink-0 sm:ml-auto">
+          Şema / Görsel Kaynağı:{' '}
+          {sourceUrl ? (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-[var(--text-accent)] hover:underline inline-flex items-center gap-0.5 font-medium"
+            >
+              <span>{source}</span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          ) : (
+            <span class="text-[var(--text)] font-medium">{source}</span>
+          )}
+        </span>
+      )}
+    </figcaption>
+  )}
+</figure>

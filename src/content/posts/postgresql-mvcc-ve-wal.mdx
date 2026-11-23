@@ -9,6 +9,7 @@ parent: "postgresql-mimarisi-ve-calisma-prensipleri"
 order: 3
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL, yüksek eşzamanlı sorgu trafiğinde okuma ve yazma işlemlerinin birbirini bloklamaması için **MVCC (Multi-Version Concurrency Control)** mimarisini; donanım arızalarında veya ani çökmelerde veri kaybını önlemek için ise **WAL (Write-Ahead Logging)** mekanizmasını kullanır.
 
@@ -134,3 +135,31 @@ Eğer sunucunun gücü aniden kesilirse, PostgreSQL yeniden başladığında:
 - WAL kayıtlarını sırayla okur (Redo aşaması).
 - Sayfanın `pd_lsn` değeri WAL kaydının LSN değerinden küçükse değişikliği sayfaya uygular; büyük veya eşitse (`pd_lsn >= record_lsn`) sayfanın zaten diske yazılmış olduğunu anlar ve atlar.
 - Böylece veritabanı motoru tutarlı ve sıfır veri kaybıyla ayağa kalkar.
+
+---
+
+<References
+  items={[
+    {
+      title: "Concurrency Control: MVCC and Isolation Levels",
+      url: "https://www.postgresql.org/docs/current/mvcc.html",
+      type: "official",
+      author: "PostgreSQL Global Development Group",
+      note: "Read Committed, Repeatable Read ve Serializable izolasyon seviyelerinde Transaction Snapshot ve görünürlük kuralları."
+    },
+    {
+      title: "PostgreSQL Core Source: heapam.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/access/heap/heapam.c",
+      type: "source",
+      author: "PostgreSQL Core Team",
+      note: "heap_insert, heap_update, heap_delete motor fonksiyonları ve satır seviyesinde kilit/versiyonlama algoritmaları."
+    },
+    {
+      title: "The Internals of PostgreSQL: Chapter 5 - Concurrency Control",
+      url: "https://www.interdb.jp/pg/ch5.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "Commit Log (clog/pg_xact), Snapshot veri yapısı, t_infomask bitleri ve görünürlük kontrol matrisi."
+    }
+  ]}
+/>

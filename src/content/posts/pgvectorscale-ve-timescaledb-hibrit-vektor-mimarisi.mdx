@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 8
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Standart `pgvector` eklentisindeki **HNSW** indeksi yüksek arama hızı sunar ancak grafiği tamamen bellekte (`shared_buffers` / RAM) tutmaya dayanır. Vektör sayısı milyonlara çıktığında HNSW indeksi tablo verisinin kendisinden bile daha büyük RAM tüketir; paralel indeks oluşturma sırasında ise yüksek paylaşımlı bellek (`shared memory`) ister.
 
@@ -108,3 +109,31 @@ LIMIT 5;
 3. Sonuçlar `Merge Append` ile birleştirilip toplam **`2.84 ms`** içinde döndürüldü.
 
 > **HA ve Büyük Tablo Notu:** Üretim ortamında çalışan canlı bir Hypertable üzerine sonradan indeks açarken yazma kilitlerini önlemek için `CREATE INDEX CONCURRENTLY` yerine Chunk bazlı indeksleme stratejisi izlenmeli ve streaming replikalardaki WAL yazım artışı (`replication lag`) izlenmelidir.
+
+---
+
+<References
+  items={[
+    {
+      title: "pgvectorscale: Advanced Vector Search for PostgreSQL",
+      url: "https://github.com/timescale/pgvectorscale",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "DiskANN graf indeksleri, Streaming DiskANN algoritmaları ve ölçeklenebilir gömme (embedding) aramaları."
+    },
+    {
+      title: "DiskANN: Fast Accurate Billion-Point Nearest Neighbor Search on a Single Node",
+      url: "https://proceedings.neurips.cc/paper/2019/file/09853c7fb1d15028508cb9969fed840e-Paper.pdf",
+      type: "paper",
+      author: "Harsha Vardhan Simhadri et al.",
+      note: "NeurIPS 2019: RAM sınırlarını aşan milyar ölçekli vektör koleksiyonlarında SSD merkezli grafik tabanlı komşuluk araması."
+    },
+    {
+      title: "pgvectorscale Rust Source: diskann.rs",
+      url: "https://github.com/timescale/pgvectorscale/blob/main/src/access_method/diskann.rs",
+      type: "source",
+      author: "Timescale Team",
+      note: "PostgreSQL Access Method API entegrasyonu, DiskANN graf yapısı ve vektör nicemleme (quantization) C/Rust köprüleri."
+    }
+  ]}
+/>

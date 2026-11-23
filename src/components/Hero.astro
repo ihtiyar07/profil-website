@@ -2,51 +2,63 @@
 import { SITE_META } from '../data/siteMeta';
 ---
 
-<section class="py-8 sm:py-12 border-b border-[var(--border)]">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 lg:gap-12">
+<section class="pt-2 sm:pt-4 pb-8 sm:pb-10 border-b border-[var(--border)]">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8">
     <!-- Main Text Content -->
-    <div class="max-w-2xl xl:max-w-3xl space-y-5">
+    <div class="flex-1 max-w-2xl lg:max-w-3xl space-y-4">
       <!-- Main Headline -->
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.65rem] font-serif leading-[1.18] tracking-tight text-[var(--text)]">
+      <h1 class="text-2xl sm:text-3xl lg:text-[2.25rem] font-serif leading-[1.2] tracking-tight text-[var(--text)]">
         Veritabanı mimarisi, depolama motorları ve veri altyapıları.
       </h1>
 
-      <!-- Requested Copy (Optimized for 60-70ch reading measure) -->
-      <p class="max-w-[65ch] text-base sm:text-lg text-[var(--text-muted)] font-sans leading-relaxed">
+      <!-- Requested Copy -->
+      <p class="text-sm sm:text-[15.5px] text-[var(--text-muted)] font-sans leading-relaxed">
         Gereksinimlere göre en uygun mimariyi keşfetmeye ve uygulamaya çalışıyorum; edindiğim deneyimleri, karşılaştığım problemleri ve öğrendiklerimi de burada paylaşıyorum.
       </p>
 
-      <!-- Action Links (Unified height and radius) -->
-      <div class="flex flex-wrap items-center gap-3 pt-1">
+      <!-- Action Links -->
+      <div class="flex flex-wrap items-center gap-3 pt-2">
         <a
           href="#articles"
           class="h-9 px-4 bg-[var(--text)] text-[var(--bg)] hover:bg-[var(--accent)] hover:text-white border border-[var(--text)] hover:border-[var(--accent)] transition-colors text-xs font-mono font-medium inline-flex items-center justify-center gap-2 rounded-[2px] shadow-2xs cursor-pointer"
         >
-          <span>Yazıları ve Rehberleri İncele</span>
+          <span>Rehberleri İncele</span>
           <span aria-hidden="true">↓</span>
         </a>
 
         <a
-          href={`mailto:${SITE_META.email}`}
-          class="h-9 px-4 border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text)] transition-colors text-xs font-mono font-medium inline-flex items-center justify-center gap-1.5 rounded-[2px] shadow-2xs cursor-pointer"
+          href={SITE_META.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="h-9 px-3 border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-colors text-xs font-mono font-medium inline-flex items-center justify-center gap-1.5 rounded-[2px] shadow-2xs cursor-pointer"
         >
-          <span>İletişime Geç</span>
+          <span>GitHub</span>
+          <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
+        </a>
+
+        <a
+          href={SITE_META.linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="h-9 px-3 border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-colors text-xs font-mono font-medium inline-flex items-center justify-center gap-1.5 rounded-[2px] shadow-2xs cursor-pointer"
+        >
+          <span>LinkedIn</span>
           <span class="text-[var(--text-dim)]" aria-hidden="true">↗</span>
         </a>
       </div>
     </div>
 
-    <!-- Editorial Framed Portrait (Thin 1px border, subtle 2xs shadow) -->
-    <div class="shrink-0 self-start md:self-center">
-      <div class="p-1.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-[2px] shadow-2xs transition-colors duration-200">
+    <!-- Editorial Framed Portrait (Identity card styling) -->
+    <div class="shrink-0 self-start sm:self-center">
+      <div class="p-1.5 sm:p-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-[2px] shadow-2xs transition-colors duration-200">
         <picture>
           <source srcset="/profile.webp" type="image/webp" />
           <img
             src="/profile.png"
             alt="Ahmet İhtiyar"
-            width="144"
-            height="172"
-            class="w-32 sm:w-36 lg:w-40 xl:w-44 rounded-[1px] object-cover aspect-[5/6] block"
+            width="135"
+            height="160"
+            class="w-28 sm:w-32 lg:w-36 rounded-[2px] object-cover aspect-[4/5] block"
             loading="eager"
           />
         </picture>

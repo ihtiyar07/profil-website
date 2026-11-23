@@ -9,6 +9,7 @@ parent: "postgresql-mimarisi-ve-calisma-prensipleri"
 order: 1
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 PostgreSQL'in bellek hiyerarşisi, iki temel felsefe üzerine kuruludur: **Tüm süreçlerin ortaklaştığı Shared Memory** ve **Her client sürecine özel tahsis edilen Local Memory**.
 
@@ -57,6 +58,8 @@ Tüm backend süreçlerinin ve background worker'ların eşzamanlı eriştiği o
 <Mermaid
   title="shared_buffers 4 Katmanlı İç Mimarisi ve Clock Sweep"
   ariaLabel="Buffer Mapping Hash Table, Buffer Descriptors, Buffer Pool 8KB slotları ve Clock Sweep eviction akışı"
+  source="The Internals of PostgreSQL: Chapter 8 Buffer Manager"
+  sourceUrl="https://www.interdb.jp/pg/ch8.html"
   code={`
 flowchart LR
     BE["Backend Process"] -->|"1. BufferTag O(1)"| Hash["Buffer Mapping Hash Table"]
@@ -132,3 +135,29 @@ PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü dev
 
 - **`wal_buffers`:** Veritabanındaki değişikliklerin (WAL kayıtları) diske yazılmadan önce toplandığı 16MB–64MB dairesel bellek alanıdır. İşlem `COMMIT` ettiğinde `WAL Writer` süreci bu kayıtları diske (`pg_wal`) sıralı (sequential) olarak basar.
 - **Kilit Tabloları & `ProcArray`:** MVCC görünürlüğünü sağlayan aktif işlem kimlikleri (`XID`), satır/tablo kilitleri (`Lock Manager`) ve snapshot metaverileri bu ortak alanda saklanır. Okuyucuların yazıcıları kilitlememesi bu yapı sayesinde sağlanır.
+
+---
+
+<References
+  items={[
+    {
+      title: "src/backend/storage/buffer/bufmgr.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/storage/buffer/bufmgr.c",
+      type: "source",
+      note: "PostgreSQL buffer manager çekirdek C kodu: BufferAlloc, ReadBuffer_common ve Lock-Free Clock Sweep uygulaması."
+    },
+    {
+      title: "Resource Consumption: Memory",
+      url: "https://www.postgresql.org/docs/current/runtime-config-resource.html#RUNTIME-CONFIG-RESOURCE-MEMORY",
+      type: "official",
+      note: "Resmi PostgreSQL dökümantasyonu: shared_buffers, work_mem, maintenance_work_mem ve temp_buffers parametreleri."
+    },
+    {
+      title: "Chapter 8: Buffer Manager",
+      url: "https://www.interdb.jp/pg/ch8.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "BufferTag hash tablosu, BufferDesc durum bayrakları ve Clock Sweep tahliye algoritması şemaları."
+    }
+  ]}
+/>

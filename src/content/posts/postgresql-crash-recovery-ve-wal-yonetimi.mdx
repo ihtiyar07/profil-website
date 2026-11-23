@@ -1,0 +1,131 @@
+---
+title: "PostgreSQL Crash Recovery ve WAL Yönetimi: REDO, Segmentler ve pg_waldump"
+slug: "postgresql-crash-recovery-ve-wal-yonetimi"
+date: "2026-11-16"
+lang: "tr"
+summary: "REDO fazı ve pd_lsn idempotency temelli crash recovery, 16MB WAL segment döngüsü, replication slot ve arşiv kaynaklı disk dolması sebepleri, pg_waldump ve wal_compression."
+tags: ["PostgreSQL", "Crash Recovery", "WAL", "Depolama", "Operasyon"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 5
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+Elektrik kesintisi, kernel paniği veya donanım çökmesinde PostgreSQL'in veri bütünlüğünü koruyarak ayağa kalkmasını sağlayan mekanizma **Crash Recovery** sürecidir. Bu süreç, tamamlanmış son Checkpoint anından çökme anına kadar üretilen tüm WAL kayıtlarının yeniden oynatılmasına (REDO) dayanır.
+
+---
+
+## 1. Crash Recovery Nasıl Çalışır: REDO Döngüsü
+
+PostgreSQL normal kapandığında `global/pg_control` dosyasına durum olarak `shut down` yazar. Beklenmedik bir çökmede ise dosya durumu `in production` olarak kalır. Sunucu yeniden başlatıldığında:
+
+1. **Startup Process:** İlk olarak `startup` süreci başlar ve `pg_control` dosyasını okuyarak çökme yaşandığını algılar.
+2. **REDO Başlangıç Noktası:** Dosyadan son başarılı **Checkpoint REDO LSN** adresi alınır. Çökme anından önceki en son tutarlı veri dosyaları bu noktayı temsil eder.
+3. **REDO Fazı (Yeniden Oynatma):** Bu LSN'den başlayarak `pg_wal` içindeki tüm kayıtlar sırayla taranır ve veri sayfalarına tekrar uygulanır.
+4. **Idempotency (pd_lsn Karşılaştırması):** Bir sayfa diskte zaten güncel olabilir. Startup süreci, data page başlığındaki `pd_lsn` ile WAL kaydının LSN değerini karşılaştırır:
+   - Eğer `pd_lsn >= record.lsn` ise, değişiklik zaten diske yansımıştır; kayıt atlanır (**Zero Duplicate**).
+   - Eğer `pd_lsn < record.lsn` ise, WAL kaydı sayfaya uygulanır ve sayfanın `pd_lsn` değeri güncellenir.
+5. **Recovery Sonu:** WAL zincirinin sonuna ulaşıldığında yeni bir Checkpoint alınır, `pg_control` durumu güncellenir ve veritabanı client bağlantılarına açılır.
+
+<Mermaid
+  title="1. Crash Recovery REDO Zaman Çizgisi"
+  ariaLabel="Son Checkpoint REDO LSN noktasından çökme anına kadar WAL kayıtlarının yeniden oynatılması"
+  source="The Internals of PostgreSQL: Crash Recovery in Chapter 9"
+  sourceUrl="https://www.interdb.jp/pg/ch9.html#_9.8"
+  code={`
+flowchart LR
+    CP["Son Checkpoint (REDO LSN)"] --> W1["WAL Record (LSN: 100)"]
+    W1 --> W2["WAL Record (LSN: 200)"]
+    W2 --> Crash["⚡ Sunucu Çöküşü (Crash)"]
+    
+    Crash -.->|Startup Başlatır| Recovery["REDO Fazı"]
+    Recovery -->|pd_lsn >= 100 ise Atla| S1["Disk Sayfası (pd_lsn: 150)"]
+    Recovery -->|pd_lsn < 200 ise Uygula| S2["Disk Sayfası (pd_lsn: 150 -> 200)"]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+
+    class Recovery,S2 primary
+    class CP,Crash process
+    class W1,W2,S1 storage
+`}
+  summarySteps={[
+    "1. Kurtarma, çökme anından değil son Checkpoint'in REDO LSN adresinden başlar.",
+    "2. Her kayıtta sayfanın pd_lsn değeri kontrol edilerek gereksiz yazmalar önlenir.",
+    "3. Tüm tutarlı kayıtlar uygulandıktan sonra sistem normal çalışma moduna geçer."
+  ]}
+/>
+
+---
+
+## 2. WAL Segment Yönetimi ve Disk Dolması Sebepleri
+
+WAL verileri `pg_wal` dizininde sabit **16MB'lık** dosyalarda saklanır. Dosya adları 24 haneli onaltılık (hex) düzendedir: `00000001` (Timeline ID) + `00000000` (Log File) + `00000001` (Segment ID).
+
+Normal şartlarda Checkpointer süreci eski segmentleri siler veya yeni segmentler için yeniden adlandırarak dönüştürür (`recycle`). Ancak üretimde diskin aniden WAL dosyalarıyla dolup veritabanını kilitlemesinin iki ana nedeni vardır:
+
+### A. Tıkanmış / Terk Edilmiş Replication Slots
+Bir standby kopyaya veri aktarmak için tanımlanan `replication slot`, standby'ın okumadığı segmentlerin silinmesini engeller. Eğer replica sunucu günlerce kopyalamayı durdurursa veya bağlantısı koparsa, primary sunucu WAL segmentlerini biriktirir ve disk tamamen dolar.
+
+```sql
+-- Bekleyen veya geride kalan replication slot'ları tespit etme:
+SELECT slot_name, active, restart_lsn,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS lag_size
+FROM pg_replication_slots;
+```
+
+> **Önlem:** PostgreSQL 13+ ile gelen `max_slot_wal_keep_size = 64GB` parametresi yapılandırılmalıdır. Standby bu boyuttan fazla gecikirse slot geçersiz kılınır ve primary diskin dolması engellenir.
+
+### B. Başarısız Arşiv Komutu (archive_command Failure)
+`archive_mode = on` olduğunda, WAL Archiver süreci segmenti uzak sunucuya veya S3'e başarıyla kopyalayana (`return 0`) kadar o segment silinemez (`archive_status/*.ready`). Hedef depolama alanı dolarsa veya ağ kesilirse WAL dosyaları diskte birikir.
+
+---
+
+## 3. Teşhis ve Operasyon: pg_waldump, wal_level ve Sıkıştırma
+
+### A. pg_waldump ile WAL İçeriğini İnceleme
+WAL dosyalarının binary içeriğini insan tarafından okunabilir metne dönüştürerek hangi transaction'ın ne kadar I/O ürettiğini analiz etmeye yarar:
+
+```bash
+# Belirli bir segmentteki Heap ve B-Tree işlemlerinin istatistik dökümü:
+pg_waldump --stats=record 000000010000000000000001
+```
+
+Çıktıda işlem yöneticisi (`rmgr`), kayıt uzunluğu (`len`) ve yapılan işlem tipi (`INSERT`, `UPDATE`, `HOT_REDIRECT`) listelenir.
+
+### B. wal_level Seviyeleri
+1. **`minimal`:** Sadece çökme sonrası kurtarma (crash recovery) için veri üretir. `UNLOGGED` tablolar gibi davranır; replikasyon ve PITR yapılamaz.
+2. **`replica` (Varsayılan):** Fiziksel streaming replikasyon, yedekleme (pg_basebackup) ve PITR için gereken tüm bilgileri yazar.
+3. **`logical`:** Mantıksal replikasyon (CDC, Debezium) için satırların eski ve yeni hallerini (`IDENTITY` sütunları) ek meta verilerle günlüğe ekler.
+
+### C. WAL Sıkıştırması (wal_compression)
+Checkpoint sonrası ilk sayfa değişikliklerinde tam 8KB yazılması (`full_page_writes`), yoğun yazma alan sistemlerde devasa bir WAL bant genişliği harcar.
+
+* **`wal_compression = lz4` (veya `zstd`):** PG15+ ile gelen bu özellik, full-page imajlarını diske yazmadan önce sıkıştırır. Disk I/O yükünü ve WAL hacmini **%50–%70 oranında** düşürürken CPU üzerinde önemsiz bir ek yük oluşturur.
+
+---
+
+<References
+  items={[
+    {
+      title: "src/backend/access/transam/xlogrecovery.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/access/transam/xlogrecovery.c",
+      type: "source",
+      note: "PostgreSQL çekirdek C kodu: Startup süreci, REDO oynatma döngüsü ve pd_lsn kontrol adımları."
+    },
+    {
+      title: "pg_waldump — Display a human-readable rendition of the write-ahead log",
+      url: "https://www.postgresql.org/docs/current/pgwaldump.html",
+      type: "official",
+      note: "Resmi PostgreSQL dökümantasyonu: pg_waldump komut satırı araç referansı ve parametreleri."
+    },
+    {
+      title: "The Internals of PostgreSQL: Section 9.8 Crash Recovery",
+      url: "https://www.interdb.jp/pg/ch9.html#_9.8",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "Crash recovery, REDO başlangıç LSN ve rmgr kayıt yapıları üzerine detaylı mimari inceleme."
+    }
+  ]}
+/>

@@ -9,6 +9,7 @@ parent: "timescaledb-mimarisi-ve-kullanim-rehberi"
 order: 6
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Zaman serisi altyapılarında Chunk Exclusion yalnızca zaman aralığı filtresi (`WHERE time >= ...`) verildiğinde Chunk sayısını daraltır. Ancak dashboard'larda çok sık sorulan **"her cihazın son ölçümü nedir?"** (`SELECT DISTINCT ON (device_id) ...`) gibi tüm Chunk'lara yayılan sorgularda standart PostgreSQL B-Tree taraması her cihazın tüm geçmiş satırlarını okumak zorunda kalır.
 
@@ -121,3 +122,31 @@ SELECT add_reorder_policy('sensor_ingest', 'idx_ingest_dev_time');
 ```
 
 > **Operasyon Uyarısı:** `reorder_chunk()` bir transaction bloğu (`BEGIN ... COMMIT` veya çoklu ifadeli tek komut) içinde çalışmaz ve `ERROR: reorder cannot run inside a transaction block` hatası verir. Her zaman bağımsız (autocommit) oturumda veya `add_reorder_policy()` üzerinden çalıştırın; zaten Columnar sıkıştırma uyguladığınız eski Chunk'larda ise `compress_segmentby` aynı kümelenmeyi sıkıştırılmış katmanda sağladığı için ayrıca `reorder_chunk()` gerekmez.
+
+---
+
+<References
+  items={[
+    {
+      title: "SkipScan Optimization for DISTINCT and Prefix Queries",
+      url: "https://docs.timescale.com/use-timescale/latest/query-data/skipscan/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "B-Tree indekslerinde gevşek tarama (loose index scan), gereksiz yaprak blok atlama ve DISTINCT sorgu optimizasyonu."
+    },
+    {
+      title: "TimescaleDB Core Source: skipscan_plan.c",
+      url: "https://github.com/timescale/timescaledb/blob/master/src/nodes/skipscan_plan.c",
+      type: "source",
+      author: "Timescale Team",
+      note: "Özel SkipScan plan node tanımları, yürütme aşaması yineleyicisi (executor iterator) ve maliyet modellemesi."
+    },
+    {
+      title: "How We Made DISTINCT Queries Up to 8000x Faster in PostgreSQL",
+      url: "https://www.timescale.com/blog/how-we-made-distinct-queries-up-to-8000x-faster-on-postgresql/",
+      type: "article",
+      author: "Timescale Engineering",
+      note: "Klasik tam indeks taraması ile B-Tree alt ağaçlarını dinamik olarak atlayan arama mantığının karşılaştırmalı analizi."
+    }
+  ]}
+/>

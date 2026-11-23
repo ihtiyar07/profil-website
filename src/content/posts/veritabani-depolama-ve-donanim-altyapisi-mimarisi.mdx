@@ -6,10 +6,10 @@ lang: "tr"
 summary: "Veritabanı motorlarının dosya sisteminden beklentileri, ZFS recordsize ve ARC cache optimizasyonu, direct I/O dengesi ve Zero-Copy mimarisi."
 tags: ["Altyapı", "ZFS", "Depolama", "Performans"]
 ---
-
 Veritabanı mimarisini sorgu ve SQL seviyesinden ayıran en kritik eşik; verinin RAM'den ayrılıp işletim sistemi çekirdeğine, dosya sistemine ve fiziksel NVMe/SSD depolama denetleyicisine ulaştığı son mil çizgisidir.
 
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 Bir veritabanı motoru ne kadar iyi indekslenmiş olursa olsun; altındaki depolama düzeni doğru blok boyutlarıyla yapılandırılmamışsa, sistem **Write Amplification** ve **Double Buffering** darboğazlarına takılır.
 
@@ -88,3 +88,31 @@ Veritabanından çekilen büyük hacimli bir analitik veri (milyonlarca telemetr
 ## Mimari Özet
 
 Veritabanı optimizasyonu sadece SQL cümlelerine indeks eklemekten ibaret değildir. ZFS blok boyutu (recordsize), `fsync` güvencesi, ARC bellek sınırları ve sıfır kopyalama boru hatları; donanımın her bir saat çevriminden ve her bir NVMe veri yolundan maksimum verimi almanın temelidir.
+
+---
+
+<References
+  items={[
+    {
+      title: "OpenZFS Documentation: ZFS Architecture and Administration",
+      url: "https://openzfs.github.io/openzfs-docs/",
+      type: "official",
+      author: "OpenZFS Community",
+      note: "Copy-on-Write (CoW) mimarisi, ZFS Intent Log (ZIL/SLOG), Adaptive Replacement Cache (ARC) ve recordsize yönetimi."
+    },
+    {
+      title: "Systems Performance: Enterprise and the Cloud (2nd Edition)",
+      url: "https://www.brendangregg.com/systems-performance-2nd-edition-book.html",
+      type: "book",
+      author: "Brendan Gregg",
+      note: "Disk I/O kuyrukları, OS Page Cache, NVMe gecikme profilleri ve veritabanı donanım darboğaz analizleri."
+    },
+    {
+      title: "ZFS 101: Understanding ZFS Storage and Performance Tuning",
+      url: "https://arstechnica.com/information-technology/2020/05/zfs-101-understanding-zfs-storage-and-performance/",
+      type: "article",
+      author: "Jim Salter",
+      note: "İlişkisel veritabanlarında 8KB blok boyutu ile ZFS recordsize eşleştirmesi ve write amplification analizleri."
+    }
+  ]}
+/>

@@ -1,0 +1,126 @@
+---
+title: "PostgreSQL WAL ve Checkpoint Mimarisi: LSN, fsync ve Veri Güvenliği"
+slug: "postgresql-wal-ve-checkpoint-mimarisi"
+date: "2026-11-16"
+lang: "tr"
+summary: "Sequential WAL I/O ilkeleri, 64-bit LSN ve pd_lsn ilişkisi, Checkpointer flushing dinamikleri, fsync, synchronous_commit seviyeleri ve torn page koruması (full_page_writes)."
+tags: ["PostgreSQL", "WAL", "Checkpoint", "Depolama", "Performans"]
+parent: "postgresql-mimarisi-ve-calisma-prensipleri"
+order: 4
+---
+import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
+
+İlişkisel veritabanlarında ACID dayanıklılığı (Durability) sağlamanın en maliyetli yolu, her `COMMIT` işleminde değiştirilen tüm 8KB Data Page'leri anında ilişkili veri dosyalarına rastgele (random I/O) yazmaktır. PostgreSQL bu I/O darboğazını aşmak için **WAL (Write-Ahead Logging)** mimarisini kullanır.
+
+Temel kural basittir: **Bir veri sayfası diskte güncellenmeden önce, o değişikliği tanımlayan günlük kaydı mutlaka kalıcı depolamaya (pg_wal) sıralı (sequential) olarak yazılmış ve fsync edilmiş olmalıdır.**
+
+---
+
+## 1. Sequential WAL, LSN Anatomisi ve pd_lsn
+
+Veri sayfalarında (`shared_buffers`) yapılan her değişiklik için `wal_buffers` alanında küçük bir delta kaydı oluşturulur:
+
+1. **Sequential vs Random I/O:** Veri dosyalarına 8KB rastgele blok yazmak disk kafasını/kontrolcüsünü kilitlerken, WAL kayıtları `pg_wal` dizinindeki 16MB segment dosyalarına ardışık (append-only) yazılır.
+2. **LSN (Log Sequence Number):** WAL akışındaki her baytın adresini gösteren 64-bitlik tekil bir tamsayıdır (ör. `0/16B3748`). İlk kısım mantıksal WAL dosya numarasını, ikinci kısım dosya içi ofseti belirtir.
+3. **pd_lsn Eşleşmesi:** Her 8KB Data Page'in başlığında (`PageHeaderData`) o sayfayı en son değiştiren işlemin LSN değerini tutan `pd_lsn` alanı bulunur. Bir sayfa diske yazılırken, diskteki `pd_lsn` değeri WAL'ın diske yazılmış en son LSN değerinden büyük olamaz.
+
+<Mermaid
+  title="1. WAL Kaydı ve Checkpoint Yazma Yolu Karşılaştırması"
+  ariaLabel="Client commit anında ardışık WAL yazımı ve arka planda Checkpointer dirty page temizliği"
+  source="PostgreSQL Core Engine: WAL & Buffer Synchronization"
+  sourceUrl="https://www.postgresql.org/docs/current/wal-intro.html"
+  code={`
+flowchart LR
+    Client["Client (COMMIT)"] --> Backend["Backend Process"]
+    Backend -->|1. Delta Kaydı| WalBuf["wal_buffers"]
+    Backend -->|2. Sayfayı Değiştir| DirtyPage["shared_buffers (Dirty Page)"]
+    WalBuf -->|3. Sıralı & Anında Flush| PgWal["pg_wal (Sequential Append)"]
+    
+    Checkpointer["Checkpointer Süreci"] -.->|Periyodik Toplu Flush| DirtyPage
+    DirtyPage -.->|Rastgele 8KB Bloklar| DataFiles["Relation Data Files (Fiziksel Disk)"]
+
+    classDef process fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A
+    classDef memory fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#042F2E
+    classDef storage fill:#F5F5F4,stroke:#78716C,stroke-width:1.5px,color:#292524
+    classDef primary fill:#EFF6FF,stroke:#1D4ED8,stroke-width:2px,color:#0F172A
+
+    class Client,Backend,Checkpointer process
+    class WalBuf,DirtyPage memory
+    class PgWal,DataFiles storage
+`}
+  summarySteps={[
+    "1. COMMIT anında sadece küçük WAL delta kaydı wal_buffers üzerinden diske (pg_wal) flush edilir.",
+    "2. 8KB'lık Dirty Page'ler bellekte kalır; anında diske yazılmaz.",
+    "3. Checkpointer periyodik olarak devreye girip dirty page'leri fiziksel veri dosyalarına yazar."
+  ]}
+/>
+
+```sql
+-- Mevcut anlık WAL yazma konumunu (LSN) sorgulama:
+SELECT pg_current_wal_lsn(), 
+       pg_walfile_name(pg_current_wal_lsn());
+```
+
+---
+
+## 2. Checkpoint Mekanizması ve Parametreleri
+
+`shared_buffers` içinde biriken kirli (dirty) sayfaların sonsuza kadar bellekte kalması iki risk doğurur: bellek tükenmesi ve çökme (crash) sonrası kurtarma süresinin uzaması. **`Checkpointer`** süreci, belirli aralıklarla bir kontrol noktası (**Checkpoint**) oluşturur:
+
+1. Bellekteki tüm kirli sayfaları veri dosyalarına yazar (`BufferSync`).
+2. Yazılan sayfaları işletim sistemi önbelleğinden diske senkronize eder (`smgrsync / fsync`).
+3. `global/pg_control` dosyasını güncelleyerek en son tamamlanan **Checkpoint REDO LSN** değerini yazar.
+4. Bu LSN noktasından önceki eski WAL segment dosyaları güvenle silinebilir veya geri dönüştürülebilir (`recycle`).
+
+### Çekirdek Checkpoint Parametreleri
+
+* **`checkpoint_timeout = 15min`:** Checkpoint'ler arasındaki azami süredir (varsayılan 5 dakikadır, üretimde 15–30 dakikaya çekilir).
+* **`max_wal_size = 16GB - 64GB`:** İki checkpoint arasında üretilebilecek azami WAL hacmidir. Süre dolmadan bu sınıra ulaşılırsa kontrolsüz erken checkpoint tetiklenir (`checkpoint starting: wal`).
+* **`min_wal_size = 1GB - 4GB`:** Segment dosyalarının diskte geri dönüştürülmek üzere tutulacağı taban alan.
+* **`checkpoint_completion_target = 0.9`:** I/O patlamalarını önleyen en kritik parametredir. Yazma işlemlerini `checkpoint_timeout * 0.9` süresine yayarak disk bant genişliğini düzleştirir.
+
+---
+
+## 3. fsync, synchronous_commit ve full_page_writes
+
+PostgreSQL'in veri kaybı ve disk tutarlılığı garantisi üç temel parametrenin dengesine bağlıdır:
+
+### A. fsync ve synchronous_commit
+- **`fsync = on`:** Kesinlikle kapatılmamalıdır (`off` yapılırsa ani elektrik kesintisinde işletim sistemi önbelleğindeki veriler uçarak veritabanı kümesini onarılamaz biçimde bozabilir).
+- **`synchronous_commit`:** Her commit işleminde diske WAL yazılmasını bekleme kuralıdır:
+  - `on` (Varsayılan): WAL diske yazılıp fsync edilene kadar client'a onay dönmez. Sıfır veri kaybı (RPO = 0).
+  - `off`: İşlem bellekte onaylanır; WAL arka planda `wal_writer_delay` (200ms) aralığıyla yazılır. Sistem çökerse son ~200ms'lik veri kaybolabilir ama disk/küme bütünlüğü bozulmaz.
+  - `remote_apply` / `remote_write`: Standby kopyalara replikasyon güvencesi sunar.
+
+### B. Torn Page Sorunu ve full_page_writes
+Linux dosya sistemleri standart olarak 4KB blok boyutuyla yazar; PostgreSQL veri sayfası ise 8KB'dır. Bir sayfa diske yazılırken ilk 4KB yazılıp ikinci 4KB yazılmadan sunucu çökerse **Torn Page (Parçalanmış Sayfa)** oluşur.
+
+* **`full_page_writes = on`:** Bir Checkpoint tamamlandıktan sonra bir 8KB sayfada yapılan **ilk** değişiklik sırasında, sayfanın tamamı (tüm 8KB) WAL içine kopyalanır.
+* Çökme sonrası kurtarmada diskteki yarım sayfa çöpe atılır ve WAL içindeki tam sayfa kopyası geri yüklenerek tutarlılık kurtarılır. Kapatılması felaket kurtarmayı imkansızlaştırır.
+
+---
+
+<References
+  items={[
+    {
+      title: "Reliability and the Write-Ahead Log",
+      url: "https://www.postgresql.org/docs/current/wal.html",
+      type: "official",
+      note: "Resmi PostgreSQL dökümantasyonu: WAL mimarisi, Checkpoint periyotları, fsync ve full_page_writes dinamikleri."
+    },
+    {
+      title: "src/backend/access/transam/xlog.c",
+      url: "https://github.com/postgres/postgres/blob/master/src/backend/access/transam/xlog.c",
+      type: "source",
+      note: "PostgreSQL çekirdek C kodu: XLogInsert, LSN yönetimi ve BufferSync çağrı mekanizması."
+    },
+    {
+      title: "Chapter 9: Write Ahead Logging - WAL",
+      url: "https://www.interdb.jp/pg/ch9.html",
+      type: "book",
+      author: "Hironobu Suzuki",
+      note: "The Internals of PostgreSQL: WAL segment yapısı, Checkpointer iç döngüsü ve checkpoint LSN diyagramları."
+    }
+  ]}
+/>

@@ -1,8 +1,9 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getPostSlug } from '../../data/slugUtils';
+import { getPostSlug, getCaseSlug } from '../../data/slugUtils';
 import { SITE_META } from '../../data/siteMeta';
+import { getAdjacentNavItems, type FlatNavItem } from '../../data/navigation';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -19,15 +20,31 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 
 const allPosts = await getCollection('posts');
-const sortedPosts = allPosts
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+const allCases = await getCollection('cases');
 
 const currentSlug = getPostSlug(entry);
-const currentIndex = sortedPosts.findIndex((p) => getPostSlug(p) === currentSlug);
+const currentPath = `/posts/${currentSlug}`;
 
-// Prev and Next posts in chronological/catalog reading order:
-const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
-const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
+// Prev and Next documents resolved from the single-source-of-truth sidebar order:
+const adjacent = getAdjacentNavItems(currentPath);
+
+function resolveAdjacentDoc(item: FlatNavItem | null) {
+  if (!item) return null;
+  const post = allPosts.find((p) => `/posts/${getPostSlug(p)}` === item.href);
+  const caseItem = allCases.find((c) => `/cases/${getCaseSlug(c)}` === item.href);
+  return {
+    href: item.href,
+    title: post?.data.title || caseItem?.data.title || item.title,
+    sectionTitle: item.sectionTitle,
+    parentTitle: item.parentTitle
+  };
+}
+
+const prevDoc = resolveAdjacentDoc(adjacent.prev);
+const nextDoc = resolveAdjacentDoc(adjacent.next);
+
+const sortedPosts = allPosts
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
 // Parent & Child relationship logic:
 const parentSlug = entry.data.parent;
@@ -43,7 +60,10 @@ const otherPosts = sortedPosts
   .filter((p) => getPostSlug(p) !== currentSlug && p.data.parent !== currentSlug && (!parentSlug || p.data.parent !== parentSlug))
   .slice(0, 3);
 
-const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const tocHeadings = [
+  ...headings.filter((h) => h.depth === 2 || h.depth === 3),
+  { depth: 2, slug: 'kaynaklar', text: 'Kaynaklar & İleri Okuma' }
+];
 ---
 
 <BaseLayout 
@@ -82,24 +102,9 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
               )}
             </div>
 
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                id="toggle-right-panel-btn"
-                class="hidden xl:inline-flex items-center gap-1.5 font-mono text-xs text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] px-2.5 py-1 rounded-[2px] bg-[var(--bg-subtle)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
-                title="Sağ Paneli Göster veya Gizle"
-              >
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <path d="M15 3v18"/>
-                </svg>
-                <span id="right-panel-btn-label">Paneli Gizle</span>
-              </button>
-
-              <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]" style={`view-transition-name: post-date-${currentSlug};`}>
-                {entry.data.date}
-              </time>
-            </div>
+            <time datetime={entry.data.date} class="font-mono text-xs text-[var(--text-dim)]" style={`view-transition-name: post-date-${currentSlug};`}>
+              {entry.data.date}
+            </time>
           </div>
 
         <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-serif text-[var(--text)] tracking-tight leading-[1.2]" style={`view-transition-name: post-title-${currentSlug};`}>
@@ -146,14 +151,14 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       )}
 
       <!-- Article Content with Optimal Reading Typography -->
-      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)]">
+      <div class="prose max-w-none text-[var(--text)] space-y-6 [&>h2]:text-2xl [&>h2]:font-serif [&>h2]:pt-8 [&>h2]:pb-2 [&>h2]:border-t [&>h2]:border-[var(--border)] [&>h2]:text-[var(--text)] [&>h3]:text-xl [&>h3]:font-serif [&>h3]:pt-4 [&>h3]:pb-1 [&>h3]:text-[var(--text)] [&>p]:text-[15.5px] sm:[&>p]:text-[16px] [&>p]:leading-[1.75] [&>p]:text-[var(--text)] [&_strong]:font-semibold [&_strong]:text-[var(--text)] [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ul>li]:my-1.5 [&>ol>li]:my-1.5 [&>ul>li]:leading-relaxed [&>ol>li]:leading-relaxed [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--accent)] [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:italic [&>blockquote]:text-[var(--text-muted)] [&>code]:font-mono [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:bg-[var(--bg-subtle)] [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-[2px] [&_:not(pre)>code]:border [&_:not(pre)>code]:border-[var(--border)] [&>hr]:border-[var(--border)] [&>hr]:my-8 [&>hr:has(+section#kaynaklar)]:hidden">
         <Content />
       </div>
 
       <!-- Article Bottom Navigation & Feedback -->
-      <div class="pt-8 border-t border-[var(--border)] space-y-5">
+      <div class="pt-8 border-t border-[var(--border)] space-y-4">
         <!-- Top bar: Back link + Subtle feedback link -->
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 font-mono text-xs text-[var(--text-dim)]">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 font-mono text-xs text-[var(--text-dim)]">
           <a
             href="/#articles"
             class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
@@ -165,7 +170,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
           <a
             href={`mailto:${SITE_META.email}?subject=${encodeURIComponent(`Geri Bildirim: ${entry.data.title}`)}`}
-            class="hover:text-[var(--text)] hover:underline inline-flex items-center gap-1 transition-colors"
+            class="hover:text-[var(--text)] hover:underline inline-flex items-center gap-1 transition-colors text-[11px]"
           >
             <span>Yazı hakkında geri bildirim veya katkı ilet</span>
             <span aria-hidden="true">↗</span>
@@ -173,33 +178,39 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </div>
 
         <!-- Next / Prev Article Navigation Cards -->
-        <nav aria-label="Yazı gezintisi" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-          {prevPost ? (
+        <nav aria-label="Döküman gezintisi" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {prevDoc ? (
             <a
-              href={`/posts/${getPostSlug(prevPost)}`}
-              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2"
+              href={prevDoc.href}
+              class="group px-3.5 py-2.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/30 hover:bg-[var(--bg-subtle)]/80 hover:border-[var(--accent-border)] transition-all flex flex-col justify-between gap-1"
             >
-              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center gap-1.5 transition-colors">
-                <span aria-hidden="true">←</span> Önceki Yazı
-              </span>
-              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
-                {prevPost.data.title}
+              <div class="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors min-w-0">
+                <span aria-hidden="true">←</span>
+                <span>Önceki</span>
+                <span class="text-[var(--border-strong)]">·</span>
+                <span class="truncate">{prevDoc.sectionTitle}</span>
+              </div>
+              <span class="font-sans text-[12.5px] sm:text-[13px] font-medium text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-1 sm:line-clamp-2 leading-snug transition-colors">
+                {prevDoc.title}
               </span>
             </a>
           ) : (
             <div class="hidden sm:block"></div>
           )}
 
-          {nextPost && (
+          {nextDoc && (
             <a
-              href={`/posts/${getPostSlug(nextPost)}`}
-              class="group p-4 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between space-y-2 text-right sm:col-start-2"
+              href={nextDoc.href}
+              class="group px-3.5 py-2.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/30 hover:bg-[var(--bg-subtle)]/80 hover:border-[var(--accent-border)] transition-all flex flex-col justify-between gap-1 text-right sm:col-start-2"
             >
-              <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center justify-end gap-1.5 transition-colors">
-                Sonraki Yazı <span aria-hidden="true">→</span>
-              </span>
-              <span class="font-serif text-sm sm:text-[15px] text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-2 leading-snug transition-colors">
-                {nextPost.data.title}
+              <div class="flex items-center justify-end gap-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors min-w-0">
+                <span class="truncate">{nextDoc.sectionTitle}</span>
+                <span class="text-[var(--border-strong)]">·</span>
+                <span>Sonraki</span>
+                <span aria-hidden="true">→</span>
+              </div>
+              <span class="font-sans text-[12.5px] sm:text-[13px] font-medium text-[var(--text)] group-hover:text-[var(--accent)] line-clamp-1 sm:line-clamp-2 leading-snug transition-colors">
+                {nextDoc.title}
               </span>
             </a>
           )}
@@ -213,31 +224,17 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
       id="article-right-panel"
       class="hidden xl:block w-72 2xl:w-80 shrink-0 border-l border-[var(--border)] bg-[var(--bg)] px-5 py-8 space-y-5 self-start sticky top-0 max-h-screen overflow-y-auto transition-all duration-300 select-none"
     >
-      <!-- Panel Header with Close Button -->
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+      <!-- Panel Header -->
+      <div class="border-b border-[var(--border)] pb-2 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
         <span>Gezinti & Notlar</span>
-        <button
-          type="button"
-          id="close-right-panel-btn"
-          class="text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] p-1 rounded-[2px] cursor-pointer transition-colors"
-          title="Sağ Paneli Gizle"
-          aria-label="Sağ Paneli Gizle"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
       </div>
 
       <!-- TOC Card -->
       {tocHeadings.length > 0 && (
         <div class="border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4 rounded-[2px] space-y-3">
-          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-              Bu Yazıda (İçindekiler)
-            </span>
-            <span>{tocHeadings.length} Başlık</span>
+          <div class="flex items-center gap-1.5 border-b border-[var(--border)] pb-2.5 text-[11px] font-mono text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
+            <span>İçindekiler</span>
           </div>
 
           <nav aria-label="İçindekiler" class="space-y-1 text-xs font-sans max-h-[calc(100vh-25rem)] overflow-y-auto pr-1">
@@ -359,52 +356,11 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
     </aside>
   </div>
 
-  <!-- Collapsible Right Panel & Scrollspy Script -->
+  <!-- Table of Contents Scrollspy Script -->
   <script is:inline>
     (function() {
     function initArticlePage() {
-      // 1. Collapsible Right Panel Logic
-      const rightPanel = document.getElementById('article-right-panel');
-      const togglePanelBtn = document.getElementById('toggle-right-panel-btn');
-      const closePanelBtn = document.getElementById('close-right-panel-btn');
-      const panelBtnLabel = document.getElementById('right-panel-btn-label');
-
-      function setPanelCollapsed(collapsed) {
-        if (!rightPanel) return;
-        if (collapsed) {
-          rightPanel.classList.add('!hidden');
-          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Göster';
-          togglePanelBtn?.classList.add('border-[var(--accent)]', 'text-[var(--accent)]');
-          try { localStorage.setItem('article_panel_collapsed', 'true'); } catch (_) {}
-        } else {
-          rightPanel.classList.remove('!hidden');
-          if (panelBtnLabel) panelBtnLabel.textContent = 'Paneli Gizle';
-          togglePanelBtn?.classList.remove('border-[var(--accent)]', 'text-[var(--accent)]');
-          try { localStorage.setItem('article_panel_collapsed', 'false'); } catch (_) {}
-        }
-      }
-
-      if (togglePanelBtn) {
-        togglePanelBtn.onclick = () => {
-          const isCollapsed = rightPanel?.classList.contains('!hidden');
-          setPanelCollapsed(!isCollapsed);
-        };
-      }
-
-      if (closePanelBtn) {
-        closePanelBtn.onclick = () => {
-          setPanelCollapsed(true);
-        };
-      }
-
-      // Restore user preference
-      try {
-        if (localStorage.getItem('article_panel_collapsed') === 'true') {
-          setPanelCollapsed(true);
-        }
-      } catch (_) {}
-
-      // 2. Scrollspy for Table of Contents
+      // Scrollspy for Table of Contents
       const tocLinks = document.querySelectorAll('.toc-anchor-link');
       if (!tocLinks.length) return;
 
@@ -413,25 +369,63 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
       function onScroll() {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const offset = 120;
+        const windowHeight = window.innerHeight;
+        const docHeight = document.documentElement.scrollHeight;
+        const isNearBottom = (windowHeight + scrollY) >= (docHeight - 120);
 
         let currentActive = null;
-        for (let i = 0; i < headings.length; i++) {
-          const top = headings[i].getBoundingClientRect().top + scrollY - offset;
-          if (scrollY >= top) {
-            currentActive = headings[i].id;
+
+        if (isNearBottom) {
+          // When scrolled near or to the bottom of the page, choose the last visible heading
+          for (let i = headings.length - 1; i >= 0; i--) {
+            const rect = headings[i].getBoundingClientRect();
+            if (rect.top < windowHeight - 40) {
+              currentActive = headings[i].id;
+              break;
+            }
+          }
+          if (!currentActive && headings.length > 0) {
+            currentActive = headings[headings.length - 1].id;
+          }
+        } else {
+          // Normal reading line: heading passing 140px threshold
+          const threshold = 140;
+          for (let i = 0; i < headings.length; i++) {
+            const rect = headings[i].getBoundingClientRect();
+            if (rect.top <= threshold) {
+              currentActive = headings[i].id;
+            } else {
+              break;
+            }
+          }
+          if (!currentActive && headings.length > 0) {
+            currentActive = headings[0].id;
           }
         }
 
+        let activeLink = null;
         tocLinks.forEach(link => {
           const slug = link.getAttribute('data-heading-slug');
           if (slug === currentActive) {
             link.classList.add('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
+            activeLink = link;
           } else {
             link.classList.remove('bg-[var(--bg)]', 'text-[var(--accent)]', 'font-semibold', 'border-l-2', 'border-[var(--accent)]', 'pl-2');
           }
         });
+
+        // Auto-scroll active item into view inside the TOC container if needed
+        if (activeLink) {
+          activeLink.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
       }
+
+      // Add instant click sync to all TOC links
+      tocLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          setTimeout(onScroll, 80);
+        });
+      });
 
       window.removeEventListener('scroll', window.__articleScrollHandler);
       window.__articleScrollHandler = onScroll;

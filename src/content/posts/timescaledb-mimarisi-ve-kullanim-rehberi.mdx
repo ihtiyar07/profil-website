@@ -7,6 +7,7 @@ summary: "TimescaleDB eklentisinin timescaledb-ha Docker kurulumu, Hypertable ve
 tags: ["PostgreSQL", "TimescaleDB", "Veritabanı", "Docker"]
 ---
 import Mermaid from '../../components/Mermaid.astro';
+import References from '../../components/References.astro';
 
 **TimescaleDB**, standart PostgreSQL üzerine eklenti (extension) olarak çalışan açık kaynaklı bir zaman serisi motorudur. Yüksek frekanslı sensör, log veya finansal akışlar yüz milyonlarca satıra ulaştığında tekil B-Tree indeksleri `shared_buffers` alanına sığmaz ve her yazmada rastgele disk I/O oluşur. TimescaleDB bu darboğazı veriyi zaman aralıklarına göre otomatik alt tablolara (**Chunk**) bölerek ve eski verileri **Columnar** biçimde sıkıştırarak çözer.
 
@@ -178,3 +179,31 @@ TimescaleDB'nin iç mimarisi ve üretim pratikleri sekiz ayrı alt dökümanda e
    *Physical Streaming Replication altında Background Worker / Read Replica davranışı, failover denetimi ve `move_chunk()` ile Hot/Cold Tablespace yönetimi.*
 8. **[pgvectorscale ve TimescaleDB: StreamingDiskANN ile Hibrit Vektör Araması](/posts/pgvectorscale-ve-timescaledb-hibrit-vektor-mimarisi)**  
    *SBQ sıkıştırmalı `StreamingDiskANN` vs `HNSW` karşılaştırması, Hypertable Chunk Exclusion ve indeks içi `labels` filtrelemesi.*
+
+---
+
+<References
+  items={[
+    {
+      title: "TimescaleDB Documentation: Hypertables and Architecture",
+      url: "https://docs.timescale.com/use-timescale/latest/hypertables/",
+      type: "official",
+      author: "Timescale Inc.",
+      note: "PostgreSQL üzerinde zaman serisi veri modellemesi, hypertable yapısı ve şeffaf sorgu yönlendirme mimarisi."
+    },
+    {
+      title: "TimescaleDB Core Source: chunk.c & hypertable_cache.c",
+      url: "https://github.com/timescale/timescaledb/blob/master/src/chunk.c",
+      type: "source",
+      author: "Timescale Team",
+      note: "Chunk koordinat çözümlemesi, katalog metaveri önbellekleme ve sorgu planlayıcı entegrasyon kancaları."
+    },
+    {
+      title: "TimescaleDB: SQL Made Scalable for Time-Series Data",
+      url: "https://www.timescale.com/vldb-paper",
+      type: "paper",
+      author: "Michael J. Freedman et al.",
+      note: "VLDB 2018 yayını: İlişkisel veritabanı motoru üzerine inşa edilen zaman serisi mimarisinin akademik temelleri ve performans analizleri."
+    }
+  ]}
+/>

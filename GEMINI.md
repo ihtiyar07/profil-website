@@ -107,3 +107,18 @@ order: 1 # Parent altındaki sıralama sırası (1, 2, 3...)
 
 - **Tema Uyumu:** Tailwind CSS v4 ile `html[data-theme="dark"]` yapısı kullanılır. Sistem OS temasının açık moda sızmasını engellemek için `global.css` dosyasındaki `@custom-variant dark` kuralı asla silinmemelidir.
 - **Sıfır Hata Garantisi:** Yapılan her değişiklik sonrası `npx oxlint` ve `npx tsc --noEmit` ve `npm run build` komutları sıfır hata ile tamamlanmalıdır.
+
+---
+
+## 5. Teknik Lab ve Gerçek Kanıt (Evidence) Toplama Standartları
+
+Makalelerde yer alan terminal çıktıları, kıyaslama (benchmark) süreleri ve yapılandırma parametreleri mutlaka izole bir ortamda doğrulanmalıdır. Detaylı komut kalıpları ve senaryolar için [docs/LABS.md](file:///home/ihtiyar/Documents/hobi/profil-website/docs/LABS.md) dökümanı referans alınır.
+
+- **Host İzolasyonu & Geçici Konteyner:** Ana sisteme (Fedora) paket kurulamaz, harici sunucularda (`172.16.16.2`) deneysel test yapılamaz. Tüm testler izole ve geçici Docker konteynerlerinde (`--rm` veya test sonrası `docker rm -f -v`) yürütülür.
+- **Standart İmajlar:**
+  - PostgreSQL Çekirdek, `initdb`, `pg_checksums`, WAL: `postgres:18-alpine`
+  - Debian `pg_wrapper`, PGDG repo, `pg_lsclusters`, Multi-Instance: `debian:bookworm-slim`
+  - TimescaleDB, hypertable, sıkıştırma, `pgvectorscale`: `timescale/timescaledb-ha:pg16`
+  - Paralel bulk ingest: `timescale/timescaledb-parallel-copy:latest`
+  - REST API / Swagger UI: `postgrest/postgrest` ve `swaggerapi/swagger-ui`
+- **Sıfır Kalıntı Protokolü:** Test tamamlanıp gerçek konsol/SQL çıktıları makaleye aktarıldıktan sonra tüm konteynerler, anonim volume'ler ve geçici dosyalar sistemden tamamen temizlenmelidir.

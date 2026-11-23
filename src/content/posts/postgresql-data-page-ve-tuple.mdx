@@ -71,18 +71,52 @@ Tablo şemasında `NULL` olabilecek sütunlar varsa, her sütun için 1 bitlik b
 ### C. User Data (Sütun Değerleri / Payload)
 Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (binary) formatta sıralı saklanır. 2KB'ı aşan büyük sütunlar (büyük JSONB, uzun metinler) otomatik olarak ana data page'den ayrı **TOAST (The Oversized-Attribute Storage Technique)** tablolarına taşınır.
 
-> **Canlı Kanıt (`ctid`, `xmin`, `xmax`):** Her satırın fiziksel `(BlockNumber, OffsetNumber)` konumu ve MVCC XID başlıkları doğrudan SQL ile gözlemlenebilir:
-> ```text
-> SELECT ctid, xmin, xmax, relname FROM pg_class
-> WHERE relname IN ('pg_class', 'pg_attribute', 'pg_type');
->
->   ctid  | xmin | xmax |   relname    
-> --------+------+------+--------------
->  (7,68) |  544 |    0 | pg_attribute
->  (7,70) |  544 |    0 | pg_class
->  (0,47) |  544 |    0 | pg_type
-> ```
-> Burada `(7,68)` 7 numaralı 8KB sayfanın 68. Line Pointer'ını, `xmax = 0` ise tuple'ın hâlâ aktif olduğunu gösterir.
+---
+
+## 3. Canlı Sayfa Denetimi: `pageinspect` ve HOT Update Zinciri
+
+`t_ctid`, `t_xmin`, `t_xmax` başlıklarının ve sayfa içi serbest alanın (`fillfactor = 70`) pratikte nasıl çalıştığı çekirdeğin `pageinspect` eklentisiyle doğrudan veri bloklarından okunabilir:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pageinspect;
+
+-- fillfactor = 70 ile HOT (Heap-Only Tuple) dostu tablo
+CREATE TABLE accounts (id INT PRIMARY KEY, balance INT, note TEXT) WITH (fillfactor = 70);
+INSERT INTO accounts VALUES (1, 100, 'ilk kayit');
+
+-- İndekssiz bir sütunu güncelle (balance)
+UPDATE accounts SET balance = 150 WHERE id = 1;
+```
+
+Bu güncellemenin ardından 0 numaralı bloktaki line pointer ve tuple başlıkları incelendiğinde zincir doğrudan açığa çıkar:
+
+```text
+SELECT lp, lp_off, t_xmin, t_xmax, t_ctid,
+       CASE WHEN (t_infomask2 & 16384) > 0 THEN 'HEAP_HOT_UPDATED' ELSE 'NORMAL' END AS hot_updated,
+       CASE WHEN (t_infomask2 & 32768) > 0 THEN 'HEAP_ONLY_TUPLE' ELSE 'ROOT' END AS hot_tuple
+FROM heap_page_items(get_raw_page('accounts', 0));
+
+ lp | lp_off | t_xmin | t_xmax | t_ctid |   hot_updated    |    hot_tuple    
+----+--------+--------+--------+--------+------------------+-----------------
+  1 |   8144 |    755 |    756 | (0,2)  | HEAP_HOT_UPDATED | ROOT
+  2 |   8096 |    756 |      0 | (0,2)  | NORMAL           | HEAP_ONLY_TUPLE
+```
+
+* **Line Pointer 1:** Eski satır versiyonudur; `t_xmax = 756` ile sonlandırılmış ve `t_ctid` değeri sayfa içindeki yeni versiyonu `(0,2)` işaret etmiştir (`HEAP_HOT_UPDATED`).
+* **Line Pointer 2:** Yeni satır versiyonudur; `t_xmin = 756`, `t_xmax = 0` (aktif) durumdadır (`HEAP_ONLY_TUPLE`).
+
+**HOT Mekanizmasının İndeks Güvencesi:**
+B-Tree primary key indeks bloğu (`bt_page_items`) sorgulandığında, indeksin **yalnızca tek bir satır** içerdiği görülür:
+
+```text
+SELECT itemoffset, ctid FROM bt_page_items(get_raw_page('accounts_pkey', 1));
+
+ itemoffset | ctid  
+------------+-------
+          1 | (0,1)
+```
+
+İndeks yeni satır için `(0,2)` işaretçisi yazmamıştır. Arama motoru `accounts_pkey` üzerinden `(0,1)` line pointer'ına gelir; sayfa içi işaretçiyi (`t_ctid`) takip ederek doğrudan `(0,2)` verisine ulaşır. Böylece hem indeks boyutu şişmez (index bloat önlenir) hem de fazladan disk I/O yapılmaz. İndeksli bir sütun (`id`) güncellenseydi veya sayfada boş alan kalmasaydı HOT zinciri kırılacak ve indekse ikinci bir işaretçi yazılacaktı.
 
 ---
 

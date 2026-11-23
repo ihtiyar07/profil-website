@@ -129,6 +129,172 @@ docker rm -f -v ts-bench 2>/dev/null || true
 
 ---
 
+### Senaryo D: 8KB Page & HOT Update (`pageinspect`, `fillfactor = 70`)
+
+```bash
+docker run --rm -it postgres:18-alpine sh -c '
+  su postgres -c "initdb -D /tmp/pgdata >/dev/null && pg_ctl -D /tmp/pgdata start -w"
+  psql -U postgres -c "
+    CREATE EXTENSION pageinspect;
+    CREATE TABLE accounts (id INT PRIMARY KEY, balance INT, note TEXT) WITH (fillfactor = 70);
+    INSERT INTO accounts VALUES (1, 100, '\''ilk kayit'\'');
+    UPDATE accounts SET balance = 150 WHERE id = 1;
+    
+    -- Sayfa içi Line Pointer ve HEAP_HOT_UPDATED bayrak kontrolü:
+    SELECT lp, lp_off, t_xmin, t_xmax, t_ctid,
+           CASE WHEN (t_infomask2 & 16384) > 0 THEN '\''HEAP_HOT_UPDATED'\'' ELSE '\''NORMAL'\'' END AS hot_updated,
+           CASE WHEN (t_infomask2 & 32768) > 0 THEN '\''HEAP_ONLY_TUPLE'\'' ELSE '\''ROOT'\'' END AS hot_tuple
+    FROM heap_page_items(get_raw_page('\''accounts'\'', 0));
+
+    -- B-Tree indeksinin sadece tek bir (0,1) işaretçisi tuttuğunun kanıtı:
+    SELECT itemoffset, ctid FROM bt_page_items(get_raw_page('\''accounts_pkey'\'', 1));
+  "
+'
+```
+
+---
+
+### Senaryo E: `shared_buffers` & Clock Sweep (`pg_buffercache`)
+
+```bash
+docker run --rm -it postgres:18-alpine sh -c '
+  su postgres -c "initdb -D /tmp/pgdata >/dev/null && pg_ctl -D /tmp/pgdata start -w"
+  psql -U postgres -c "
+    CREATE EXTENSION pg_buffercache;
+    CREATE TABLE cache_demo (id INT, val TEXT);
+    INSERT INTO cache_demo VALUES (1, '\''test'\'');
+    
+    -- İlk INSERT sonrası usagecount = 1:
+    SELECT b.bufferid, b.relblocknumber, b.isdirty, b.usagecount, b.pinning_backends
+    FROM pg_buffercache b JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)
+    WHERE c.relname = '\''cache_demo'\'';
+
+    -- 3 kez SELECT et:
+    SELECT count(*) FROM cache_demo; SELECT count(*) FROM cache_demo; SELECT count(*) FROM cache_demo;
+
+    -- usagecount sayacının 4 e yükselişi:
+    SELECT b.bufferid, b.relblocknumber, b.isdirty, b.usagecount, b.pinning_backends
+    FROM pg_buffercache b JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)
+    WHERE c.relname = '\''cache_demo'\'';
+  "
+'
+```
+
+---
+
+### Senaryo F: `work_mem` Disk Spill vs In-Memory Quicksort
+
+```bash
+docker run --rm -it postgres:18-alpine sh -c '
+  su postgres -c "initdb -D /tmp/pgdata >/dev/null && pg_ctl -D /tmp/pgdata start -w"
+  psql -U postgres -c "
+    CREATE TABLE sort_test AS SELECT g, md5(g::text) as val FROM generate_series(1, 100000) g;
+    
+    \echo '\''=== 1. DISK SPILL (work_mem = 1MB) ==='\''
+    SET work_mem = '\''1MB'\'';
+    EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM sort_test ORDER BY val;
+
+    \echo '\''=== 2. IN-MEMORY QUICKSORT (work_mem = 32MB) ==='\''
+    SET work_mem = '\''32MB'\'';
+    EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM sort_test ORDER BY val;
+  "
+'
+```
+
+---
+
+### Senaryo G: Lock Queue Starvation (FIFO Kilit Kuyruğu Çıkmazı)
+
+```bash
+docker run --rm -d --name pg-lab-lock -e POSTGRES_PASSWORD=labpass postgres:18-alpine
+until docker exec pg-lab-lock pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+docker exec pg-lab-lock psql -U postgres -c "CREATE TABLE orders (id INT, item TEXT); INSERT INTO orders VALUES (1, 'Test');"
+
+# 1. Oturum: Açık SELECT
+docker exec -d pg-lab-lock psql -U postgres -c "BEGIN; SELECT * FROM orders; SELECT pg_sleep(15);"
+sleep 1
+
+# 2. Oturum: DDL (AccessExclusiveLock bekler)
+docker exec -d pg-lab-lock psql -U postgres -c "ALTER TABLE orders ADD COLUMN price INT;"
+sleep 1
+
+# 3. Oturum: Yeni gelen masum SELECT (2 nin arkasında bloklanır!)
+docker exec -d pg-lab-lock psql -U postgres -c "SELECT * FROM orders;"
+sleep 1
+
+# Kilit teşhisi:
+docker exec pg-lab-lock psql -U postgres -c "
+  SELECT pid, pg_blocking_pids(pid) AS blocked_by, wait_event_type, wait_event, state, left(query, 45) AS query
+  FROM pg_stat_activity 
+  WHERE query LIKE '%orders%' AND pid <> pg_backend_pid()
+  ORDER BY pid;
+"
+docker rm -f -v pg-lab-lock 2>/dev/null || true
+```
+
+---
+
+### Senaryo H: Crash Recovery & `pg_waldump` / REDO Replay
+
+```bash
+docker run -d --name pg-lab-crash -e POSTGRES_PASSWORD=labpass postgres:18-alpine
+until docker exec pg-lab-crash pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+docker exec -i pg-lab-crash psql -U postgres -c "CREATE TABLE crash_test (id INT, msg TEXT); INSERT INTO crash_test VALUES (1, 'survive_crash');"
+
+# WAL dökümü
+docker exec pg-lab-crash sh -c '
+  WAL_DIR="$PGDATA/pg_wal"
+  WAL_FILE=$(ls -t "$WAL_DIR"/0000* | head -n 1)
+  pg_waldump -p "$WAL_DIR" "$WAL_FILE" | grep -A 1 "INSERT" | tail -n 5
+'
+
+# Postmaster i aniden oldur ve yeniden baslat
+docker kill -s 9 pg-lab-crash
+sleep 1
+docker start pg-lab-crash
+sleep 3
+
+# Kurtarma loglarını ve veri tutarlılığını kontrol et:
+docker logs pg-lab-crash 2>&1 | grep -A 5 "automatic recovery in progress"
+docker exec pg-lab-crash psql -U postgres -c "SELECT * FROM crash_test;"
+docker rm -f -v pg-lab-crash 2>/dev/null || true
+```
+
+---
+
+### Senaryo I: Table Bloat & `VACUUM` vs `VACUUM FULL`
+
+```bash
+docker run --rm -it postgres:18-alpine sh -c '
+  su postgres -c "initdb -D /tmp/pgdata >/dev/null && pg_ctl -D /tmp/pgdata start -w"
+  psql -U postgres -c "
+    CREATE TABLE bloat_test (id INT, val TEXT) WITH (autovacuum_enabled = false);
+    INSERT INTO bloat_test SELECT g, '\''initial_data_'\'' || g FROM generate_series(1, 10000) g;
+    
+    \echo '\''=== 1. Baslangic Boyutu ==='\''
+    SELECT pg_size_pretty(pg_total_relation_size('\''bloat_test'\''));
+
+    -- 50.000 dead tuple biriktir:
+    UPDATE bloat_test SET val = '\''update_1_'\''; UPDATE bloat_test SET val = '\''update_2_'\'';
+    UPDATE bloat_test SET val = '\''update_3_'\''; UPDATE bloat_test SET val = '\''update_4_'\'';
+    UPDATE bloat_test SET val = '\''update_5_'\'';
+
+    \echo '\''=== 2. Bloat Sonrasi Boyut ==='\''
+    SELECT pg_size_pretty(pg_total_relation_size('\''bloat_test'\''));
+
+    VACUUM bloat_test;
+    \echo '\''=== 3. Standart VACUUM Sonrasi (Disk kuculmez) ==='\''
+    SELECT pg_size_pretty(pg_total_relation_size('\''bloat_test'\''));
+
+    VACUUM FULL bloat_test;
+    \echo '\''=== 4. VACUUM FULL Sonrasi (Disk iade edilir) ==='\''
+    SELECT pg_size_pretty(pg_total_relation_size('\''bloat_test'\''));
+  "
+'
+```
+
+---
+
 ## 4. Test Sonu Zorunlu Temizlik Protokolü
 
 Her test seansı bittikten sonra aşağıdaki komut çalıştırılarak sistemde artık kalmadığı teyit edilmelidir:

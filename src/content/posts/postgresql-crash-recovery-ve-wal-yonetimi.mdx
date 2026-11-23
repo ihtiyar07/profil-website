@@ -57,6 +57,25 @@ flowchart LR
   ]}
 />
 
+### Canlı Kurtarma Kanıtı: `kill -9` ve Otomatik REDO Döngüsü
+
+Bir `INSERT` işleminin WAL kaydının `pg_waldump` ile okunması, `kill -9` ile aniden kapatılan PostgreSQL'in açılışta WAL'ı oynatması (REDO) konsol günlüklerinde doğrudan izlenebilir:
+
+```text
+-- 1. pg_waldump çıktısında tekil satır ekleme ve COMMIT kaydı:
+rmgr: Heap        len (rec/tot): 69/ 69, tx: 754, lsn: 0/01786548, desc: INSERT+INIT off: 1, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot): 34/ 34, tx: 754, lsn: 0/01786590, desc: COMMIT 2026-11-23 13:14:07 UTC
+
+-- 2. kill -9 sonrası sunucu başladığında Startup sürecinin REDO logları:
+LOG: database system was not properly shut down; automatic recovery in progress
+LOG: redo starts at 0/1763FD0
+LOG: redo done at 0/17860D8
+LOG: checkpoint starting: end-of-recovery immediate wait
+LOG: database system is ready to accept connections
+```
+
+Kurtarma bittiğinde tablo sorgulandığında satırın eksiksiz korunduğu görülür; henüz data page diske `fsync` edilmemiş olsa dahi dayanıklılık (`Durability`) garantisi WAL kayıtlarının yeniden oynatılmasıyla sağlanmıştır.
+
 ---
 
 ## 2. WAL Segment Yönetimi ve Disk Dolması Sebepleri

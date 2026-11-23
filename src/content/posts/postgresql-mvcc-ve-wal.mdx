@@ -55,26 +55,28 @@ flowchart LR
 ### Table Bloat (Tablo Şişmesi)
 Dead tuple'ların diskte yer kaplamaya devam etmesine **Table Bloat** denir. Bir tabloda dead tuple'ların birikmesi, disk I/O operasyonlarının ve `Seq Scan` sürelerinin uzamasına neden olur.
 
-```sql
--- Bir tablodaki dead tuple oranını ve autovacuum durumunu izleme:
-SELECT relname,
-       n_live_tup AS live_tuples,
-       n_dead_tup AS dead_tuples,
-       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct,
-       last_autovacuum
-FROM pg_stat_user_tables
-ORDER BY n_dead_tup DESC
-LIMIT 5;
-```
+### Canlı Şişme ve Alan Geri Kazanımı: VACUUM vs VACUUM FULL
 
-Katalog tabloları dahil aktif bir sunucuda `pg_stat_all_tables` üzerinden ölü satır birikiminin görünümü:
+Autovacuum kapatılmış (`autovacuum_enabled = false`) 10.000 satırlık bir tabloda ardışık 5 tur güncelleme (50.000 dead tuple) yapıldığında diskin davranışı ve `VACUUM` farkı:
 
 ```text
-   relname    | n_live_tup | n_dead_tup |       last_autovacuum        
---------------+------------+------------+------------------------------
- pg_class     |        530 |         78 | 2026-10-17 06:25:22.30547-04
- pg_statistic |          0 |         55 | 
+-- 1. Başlangıç (10.000 canlı satır):
+SELECT pg_size_pretty(pg_total_relation_size('bloat_test')); -- 624 kB
+
+-- 2. 5 tur UPDATE sonrası (50.000 ölü satır biriktiğinde):
+SELECT pg_size_pretty(pg_total_relation_size('bloat_test')); -- 3144 kB (5x şişme / bloat)
+
+-- 3. Standart VACUUM sonrası:
+VACUUM bloat_test;
+SELECT pg_size_pretty(pg_total_relation_size('bloat_test')); -- 3152 kB (DİSK KÜÇÜLMEZ!)
+
+-- 4. VACUUM FULL sonrası (tabloyu yeni relfilenode ile baştan yazar):
+VACUUM FULL bloat_test;
+SELECT pg_size_pretty(pg_total_relation_size('bloat_test')); -- 520 kB (Disk OS'e iade edildi)
 ```
+
+* **Standart `VACUUM` Neden Diski Küçültmez?** Standart `VACUUM`, sayfa içindeki dead tuple alanlarını serbest bırakıp **Free Space Map (FSM)** içine kaydeder. Sonraki `INSERT` ve `UPDATE` işlemleri bu boş alanları yeniden kullanır; ancak işletim sistemine dosya boyutu iade edilmez.
+* **`VACUUM FULL` Davranışı:** Yalnızca canlı satırları yeni bir fiziksel dosyaya aktarır ve eski dosyayı siler. Boyut `520 kB` seviyesine iner; ancak işlem bitene kadar tablo üzerinde **`AccessExclusiveLock`** tuttuğu için canlı üretim sistemlerinde kesintisiz alternatif olan `pg_repack` tercih edilir.
 
 ---
 

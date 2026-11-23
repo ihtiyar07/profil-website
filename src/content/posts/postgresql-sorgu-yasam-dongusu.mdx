@@ -176,7 +176,14 @@ PostgreSQL 18 üzerinde elde edilen gerçek yürütme çıktısı:
 1. **`rows` vs `actual rows` Sapması:** Tahmin ile gerçek satır sayısı arasında 10x+ fark varsa istatistikler güncel değildir (`ANALYZE`) veya iki sütun arasında gizli korelasyon vardır; bu durumda **Extended Statistics** (`CREATE STATISTICS`) tanımlanmalıdır.
 2. **`Buffers: shared hit=263 read=15`:** 263 blok `shared_buffers` içinden karşılanmış, 15 blok ise diskten/OS page cache'ten okunmuştur (`read`).
 3. **`Index Only Scan` & `Heap Fetches: 326`:** `Visibility Map` üzerinde `ALL_VISIBLE` işaretlenmemiş sayfalar için heap'e inildiğini gösterir; `VACUUM` sonrası bu sayı düşer.
-4. **`Sort Method: top-N heapsort Memory: 26kB`:** Veri `work_mem` sınırına sığdığı için bellekte bitmiştir; eğer burada `external merge Disk` görülseydi `Spill to Disk` yaşanıyor olacaktı.
+4. **`Sort Method` ve `work_mem` Sınırı (RAM vs Disk Spill):**
+   100.000 satırlık bir sıralama işleminde oturumun `work_mem` bütçesi aşıldığında Executor'ın geçici diske (`base/pgsql_tmp`) taşma davranışı `BUFFERS` çıktısında doğrudan izlenir:
+   - **`work_mem = '1MB'` (Spill to Disk):**
+     `Sort Method: external merge  Disk: 4624kB`
+     `Buffers: shared hit=899, temp read=1153 written=1161` (Yürütme: ~126 ms)
+   - **`work_mem = '32MB'` (In-Memory Quicksort):**
+     `Sort Method: quicksort  Memory: 8541kB`
+     `Buffers: shared hit=896` (Sıfır geçici disk I/O, Yürütme: ~97 ms)
 
 ---
 

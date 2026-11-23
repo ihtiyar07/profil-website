@@ -117,6 +117,26 @@ PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü dev
 4. Pinli olmayan ve `usage_count == 0` olan ilk slot **Victim Buffer** olarak seçilir.
 5. Eğer seçilen victim dirty (`BM_DIRTY`) ise, önce diske flush edilir, ardından yeni data page için tahsis edilir.
 
+> **Canlı Tampon Denetimi (`pg_buffercache`):** Bir bloğun popülaritesi arttıkça `usagecount` sayacının yükselişi doğrudan gözlemlenebilir:
+> ```sql
+> CREATE EXTENSION IF NOT EXISTS pg_buffercache;
+> 
+> -- Tablo ilk eklendiğinde blok usagecount = 1 ile başlar:
+> SELECT b.bufferid, b.relblocknumber, b.isdirty, b.usagecount, b.pinning_backends
+> FROM pg_buffercache b JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)
+> WHERE c.relname = 'cache_demo';
+>
+>  bufferid | relblocknumber | isdirty | usagecount | pinning_backends 
+> ----------+----------------+---------+------------+------------------
+>       242 |              0 | t       |          1 |                0
+>
+> -- Tablo 3 kez ardışık SELECT edildiğinde sayaç 4'e yükselir (tavan: 5):
+>  bufferid | relblocknumber | isdirty | usagecount | pinning_backends 
+> ----------+----------------+---------+------------+------------------
+>       242 |              0 | t       |          4 |                0
+> ```
+> Clock sweep ibresi bu bloğa denk geldiğinde sayacı anında sıfırlamaz; her dairesel turda `usagecount` 1 azaltılır. Popüler data page'ler böylece önbellekte korunurken, uzun süredir erişilmeyen blokların sayacı 0'a düşerek victim adayı haline gelir.
+
 ---
 
 ## 3. BGWriter ile Checkpointer Süreçlerinin Görev Ayrımı

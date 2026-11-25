@@ -96,7 +96,7 @@ flowchart LR
 2. **`work_mem` Çarpım Hesabı:** `max_connections * tipik_operator_sayisi * work_mem < Kalan_Kullanılabilir_RAM` formülü doğrulanmalıdır.
 3. **Metrik Tabanlı Doğrulama:**
    - `pg_stat_database.blks_hit / (blks_hit + blks_read)` ile Buffer Cache Hit oranının **%99+** olup olmadığı kontrol edilir.
-   - `pg_stat_statements` ile en çok `temp_blks_written` (Spill to Disk) üreten sorgular tespit edilip yalnızca o kullanıcı veya sorgu bazında `work_mem` artırılır.
+   - [pg_stat_statements](/posts/postgresql-teshis-ve-dba-eklentileri) ile en çok `temp_blks_written` (Spill to Disk) üreten sorgular tespit edilip yalnızca o kullanıcı veya sorgu bazında `work_mem` artırılır.
    - `pg_statio_user_tables` ile indeks kullanım oranları izlenir.
 
 ---

@@ -1,0 +1,63 @@
+---
+import { getCollection } from 'astro:content';
+import { resolveLearningStages } from '../data/learningModules';
+
+const allPosts = await getCollection('posts');
+const stages = resolveLearningStages(allPosts);
+---
+
+<section id="modules" class="py-8 sm:py-10 border-b border-[var(--border)] scroll-mt-16">
+  <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+    <div class="space-y-1.5 max-w-3xl">
+      <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
+        Öğrenme Modülleri
+      </h2>
+      <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
+        Tüm makaleleri tek seferde taramak yerine, çekirdek PostgreSQL mimarisinden yüksek erişebilirliğe uzanan modüler serilerden başlayabilirsiniz.
+      </p>
+    </div>
+
+    <a
+      href="/ogrenme-rotasi"
+      class="shrink-0 font-mono text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-subtle)] border border-[var(--accent-border)] rounded-[2px] font-medium"
+    >
+      <span>Tam Öğrenme Rotası</span>
+      <span aria-hidden="true">→</span>
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {stages.map((stage) => (
+      <article class="group relative border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--accent)] transition-all duration-150 p-5 rounded-[2px] flex flex-col justify-between shadow-2xs hover:-translate-y-0.5">
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between gap-2 font-mono text-[11px]">
+            <span class="text-[var(--accent)] font-semibold">
+              MODÜL {stage.step}
+            </span>
+            <span class="px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-dim)]">
+              {stage.postCount} yazı
+            </span>
+          </div>
+
+          <h3 class="font-serif text-lg text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug">
+            <a href={stage.entryHref} class="focus:outline-none after:absolute after:inset-0 after:z-0">
+              {stage.title}
+            </a>
+          </h3>
+
+          <p class="text-xs sm:text-[13px] text-[var(--text-muted)] font-sans leading-relaxed line-clamp-3">
+            {stage.description}
+          </p>
+        </div>
+
+        <div class="pt-4 mt-4 border-t border-[var(--border)]/70 flex items-center justify-between gap-2 font-mono text-[11px]">
+          <span class="text-[var(--text-dim)] truncate">{stage.entryLabel}</span>
+          <span class="text-[var(--accent)] font-medium inline-flex items-center gap-1 shrink-0 group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
+            <span>Modüle Git</span>
+            <span>→</span>
+          </span>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>

@@ -13,33 +13,6 @@ PostgreSQL ile üretim ortamında çalışan bir mühendisin ilk kavraması gere
 
 Bu tasarım tercihi, bir client hatasının ya da bellek sızıntısının tüm veritabanı motorunu çökertmesini imkansız kılar; ancak beraberinde dikkatle yönetilmesi gereken bellek ve bağlantı dinamikleri getirir.
 
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
-  <a href="/posts/postgresql-bellek-yonetimi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Bellek</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">shared_buffers & Local Memory</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">4 katmanlı buffer pool, Clock Sweep eviction ve work_mem spill-to-disk.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-  <a href="/posts/postgresql-data-page-ve-tuple" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">02 · Depolama</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">8KB Data Page & Tuple</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Line Pointer indirection, Free Space dinamikleri ve 23B HeapTupleHeader.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-  <a href="/posts/postgresql-mvcc-ve-wal" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Eşzamanlılık</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">MVCC & WAL Mekanizması</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Dead Tuples, Autovacuum, HOT zincirleri ve Append-Only crash recovery.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-</div>
-
 ## 1. Bağlantı Modeli: Postmaster ve Backend Süreçleri
 
 PostgreSQL sunucusu ayağa kalktığında **`postmaster`** ana süreci çalışır ve gelen bağlantıları dinler. Client'tan yeni bir TCP isteği geldiğinde, `postmaster` işletim sisteminin `fork()` çağrısıyla bağımsız bir **`postgres` backend süreci** türetir.

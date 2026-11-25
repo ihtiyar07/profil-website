@@ -1,0 +1,148 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPostSlug } from '../data/slugUtils';
+import { resolveLearningStages } from '../data/learningModules';
+import {
+  calculateReadingTime,
+  getParentSlugSet,
+  resolvePostBadge
+} from '../utils/postHelpers';
+
+const allPosts = await getCollection('posts');
+const parentSlugs = getParentSlugSet(allPosts);
+const stages = resolveLearningStages(allPosts);
+
+const totalStagePosts = stages.reduce((acc, st) => acc + st.postCount, 0);
+---
+
+<BaseLayout
+  title="PostgreSQL Öğrenme Rotası — Ahmet İhtiyar"
+  description="Mimari temellerden kurulum, WAL, MVCC, kilit mekanizmaları ve HA operasyonlarına uzanan aşamalı PostgreSQL öğrenme haritası."
+  canonicalPath="/ogrenme-rotasi"
+>
+  <section class="py-4 sm:py-6 space-y-8">
+    <!-- Header -->
+    <div class="space-y-4 pb-6 border-b border-[var(--border)]">
+      <div class="flex items-center justify-between gap-2 font-mono text-xs text-[var(--text-dim)]">
+        <a
+          href="/"
+          class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1 transition-colors group"
+        >
+          <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
+          <span>Ana Sayfa</span>
+        </a>
+        <span class="px-2 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border)]">
+          {stages.length} Aşama · {totalStagePosts} Rehber
+        </span>
+      </div>
+
+      <h1 class="text-3xl sm:text-4xl font-serif text-[var(--text)] tracking-tight leading-[1.2]">
+        PostgreSQL Öğrenme Rotası
+      </h1>
+
+      <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed max-w-3xl">
+        Çekirdek süreç ve bellek mimarisinden başlayarak kurulum, crash recovery, MVCC, kilit analizi ve yüksek erişebilirlik katmanlarına ilerleyen yapılandırılmış çalışma sırası.
+      </p>
+
+      <!-- Quick Stage Jump Bar -->
+      <div class="flex flex-wrap items-center gap-2 pt-2">
+        {stages.map((stage) => (
+          <a
+            href={`#stage-${stage.id}`}
+            class="font-mono text-[11px] px-2.5 py-1 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] text-[var(--text-muted)] transition-colors"
+          >
+            {stage.step}. {stage.title}
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Step-by-Step Stages -->
+    <div class="space-y-10">
+      {stages.map((stage, stageIdx) => (
+        <section
+          id={`stage-${stage.id}`}
+          class="scroll-mt-20 border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] p-5 sm:p-7 shadow-2xs space-y-5"
+        >
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[var(--border)] pb-4">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 font-mono text-xs">
+                <span class="px-2 py-0.5 rounded-[2px] bg-[var(--accent)] text-white font-semibold">
+                  AŞAMA {stage.step}
+                </span>
+                <span class="text-[var(--text-dim)]">{stage.postCount} makale</span>
+              </div>
+              <h2 class="text-xl sm:text-2xl font-serif text-[var(--text)] tracking-tight">
+                {stage.title}
+              </h2>
+              <p class="text-xs sm:text-sm text-[var(--text-muted)] font-sans leading-relaxed max-w-3xl">
+                {stage.description}
+              </p>
+            </div>
+
+            {stageIdx < stages.length - 1 && (
+              <a
+                href={`#stage-${stages[stageIdx + 1].id}`}
+                class="shrink-0 self-start font-mono text-[11px] text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1"
+              >
+                <span>Sonraki Aşama</span>
+                <span aria-hidden="true">↓</span>
+              </a>
+            )}
+          </div>
+
+          <!-- Ordered Post List inside Stage -->
+          <div class="space-y-2.5">
+            {stage.posts.map((post, postIdx) => {
+              const slug = getPostSlug(post);
+              const readingTime = calculateReadingTime(post.body, post.data.readingTime);
+              const badge = resolvePostBadge(post, parentSlugs);
+              const num = String(postIdx + 1).padStart(2, '0');
+
+              return (
+                <a
+                  href={`/posts/${slug}`}
+                  class="group block p-3.5 sm:p-4 rounded-[2px] border border-[var(--border)]/80 bg-[var(--bg-subtle)]/35 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all"
+                >
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <span class="font-mono text-xs text-[var(--accent)] font-semibold shrink-0 mt-0.5">
+                        {stage.step}.{num}
+                      </span>
+                      <div class="space-y-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <h3 class="font-serif text-base text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug">
+                            {post.data.title}
+                          </h3>
+                          {badge && (
+                            <span class:list={[
+                              'font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] border shrink-0',
+                              badge === 'Ana Rehber'
+                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent-border)]'
+                                : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border-strong)]'
+                            ]}>
+                              {badge}
+                            </span>
+                          )}
+                        </div>
+                        <p class="text-xs text-[var(--text-muted)] font-sans line-clamp-2 leading-relaxed">
+                          {post.data.summary}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 shrink-0 pl-8 sm:pl-0 font-mono text-[11px] text-[var(--text-dim)]">
+                      <span>{readingTime}</span>
+                      <span class="text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden="true">→</span>
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

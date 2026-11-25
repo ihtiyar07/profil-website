@@ -175,6 +175,10 @@ export const navSections: NavSection[] = [
         href: '/posts/postgresql-extension-mimarisi-ve-c-hooks'
       },
       {
+        title: 'Teşhis & DBA Eklentileri',
+        href: '/posts/postgresql-teshis-ve-dba-eklentileri'
+      },
+      {
         title: 'TimescaleDB: Genel Bakış',
         href: '/posts/timescaledb-mimarisi-ve-kullanim-rehberi',
         children: [

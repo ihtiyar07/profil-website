@@ -1,0 +1,595 @@
+---
+// Command Palette Search Modal (Ctrl+K / Cmd+K) using MiniSearch + Build-time JSON Index
+---
+
+<div
+  id="search-modal"
+  class="fixed inset-0 z-[100] hidden items-start justify-center pt-[8vh] sm:pt-[12vh] px-4 pb-6"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="search-modal-title"
+  aria-hidden="true"
+>
+  <!-- Backdrop -->
+  <div
+    id="search-modal-backdrop"
+    class="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Modal Container -->
+  <div class="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-[2px] shadow-2xl overflow-hidden flex flex-col max-h-[78vh]">
+    <h2 id="search-modal-title" class="sr-only">Dokümantasyon Araması</h2>
+
+    <!-- Input Bar -->
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] bg-[var(--bg)]">
+      <svg class="w-4 h-4 text-[var(--accent)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <path stroke-linecap="round" d="m21 21-4.3-4.3" />
+      </svg>
+
+      <input
+        id="search-modal-input"
+        type="search"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Konu, parametre veya kavram ara (örn: pg_locks, vacuum, islem)..."
+        aria-label="Makale ve alt başlıklarda ara"
+        class="w-full bg-transparent text-sm sm:text-[15px] text-[var(--text)] placeholder:text-[var(--text-dim)] font-sans focus:outline-none"
+      />
+
+      <button
+        type="button"
+        id="search-modal-close-btn"
+        class="shrink-0 font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-dim)] hover:text-[var(--text)] cursor-pointer"
+        aria-label="Aramayı kapat (Esc)"
+      >
+        ESC
+      </button>
+    </div>
+
+    <!-- Results Container -->
+    <div id="search-modal-results" class="overflow-y-auto divide-y divide-[var(--border)]/70 p-2 space-y-1">
+      <!-- Populated dynamically by script -->
+    </div>
+
+    <!-- Footer Shortcuts Hint -->
+    <div class="px-4 py-2 border-t border-[var(--border)] bg-[var(--bg-subtle)]/70 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--text-dim)]">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1">
+          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">↑</kbd>
+          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">↓</kbd>
+          <span>Gezin</span>
+        </span>
+        <span class="inline-flex items-center gap-1">
+          <kbd class="px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">Enter</kbd>
+          <span>Aç</span>
+        </span>
+        <span class="inline-flex items-center gap-1">
+          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">Esc</kbd>
+          <span>Kapat</span>
+        </span>
+      </div>
+      <span id="search-status-text">Hazır</span>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  #search-modal mark {
+    background-color: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+</style>
+
+<script>
+  import MiniSearch from 'minisearch';
+
+  interface HeadingEntry {
+    depth: 2 | 3;
+    text: string;
+    slug: string;
+  }
+
+  interface SectionEntry {
+    headingSlug: string;
+    headingText: string;
+    text: string;
+  }
+
+  interface SearchItem {
+    id: string;
+    lang: string;
+    url: string;
+    title: string;
+    category: string;
+    section: string;
+    badge: string | null;
+    readingTime: string;
+    tags: string[];
+    summary: string;
+    headings: HeadingEntry[];
+    sections: SectionEntry[];
+  }
+
+  interface IndexedDoc extends SearchItem {
+    headingsText: string;
+    tagsText: string;
+    bodyText: string;
+  }
+
+  function normalizeTr(str: string): string {
+    if (!str) return '';
+    return str
+      .replace(/İ/g, 'i')
+      .replace(/I/g, 'ı')
+      .toLocaleLowerCase('tr-TR')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c');
+  }
+
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function highlightMatches(original: string, terms: string[]): string {
+    if (!original || !terms.length) return escapeHtml(original);
+
+    // Map each char in normalized string back to original char index (1-to-1 thanks to İ->i first)
+    const chars = Array.from(original);
+    const normChars = chars.map((ch) => normalizeTr(ch));
+    const normStr = normChars.join('');
+
+    const ranges: Array<[number, number]> = [];
+    for (const rawTerm of terms) {
+      const term = normalizeTr(rawTerm).trim();
+      if (term.length < 2) continue;
+      let startIdx = 0;
+      while (true) {
+        const found = normStr.indexOf(term, startIdx);
+        if (found === -1) break;
+        ranges.push([found, found + term.length]);
+        startIdx = found + term.length;
+      }
+    }
+
+    if (!ranges.length) return escapeHtml(original);
+
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged: Array<[number, number]> = [];
+    for (const r of ranges) {
+      if (!merged.length || r[0] > merged[merged.length - 1][1]) {
+        merged.push([...r]);
+      } else {
+        merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], r[1]);
+      }
+    }
+
+    let result = '';
+    let cursor = 0;
+    for (const [start, end] of merged) {
+      if (start > cursor) {
+        result += escapeHtml(chars.slice(cursor, start).join(''));
+      }
+      result += `<mark>${escapeHtml(chars.slice(start, end).join(''))}</mark>`;
+      cursor = end;
+    }
+    if (cursor < chars.length) {
+      result += escapeHtml(chars.slice(cursor).join(''));
+    }
+    return result;
+  }
+
+  function buildSnippet(item: SearchItem, terms: string[]): { text: string; headingSlug?: string } | null {
+    const cleanTerms = terms.map(normalizeTr).filter((t) => t.length >= 2);
+    if (!cleanTerms.length) return null;
+
+    // Look through sections for best match
+    for (const sec of item.sections) {
+      const normText = normalizeTr(sec.text);
+      for (const term of cleanTerms) {
+        const idx = normText.indexOf(term);
+        if (idx !== -1) {
+          const start = Math.max(0, idx - 55);
+          const end = Math.min(sec.text.length, idx + 115);
+          const prefix = start > 0 ? '…' : '';
+          const suffix = end < sec.text.length ? '…' : '';
+          return {
+            text: `${prefix}${sec.text.slice(start, end).trim()}${suffix}`,
+            headingSlug: sec.headingSlug || undefined,
+          };
+        }
+      }
+    }
+
+    // Fallback to summary if matched
+    const normSummary = normalizeTr(item.summary);
+    if (cleanTerms.some((t) => normSummary.includes(t))) {
+      return { text: item.summary };
+    }
+
+    return null;
+  }
+
+  let cachedItems: SearchItem[] | null = null;
+  let miniSearchInstance: MiniSearch<IndexedDoc> | null = null;
+  let itemById = new Map<string, SearchItem>();
+  let activeIndex = -1;
+  let previousFocus: Element | null = null;
+
+  async function ensureSearchIndex(): Promise<void> {
+    if (miniSearchInstance && cachedItems) return;
+
+    const statusEl = document.getElementById('search-status-text');
+    if (statusEl) statusEl.textContent = 'İndeks yükleniyor...';
+
+    const res = await fetch('/search-index.json');
+    if (!res.ok) throw new Error('Arama indeksi yüklenemedi');
+    const data = await res.json();
+    const activeLang = document.documentElement.getAttribute('lang') || 'tr';
+    const items: SearchItem[] = (data.items || []).filter(
+      (i: SearchItem) => (i.lang || 'tr') === activeLang
+    );
+
+    cachedItems = items;
+    itemById = new Map(items.map((i) => [i.id, i]));
+
+    const docs: IndexedDoc[] = items.map((item) => ({
+      ...item,
+      headingsText: item.headings.map((h) => h.text).join(' · '),
+      tagsText: item.tags.join(' '),
+      bodyText: item.sections.map((s) => s.text).join(' '),
+    }));
+
+    miniSearchInstance = new MiniSearch<IndexedDoc>({
+      fields: ['title', 'headingsText', 'tagsText', 'bodyText'],
+      storeFields: ['id', 'lang'],
+      processTerm: (term) => {
+        const clean = normalizeTr(term).replace(/[^a-z0-9_]/g, '');
+        return clean.length >= 2 ? clean : null;
+      },
+      searchOptions: {
+        boost: {
+          title: 5,
+          headingsText: 3.2,
+          tagsText: 2.2,
+          bodyText: 1,
+        },
+        prefix: true,
+        fuzzy: (term) => (term.length >= 5 ? 0.15 : false),
+        combineWith: 'AND',
+      },
+    });
+
+    miniSearchInstance.addAll(docs);
+    if (statusEl) statusEl.textContent = `${items.length} makale indekslendi`;
+  }
+
+  function renderDefaultSuggestions(container: HTMLElement): void {
+    const statusEl = document.getElementById('search-status-text');
+    const featuredIds = [
+      'postgresql-mimarisi-ve-calisma-prensipleri',
+      'postgresql-mvcc-transaction-ve-vacuum',
+      'postgresql-kilit-mekanizmalari-ve-eszamanlilik',
+      'postgresql-wal-ve-checkpoint-mimarisi',
+      'postgresql-teshis-ve-dba-eklentileri',
+    ];
+
+    const quickLinks = featuredIds
+      .map((id) => itemById.get(id))
+      .filter((i): i is SearchItem => Boolean(i));
+
+    if (statusEl && cachedItems) {
+      statusEl.textContent = `${cachedItems.length} makale hazır`;
+    }
+
+    let html = `
+      <div class="px-2 py-1.5">
+        <div class="text-[10px] font-mono uppercase tracking-wider text-[var(--text-dim)] px-2 pb-1.5">
+          Hızlı Erişim & Çekirdek Seriler
+        </div>
+        <a
+          href="/ogrenme-rotasi"
+          data-search-nav-item
+          class="search-nav-item flex items-center justify-between px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+        >
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] shrink-0">
+              ROTA
+            </span>
+            <span class="font-sans text-sm font-medium text-[var(--text)] truncate">
+              PostgreSQL Öğrenme Rotası (6 Aşama)
+            </span>
+          </div>
+          <span class="font-mono text-xs text-[var(--accent)] shrink-0">→</span>
+        </a>
+    `;
+
+    for (const item of quickLinks) {
+      html += `
+        <a
+          href="${item.url}"
+          data-search-nav-item
+          class="search-nav-item flex items-center justify-between px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+        >
+          <div class="min-w-0 pr-3">
+            <div class="text-sm font-serif text-[var(--text)] truncate">${escapeHtml(item.title)}</div>
+            <div class="text-[11px] font-mono text-[var(--text-dim)]">${escapeHtml(item.category)} · ${escapeHtml(item.readingTime)}</div>
+          </div>
+          <span class="font-mono text-xs text-[var(--text-dim)] shrink-0">→</span>
+        </a>
+      `;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+    activeIndex = -1;
+  }
+
+  function renderResults(query: string, container: HTMLElement): void {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      renderDefaultSuggestions(container);
+      return;
+    }
+
+    if (!miniSearchInstance) return;
+
+    const terms = trimmed.split(/\s+/).filter(Boolean);
+    const normalizedQuery = normalizeTr(trimmed);
+    let results = miniSearchInstance.search(normalizedQuery);
+
+    // Fallback to OR if AND yielded nothing for multi-word queries
+    if (results.length === 0 && terms.length > 1) {
+      results = miniSearchInstance.search(normalizedQuery, { combineWith: 'OR' });
+    }
+
+    const statusEl = document.getElementById('search-status-text');
+    if (statusEl) {
+      statusEl.textContent = `${results.length} sonuç bulundu`;
+    }
+
+    if (results.length === 0) {
+      container.innerHTML = `
+        <div class="py-10 px-4 text-center space-y-2">
+          <p class="text-sm font-sans text-[var(--text-muted)]">
+            "<span class="font-mono text-[var(--text)] font-semibold">${escapeHtml(trimmed)}</span>" için eşleşen sonuç bulunamadı.
+          </p>
+          <p class="text-xs font-mono text-[var(--text-dim)]">
+            Örnek aramalar: pg_locks, vacuum, shared_buffers, deadlock, advisory
+          </p>
+        </div>
+      `;
+      activeIndex = -1;
+      return;
+    }
+
+    const cleanTerms = terms.map(normalizeTr).filter((t) => t.length >= 2);
+    const topResults = results.slice(0, 12);
+    let html = '';
+
+    for (const res of topResults) {
+      const item = itemById.get(res.id);
+      if (!item) continue;
+
+      // 2. Seviye: Eşleşen H2 / H3 alt başlıkları
+      const matchingHeadings = item.headings
+        .filter((h) => {
+          const normH = normalizeTr(h.text);
+          return cleanTerms.some((t) => normH.includes(t));
+        })
+        .slice(0, 3);
+
+      // 3. Seviye: Gövde Snippet
+      const snippet = buildSnippet(item, terms);
+
+      html += `
+        <div class="py-2 px-1.5 space-y-1">
+          <!-- Level 1: Article Title + Category -->
+          <a
+            href="${item.url}"
+            data-search-nav-item
+            class="search-nav-item block px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+          >
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+              <div class="flex items-center gap-1.5 min-w-0 font-mono text-[10.5px]">
+                <span class="px-1.5 py-0.5 rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] font-medium truncate">
+                  ${escapeHtml(item.category)}
+                </span>
+                ${item.badge ? `<span class="px-1.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] text-[var(--text-dim)] border border-[var(--border)]">${escapeHtml(item.badge)}</span>` : ''}
+              </div>
+              <span class="font-mono text-[10.5px] text-[var(--text-dim)] shrink-0">${escapeHtml(item.readingTime)}</span>
+            </div>
+
+            <div class="font-serif text-[15.5px] text-[var(--text)] leading-snug">
+              ${highlightMatches(item.title, terms)}
+            </div>
+
+            ${
+              snippet
+                ? `<p class="mt-1 text-xs font-sans text-[var(--text-muted)] line-clamp-2 leading-relaxed">${highlightMatches(snippet.text, terms)}</p>`
+                : ''
+            }
+          </a>
+
+          <!-- Level 2: Indented Matching H2/H3 Headings -->
+          ${
+            matchingHeadings.length > 0
+              ? `<div class="pl-5 ml-3 border-l border-[var(--border-strong)] space-y-0.5">
+                  ${matchingHeadings
+                    .map(
+                      (h) => `
+                    <a
+                      href="${item.url}#${h.slug}"
+                      data-search-nav-item
+                      class="search-nav-item flex items-center justify-between gap-2 px-2.5 py-1 rounded-[2px] text-xs font-sans text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+                    >
+                      <span class="flex items-center gap-1.5 min-w-0 truncate">
+                        <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0">${h.depth === 2 ? 'H2' : 'H3'}</span>
+                        <span class="truncate">${highlightMatches(h.text, terms)}</span>
+                      </span>
+                      <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0">#</span>
+                    </a>
+                  `
+                    )
+                    .join('')}
+                </div>`
+              : ''
+          }
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+    activeIndex = 0;
+    updateActiveNavVisual();
+  }
+
+  function updateActiveNavVisual(): void {
+    const items = document.querySelectorAll<HTMLElement>('#search-modal-results [data-search-nav-item]');
+    items.forEach((el, idx) => {
+      if (idx === activeIndex) {
+        el.classList.add('bg-[var(--bg-subtle)]', 'border-[var(--accent-border)]');
+        el.scrollIntoView({ block: 'nearest' });
+      } else {
+        el.classList.remove('bg-[var(--bg-subtle)]', 'border-[var(--accent-border)]');
+      }
+    });
+  }
+
+  async function openSearchModal(): Promise<void> {
+    const modal = document.getElementById('search-modal');
+    const input = document.getElementById('search-modal-input') as HTMLInputElement | null;
+    const resultsEl = document.getElementById('search-modal-results');
+    if (!modal || !input || !resultsEl) return;
+
+    // Close mobile sidebar if open
+    const closeSidebar = (window as unknown as { __closeMobileSidebar?: (r: boolean) => void }).__closeMobileSidebar;
+    if (typeof closeSidebar === 'function') {
+      closeSidebar(false);
+    }
+
+    previousFocus = document.activeElement;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    input.focus();
+
+    try {
+      await ensureSearchIndex();
+      renderResults(input.value, resultsEl);
+    } catch (_) {
+      resultsEl.innerHTML = `<div class="p-6 text-center text-xs font-mono text-red-500">Arama indeksi yüklenirken bir hata oluştu.</div>`;
+    }
+  }
+
+  function closeSearchModal(): void {
+    const modal = document.getElementById('search-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+
+    if (previousFocus instanceof HTMLElement) {
+      previousFocus.focus();
+    }
+    previousFocus = null;
+  }
+
+  function initSearchModal(): void {
+    if ((window as unknown as { __searchModalBound?: boolean }).__searchModalBound) return;
+    (window as unknown as { __searchModalBound?: boolean }).__searchModalBound = true;
+
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+
+      if (target.closest('.search-trigger-btn')) {
+        e.preventDefault();
+        openSearchModal();
+        return;
+      }
+
+      if (target.closest('#search-modal-backdrop') || target.closest('#search-modal-close-btn')) {
+        closeSearchModal();
+        return;
+      }
+
+      if (target.closest('#search-modal-results [data-search-nav-item]')) {
+        closeSearchModal();
+      }
+    });
+
+    document.addEventListener('input', (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLInputElement) || target.id !== 'search-modal-input') return;
+      const resultsEl = document.getElementById('search-modal-results');
+      if (resultsEl) {
+        renderResults(target.value, resultsEl);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      // Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const modal = document.getElementById('search-modal');
+        if (modal?.classList.contains('hidden')) {
+          openSearchModal();
+        } else {
+          closeSearchModal();
+        }
+        return;
+      }
+
+      const modal = document.getElementById('search-modal');
+      if (!modal || modal.classList.contains('hidden')) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSearchModal();
+        return;
+      }
+
+      const items = document.querySelectorAll<HTMLAnchorElement>('#search-modal-results [data-search-nav-item]');
+      if (!items.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIndex = (activeIndex + 1) % items.length;
+        updateActiveNavVisual();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+        updateActiveNavVisual();
+      } else if (e.key === 'Enter') {
+        const selected = activeIndex >= 0 ? items[activeIndex] : items[0];
+        if (selected) {
+          e.preventDefault();
+          closeSearchModal();
+          selected.click();
+        }
+      }
+    });
+
+    document.addEventListener('astro:after-swap', closeSearchModal);
+  }
+
+  initSearchModal();
+</script>

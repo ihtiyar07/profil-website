@@ -3,12 +3,15 @@ import '../styles/global.css';
 import { ClientRouter } from 'astro:transitions';
 import Sidebar from '../components/Sidebar.astro';
 import Footer from '../components/Footer.astro';
+import SearchModal from '../components/SearchModal.astro';
 import { SITE_META } from '../data/siteMeta';
 
 export interface Props {
   title?: string;
   description?: string;
   canonicalPath?: string;
+  lang?: 'tr' | 'en';
+  translationKey?: string;
   articleMeta?: {
     publishDate: string;
     tags: string[];
@@ -20,6 +23,8 @@ const {
   title = SITE_META.title,
   description = SITE_META.bioShort,
   canonicalPath = '',
+  lang = 'tr',
+  translationKey,
   articleMeta,
   fullWidth = false
 } = Astro.props;
@@ -37,7 +42,7 @@ const jsonLd = {
   "@type": "Person",
   "name": "Ahmet İhtiyar",
   "url": SITE_META.siteUrl,
-  "jobTitle": "Veritabanı & Depolama",
+  "jobTitle": "PostgreSQL & Veritabanı Mimarı",
   "address": {
     "@type": "PostalAddress",
     "addressLocality": "İstanbul",
@@ -48,21 +53,20 @@ const jsonLd = {
     SITE_META.linkedin
   ],
   "knowsAbout": [
-    "Database Architecture",
     "PostgreSQL Internals",
+    "MVCC & Vacuum Architecture",
+    "PostgreSQL Locking & Concurrency",
+    "WAL & Crash Recovery",
+    "Zero-Downtime DDL Migrations",
     "TimescaleDB & Hypertables",
-    "Storage Engines & ZFS",
-    "Zero-Impact Metadata Extraction",
-    "Memgraph Schema Lineage",
-    "Apache Arrow IPC",
-    "Distributed Systems",
+    "Patroni High Availability",
     "Query Performance Tuning"
   ]
 };
 ---
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang={lang} data-translation-key={translationKey}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -158,6 +162,9 @@ const jsonLd = {
         <Footer />
       </div>
     </div>
+
+    <!-- Global Search Command Palette Modal -->
+    <SearchModal />
 
     <!-- Global Accessible Toast Notification -->
     <div id="global-toast" role="status" aria-live="polite">

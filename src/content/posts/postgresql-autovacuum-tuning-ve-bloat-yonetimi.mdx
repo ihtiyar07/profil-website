@@ -1,7 +1,7 @@
 ---
 title: "Autovacuum ve Bloat Yönetimi: Tuning, FSM, HOT ve pg_repack"
 slug: "postgresql-autovacuum-tuning-ve-bloat-yonetimi"
-date: "2026-11-23"
+date: "2026-11-25"
 lang: "tr"
 summary: "PostgreSQL autovacuum tetikleme formülü, cost-based delay optimizasyonu, fillfactor ile HOT başarısı, bloat tespiti ve pg_repack ile kesintisiz temizlik."
 tags: ["PostgreSQL", "Autovacuum", "Bloat", "HOT", "Performans", "Laboratuvar"]
@@ -65,35 +65,53 @@ ALTER TABLE accounts SET (fillfactor = 80);
 
 ---
 
-## 4. Laboratuvar: Dead Tuple Üretimi ve Autovacuum İzleme
+## 4. Laboratuvar: `pgstattuple` ile Gerçek Bloat ve FSM Analizi
 
-### Adım 1: Test Tablosu Açma ve Dead Tuple Üretme
+`pg_stat_user_tables` tablosundaki `n_dead_tup` sayacı yalnızca ölü satır adedini gösterir; `VACUUM` çalıştıktan sonra sayfalarda kalan ancak işletim sistemine geri verilmeyen boş alanı (**free space bloat**) yakalamaz. Fiziksel gerçeği ölçmek için [Teşhis & DBA Eklentileri](/posts/postgresql-teshis-ve-dba-eklentileri) rehberinde detaylandırılan `pgstattuple` eklentisi kullanılır.
+
+### Adım 1: Test Tablosu ve Dead Tuple Üretme
 ```sql
+CREATE EXTENSION IF NOT EXISTS pgstattuple;
+
 CREATE TABLE bloat_test (id int PRIMARY KEY, payload text) WITH (autovacuum_enabled = false);
+INSERT INTO bloat_test SELECT g, repeat('x', 100) || g FROM generate_series(1, 20000) g;
 
-INSERT INTO bloat_test SELECT g, 'veri_' || g FROM generate_series(1, 20000) g;
-
--- 10.000 satırı güncelleyerek dead tuple oluşturalım:
-UPDATE bloat_test SET payload = 'guncel_' || id WHERE id <= 10000;
+-- 10.000 satırı güncelleyerek ölü satırlar oluşturalım:
+UPDATE bloat_test SET payload = repeat('y', 100) || id WHERE id <= 10000;
 ```
 
-### Adım 2: Dead Tuple Oranını İnceleme
+### Adım 2: `VACUUM` Öncesi ve Sonrası Bloat Ölçümü
 ```sql
-SELECT relname, n_live_tup, n_dead_tup,
-       round(n_dead_tup * 100.0 / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct
-FROM pg_stat_user_tables
-WHERE relname = 'bloat_test';
+SELECT table_len, tuple_count, tuple_percent, dead_tuple_count, dead_tuple_percent, free_space, free_percent
+FROM pgstattuple('bloat_test');
 ```
-Çıktıda 10.000 canlı satır ve 10.000 dead tuple (`dead_pct = 50.00%`) görünür.
 
-### Adım 3: Autovacuum'u Manuel Tetikleme ve Sonuç
-```sql
-VACUUM VERBOSE bloat_test;
+Güncelleme sonrası gerçek fiziksel tablo durumu:
+```text
+ table_len | tuple_count | tuple_percent | dead_tuple_count | dead_tuple_percent | free_space | free_percent 
+-----------+-------------+---------------+------------------+--------------------+------------+--------------
+   4243456 |       20000 |         62.89 |            10000 |              31.32 |      28952 |         0.68
+(1 row)
 ```
-Konsolda kaç adet dead tuple'ın temizlendiği ve kaç byte alanın geri kazanıldığı adım adım listelenir.
+
+Şimdi standart `VACUUM` çalıştırıp `pgstattuple` sorgusunu tekrarlayalım:
+```sql
+VACUUM bloat_test;
+SELECT table_len, tuple_count, tuple_percent, dead_tuple_count, dead_tuple_percent, free_space, free_percent
+FROM pgstattuple('bloat_test');
+```
+
+```text
+ table_len | tuple_count | tuple_percent | dead_tuple_count | dead_tuple_percent | free_space | free_percent 
+-----------+-------------+---------------+------------------+--------------------+------------+--------------
+   4243456 |       20000 |         62.89 |                0 |                  0 |    1428168 |        33.66
+(1 row)
+```
+
+Görüldüğü gibi `dead_tuple_count` sıfırlanmış olsa da `table_len` (`4.24 MB`) küçülmemiş, tablonun **%33.66**'lık kısmı yeniden kullanım için `free_space` (FSM) olarak kalmıştır.
 
 > [!TIP]
-> Production ortamında şişmiş bir tabloyu sıfır kilit ve kesintisiz (`online`) küçültmek için `VACUUM FULL` yerine topluluk standardı olan **`pg_repack`** eklentisi kullanılmalıdır.
+> Production ortamında şişmiş bir tabloyu sıfır kilit ve kesintisiz (`online`) küçültmek için `VACUUM FULL` yerine topluluk standardı olan **`pg_repack`** eklentisi kullanılmalıdır. İndeks şişmesini ölçmek için ise `pgstatindex('index_adi')` kullanılır.
 
 <References
   items={[

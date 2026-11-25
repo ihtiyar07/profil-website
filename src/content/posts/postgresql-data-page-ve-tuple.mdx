@@ -75,7 +75,7 @@ Tablonun sütun değerleri (`id`, `created_at`, `amount` vb.) diskte ikili (bina
 
 ## 3. Canlı Sayfa Denetimi: `pageinspect` ve HOT Update Zinciri
 
-`t_ctid`, `t_xmin`, `t_xmax` başlıklarının ve sayfa içi serbest alanın (`fillfactor = 70`) pratikte nasıl çalıştığı çekirdeğin `pageinspect` eklentisiyle doğrudan veri bloklarından okunabilir:
+`t_ctid`, `t_xmin`, `t_xmax` başlıklarının ve sayfa içi serbest alanın (`fillfactor = 70`) pratikte nasıl çalıştığı çekirdeğin [pageinspect](/posts/postgresql-teshis-ve-dba-eklentileri) eklentisiyle doğrudan veri bloklarından okunabilir:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pageinspect;

@@ -90,10 +90,10 @@ export async function getStaticPaths() {
     {
       params: { slug: 'index' },
       props: {
-        title: 'Büyük ölçekli veritabanları, depolama motorları ve sıfır etkili (zero-impact) veri altyapıları üzerine çalışan veritabanı mimarı.',
-        subtitle: 'Ahmet İhtiyar — Veritabanı Mimarı | İstanbul',
-        badge: 'Veritabanı Mimarisi',
-        meta: 'PostgreSQL · TimescaleDB · Memgraph · Arrow',
+        title: 'PostgreSQL iç mimarisi, MVCC, kilit mekanizmaları ve production operasyonları üzerine uygulamalı mühendislik rehberi.',
+        subtitle: 'Ahmet İhtiyar — PostgreSQL & Veritabanı Mimarisi | İstanbul',
+        badge: 'PostgreSQL Mimarisi',
+        meta: 'PostgreSQL · MVCC · Locks · TimescaleDB · Patroni',
       },
     },
   ];

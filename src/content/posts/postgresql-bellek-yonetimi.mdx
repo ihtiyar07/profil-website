@@ -117,7 +117,7 @@ PostgreSQL geleneksel LRU (Least Recently Used) kuyruğu kullanmaz; çünkü dev
 4. Pinli olmayan ve `usage_count == 0` olan ilk slot **Victim Buffer** olarak seçilir.
 5. Eğer seçilen victim dirty (`BM_DIRTY`) ise, önce diske flush edilir, ardından yeni data page için tahsis edilir.
 
-> **Canlı Tampon Denetimi (`pg_buffercache`):** Bir bloğun popülaritesi arttıkça `usagecount` sayacının yükselişi doğrudan gözlemlenebilir:
+> **Canlı Tampon Denetimi ([pg_buffercache](/posts/postgresql-teshis-ve-dba-eklentileri)):** Bir bloğun popülaritesi arttıkça `usagecount` sayacının yükselişi doğrudan gözlemlenebilir:
 > ```sql
 > CREATE EXTENSION IF NOT EXISTS pg_buffercache;
 > 

@@ -13,35 +13,6 @@ PostgreSQL'de yüksek performans ve güvenilirlik, donanım kaynaklarının moto
 
 Üretim sistemlerinde parametre yönetimi; statik formülleri ezbere uygulamak değil, değişikliklerin yeniden başlatma (`restart`) gereksinimini ve oturum bazlı etkilerini bilerek yönetmektir.
 
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-6 not-prose">
-  <a href="/posts/postgresql-konfigurasyon-dosyalari-ve-hba" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">01 · Dosyalar &amp; Ağ</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">postgresql.conf, ALTER SYSTEM ve HBA</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">postgresql.auto.conf önceliği, include dizinleri, pg_hba.conf ve pg_ident.conf kuralları.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-  <a href="/posts/postgresql-parametre-baglamlari-ve-hiyerarsi" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">02 · Bağlamlar &amp; Öncelik</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">postmaster vs sighup ve Override Hiyerarşisi</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Restart vs Reload kararı, ALTER ROLE/DATABASE SET ve 8 katmanlı parametre öncelik piramidi.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-  <a href="/posts/postgresql-parametre-gruplari-ve-tuning" class="group p-3.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)]/40 hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] transition-all flex flex-col justify-between">
-    <div>
-      <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold block mb-1">03 · Tuning Metodolojisi</span>
-      <h4 class="font-serif text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] leading-snug">Parametre Grupları ve Tuning</h4>
-      <p class="text-xs text-[var(--text-muted)] font-sans mt-1.5 leading-relaxed">Bellek, WAL, autovacuum ve logging grupları; PGTune sınırları ve metrik odaklı tuning.</p>
-    </div>
-    <span class="font-mono text-[11px] text-[var(--text-dim)] group-hover:text-[var(--accent)] mt-3 flex items-center gap-1">İncele →</span>
-  </a>
-</div>
-
----
-
 ## 1. Konfigürasyon Katmanları ve Parametre Yaşam Döngüsü
 
 PostgreSQL konfigürasyonu tek bir düz metin dosyasından ibaret değildir. Sistem açılışında dosya sisteminden okunan küme seviyesi ayarlardan, bir sorgunun sadece yürütüldüğü işlem bloğuna (`SET LOCAL`) kadar uzanan çok katmanlı bir yapı bulunur:

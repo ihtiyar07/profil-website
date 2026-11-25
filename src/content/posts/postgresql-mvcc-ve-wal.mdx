@@ -13,6 +13,9 @@ import References from '../../components/References.astro';
 
 PostgreSQL, yüksek eşzamanlı sorgu trafiğinde okuma ve yazma işlemlerinin birbirini bloklamaması için **MVCC (Multi-Version Concurrency Control)** mimarisini; donanım arızalarında veya ani çökmelerde veri kaybını önlemek için ise **WAL (Write-Ahead Logging)** mekanizmasını kullanır.
 
+> [!NOTE]
+> Bu makale **Mimari & Süreç Modeli** kapsamında özet bir bakış sunar. Konuların laboratuvarlı ve ileri seviye incelemeleri için **[MVCC, Transaction & Vacuum](/posts/postgresql-mvcc-transaction-ve-vacuum)** serisine ve **[WAL & Checkpoint Düzeni](/posts/postgresql-wal-ve-checkpoint-mimarisi)** rehberine geçebilirsiniz.
+
 ## 1. MVCC Prensipleri ve Güncelleme Maliyeti
 
 MVCC'nin temel kuralı şudur:

@@ -1,66 +1,77 @@
 ---
 import { getCollection } from 'astro:content';
 import { getPostSlug } from '../data/slugUtils';
+import {
+  calculateReadingTime,
+  getParentSlugSet,
+  resolvePostBadge,
+  sortPostsSmart
+} from '../utils/postHelpers';
 
 const allPosts = await getCollection('posts');
-const posts = allPosts
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+const posts = sortPostsSmart(allPosts);
+const parentSlugs = getParentSlugSet(allPosts);
 
-// Primary topic tags for focused filtering:
-const coreTopicTags = [
-  { name: 'PostgreSQL', label: 'PostgreSQL' },
-  { name: 'TimescaleDB', label: 'TimescaleDB' },
-  { name: 'Kilitler', label: 'Kilitler' },
-  { name: 'MVCC', label: 'MVCC & Vacuum' }
-];
+const RECENT_LIMIT = 8;
 
-const filterTags = coreTopicTags.map(topic => ({
-  name: topic.name,
-  label: topic.label
-}));
+// Dynamically compute tag counts from active posts (no hardcoded tags)
+const tagCounts = new Map<string, number>();
+for (const post of posts) {
+  for (const rawTag of post.data.tags) {
+    const tag = rawTag.trim();
+    if (!tag) continue;
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+  }
+}
+
+const dynamicTags = Array.from(tagCounts.entries())
+  .filter(([, count]) => count >= 2)
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'tr'))
+  .slice(0, 12)
+  .map(([name, count]) => ({ name, count }));
 ---
 
 <section id="articles" class="py-8 sm:py-10 border-b border-[var(--border)] scroll-mt-16">
-  <!-- Section Title & Narrative -->
+  <!-- Section Title & Count -->
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
     <div class="space-y-1.5 max-w-3xl">
       <h2 class="text-2xl sm:text-3xl font-serif text-[var(--text)] tracking-tight">
-        Yazılar & Notlar
+        Son Eklenenler & Arşiv
       </h2>
       <p class="text-sm sm:text-base text-[var(--text-muted)] font-sans leading-relaxed">
-        Öğrendiklerimi, sahadaki deneyimlerimi ve veritabanı altyapıları üzerine hazırladığım adım adım teknik rehberleri burada paylaşıyorum.
+        En güncel {RECENT_LIMIT} teknik yazı aşağıda listelenir; etiket seçerek filtreleyebilir veya tüm arşivi tek tıkla genişletebilirsiniz.
       </p>
     </div>
 
-    <!-- Post Count Indicator -->
-    <div class="shrink-0 flex items-center">
-      <span id="filter-count-indicator" class="font-mono text-xs text-[var(--text-dim)] px-2.5 py-1 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]">
-        {posts.length} yazı
+    <div class="shrink-0 flex items-center gap-2">
+      <span
+        id="filter-count-indicator"
+        class="font-mono text-xs text-[var(--text-dim)] px-2.5 py-1 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-[2px]"
+      >
+        {Math.min(RECENT_LIMIT, posts.length)} / {posts.length} yazı
       </span>
     </div>
   </div>
 
-  <!-- Interactive Tag Filtering Bar (Horizontal scroll on mobile without wrapping) -->
-  <div class="mb-6 flex items-center gap-2 overflow-x-auto flex-nowrap whitespace-nowrap pb-1 scrollbar-none select-none" role="toolbar" aria-label="Yazı etiket filtreleri">
-    <!-- "Tümü" Button -->
+  <!-- Dynamic Tag Filter Bar -->
+  <div class="mb-6 flex items-center gap-2 overflow-x-auto flex-nowrap whitespace-nowrap pb-1 scrollbar-none select-none" role="toolbar" aria-label="Dinamik yazı etiket filtreleri">
     <button
       type="button"
       data-tag-filter="all"
       class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--accent)] text-white font-medium border border-[var(--accent)] shadow-2xs is-active shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       aria-pressed="true"
     >
-      Tümü
+      Tümü ({posts.length})
     </button>
 
-    <!-- Tag Buttons -->
-    {filterTags.map((tag) => (
+    {dynamicTags.map((tag) => (
       <button
         type="button"
         data-tag-filter={tag.name}
         class="article-filter-btn px-3 py-1.5 text-xs font-mono rounded-[2px] transition-all cursor-pointer bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] hover:border-[var(--text-dim)] shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         aria-pressed="false"
       >
-        {tag.label}
+        {tag.name} ({tag.count})
       </button>
     ))}
   </div>
@@ -80,24 +91,49 @@ const filterTags = coreTopicTags.map(topic => ({
     </button>
   </div>
 
-  <!-- Editorial Articles Directory (2-Column Grid with Equal Height Cards) -->
-  <div id="articles-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-    {posts.map((post) => {
+  <!-- Editorial Articles Grid -->
+  <div id="articles-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5" data-total-posts={posts.length} data-recent-limit={RECENT_LIMIT}>
+    {posts.map((post, idx) => {
       const slug = getPostSlug(post);
       const postUrl = `/posts/${slug}`;
       const postTagsAttr = post.data.tags.join(',');
+      const readingTime = calculateReadingTime(post.body, post.data.readingTime);
+      const badge = resolvePostBadge(post, parentSlugs);
+      const isOverflow = idx >= RECENT_LIMIT;
+
       return (
         <article
-          class="article-item group relative border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--accent)] transition-all duration-150 p-5 sm:p-6 rounded-[2px] flex flex-col justify-between h-full hover:-translate-y-0.5 shadow-2xs focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:border-transparent"
+          class:list={[
+            'article-item group relative border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--accent)] transition-all duration-150 p-5 sm:p-6 rounded-[2px] flex flex-col justify-between h-full hover:-translate-y-0.5 shadow-2xs focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:border-transparent',
+            isOverflow && 'hidden'
+          ]}
           data-tags={postTagsAttr}
+          data-overflow={isOverflow ? 'true' : 'false'}
         >
           <div class="flex-1 space-y-3 mb-4">
-            <!-- Date -->
-            <div class="font-mono text-xs text-[var(--text-dim)]">
-              <time datetime={post.data.date} style={`view-transition-name: post-date-${slug};`}>{post.data.date}</time>
+            <!-- Date + Reading Time + Optional Badge -->
+            <div class="flex items-center justify-between gap-2 font-mono text-xs text-[var(--text-dim)]">
+              <div class="flex items-center gap-2 min-w-0">
+                <time datetime={post.data.date} style={`view-transition-name: post-date-${slug};`}>
+                  {post.data.date}
+                </time>
+                <span aria-hidden="true">·</span>
+                <span class="text-[11px]">{readingTime}</span>
+              </div>
+
+              {badge && (
+                <span class:list={[
+                  'px-2 py-0.5 text-[10px] rounded-[2px] font-medium shrink-0 border',
+                  badge === 'Ana Rehber'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent-border)]'
+                    : 'bg-[var(--bg-subtle)] text-[var(--text-muted)] border-[var(--border-strong)]'
+                ]}>
+                  {badge}
+                </span>
+              )}
             </div>
 
-            <!-- Title with full-card clickable ::after link and shared-element view-transition-name -->
+            <!-- Title -->
             <h3 class="font-serif text-lg sm:text-xl text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug" style={`view-transition-name: post-title-${slug};`}>
               <a href={postUrl} class="focus:outline-none after:absolute after:inset-0 after:z-0">
                 {post.data.title}
@@ -110,17 +146,16 @@ const filterTags = coreTopicTags.map(topic => ({
             </p>
           </div>
 
-          <!-- Bottom Footer Row: Tags + Read Link (mt-auto) -->
+          <!-- Bottom Footer Row -->
           <div class="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-[var(--border)]/70">
-            <!-- Tags (Primary category prominent, others calm) -->
             <div class="flex flex-wrap items-center gap-1.5 relative z-10">
-              {post.data.tags.slice(0, 3).map((tag, idx) => (
+              {post.data.tags.slice(0, 3).map((tag, tagIdx) => (
                 <button
                   type="button"
                   data-tag-click={tag}
                   class:list={[
                     "article-tag-badge font-mono text-[10px] px-2 py-0.5 rounded-[2px] transition-colors cursor-pointer",
-                    idx === 0
+                    tagIdx === 0
                       ? "bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] font-medium hover:bg-[var(--accent)] hover:text-white"
                       : "bg-[var(--bg-subtle)] text-[var(--text-dim)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   ]}
@@ -131,7 +166,6 @@ const filterTags = coreTopicTags.map(topic => ({
               ))}
             </div>
 
-            <!-- Read Link Indicator -->
             <div class="font-mono text-xs text-[var(--accent)] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform shrink-0 font-medium select-none" aria-hidden="true">
               <span>Yazıyı Oku</span>
               <span>→</span>
@@ -141,9 +175,24 @@ const filterTags = coreTopicTags.map(topic => ({
       );
     })}
   </div>
+
+  <!-- Archive Expand / Collapse Toggle -->
+  {posts.length > RECENT_LIMIT && (
+    <div id="archive-toggle-container" class="mt-6 flex justify-center">
+      <button
+        type="button"
+        id="archive-toggle-btn"
+        aria-expanded="false"
+        class="h-10 px-5 border border-[var(--border-strong)] bg-[var(--bg-card)] hover:bg-[var(--bg-subtle)] hover:border-[var(--accent)] text-[var(--text)] hover:text-[var(--accent)] transition-colors text-xs font-mono font-medium inline-flex items-center gap-2 rounded-[2px] shadow-2xs cursor-pointer"
+      >
+        <span id="archive-toggle-label">Tüm Arşivi Gör ({posts.length} yazı)</span>
+        <span id="archive-toggle-arrow" aria-hidden="true">↓</span>
+      </button>
+    </div>
+  )}
 </section>
 
-<!-- Client-side Interactive Tag Filter Script -->
+<!-- Client-side Interactive Tag Filter & Archive Expand Script -->
 <script is:inline>
   (function() {
     function initArticleFiltering() {
@@ -155,13 +204,24 @@ const filterTags = coreTopicTags.map(topic => ({
       const resetBtn = document.getElementById('reset-filter-btn');
       const countIndicator = document.getElementById('filter-count-indicator');
       const tagBadges = document.querySelectorAll('.article-tag-badge');
+      const archiveToggleBtn = document.getElementById('archive-toggle-btn');
+      const archiveToggleLabel = document.getElementById('archive-toggle-label');
+      const archiveToggleArrow = document.getElementById('archive-toggle-arrow');
+      const archiveToggleContainer = document.getElementById('archive-toggle-container');
 
-      if (!filterButtons.length || !articleItems.length) return;
+      if (!filterButtons.length || !articleItems.length || !articlesList) return;
+
+      const totalPosts = Number(articlesList.getAttribute('data-total-posts') || articleItems.length);
+      const recentLimit = Number(articlesList.getAttribute('data-recent-limit') || 8);
+      let isArchiveExpanded = false;
+      let currentTag = 'all';
 
       function normalizeTag(str) {
         if (!str) return '';
         return str
           .trim()
+          .replace(/İ/g, 'i')
+          .replace(/I/g, 'ı')
           .toLocaleLowerCase('tr-TR')
           .replace(/ğ/g, 'g')
           .replace(/ü/g, 'u')
@@ -175,19 +235,35 @@ const filterTags = coreTopicTags.map(topic => ({
       function matchTag(articleTagNorm, targetNorm) {
         if (!articleTagNorm || !targetNorm) return false;
         if (articleTagNorm === targetNorm) return true;
-        // Allow prefix matching for shorthands like postgres -> postgresql, timescale -> timescaledb
         if (targetNorm.length >= 3 && articleTagNorm.startsWith(targetNorm)) return true;
         return false;
       }
 
+      function updateArchiveButtonUI(isAll) {
+        if (!archiveToggleContainer || !archiveToggleBtn || !archiveToggleLabel || !archiveToggleArrow) return;
+        if (!isAll) {
+          archiveToggleContainer.classList.add('hidden');
+          return;
+        }
+        archiveToggleContainer.classList.remove('hidden');
+        archiveToggleBtn.setAttribute('aria-expanded', String(isArchiveExpanded));
+        if (isArchiveExpanded) {
+          archiveToggleLabel.textContent = `Son ${recentLimit} Yazıya Daralt`;
+          archiveToggleArrow.textContent = '↑';
+        } else {
+          archiveToggleLabel.textContent = `Tüm Arşivi Gör (${totalPosts} yazı)`;
+          archiveToggleArrow.textContent = '↓';
+        }
+      }
+
       function filterArticles(targetTag, updateUrl = true) {
         const isAll = !targetTag || targetTag === 'all' || targetTag === 'tumu' || targetTag === 'Tümü';
+        currentTag = isAll ? 'all' : targetTag;
         const cleanTarget = normalizeTag(targetTag);
 
         let visibleCount = 0;
 
-        // 1. Update filter toolbar button active states
-        filterButtons.forEach(btn => {
+        filterButtons.forEach((btn) => {
           const btnTag = btn.getAttribute('data-tag-filter');
           const isBtnActive = (isAll && btnTag === 'all') || (!isAll && matchTag(normalizeTag(btnTag), cleanTarget));
 
@@ -202,27 +278,19 @@ const filterTags = coreTopicTags.map(topic => ({
           }
         });
 
-        // 2. Sync sidebar topic tags active indicator
-        const sidebarTopicTags = document.querySelectorAll('.sidebar-topic-tag');
-        sidebarTopicTags.forEach(stTag => {
-          const rawTag = stTag.getAttribute('data-tag');
-          const isMatch = !isAll && matchTag(normalizeTag(rawTag), cleanTarget);
-          if (isMatch) {
-            stTag.classList.remove('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
-            stTag.classList.add('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]', 'font-medium');
-          } else {
-            stTag.classList.remove('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]', 'font-medium');
-            stTag.classList.add('bg-[var(--bg-subtle)]', 'text-[var(--text-dim)]', 'border-[var(--border)]');
-          }
-        });
-
-        // 3. Filter article cards with smooth reveal
-        articleItems.forEach(item => {
+        articleItems.forEach((item) => {
           const rawTags = item.getAttribute('data-tags') || '';
           const tagsArray = rawTags.split(',').map(normalizeTag);
-          const matches = isAll || tagsArray.some(t => matchTag(t, cleanTarget));
+          const isOverflow = item.getAttribute('data-overflow') === 'true';
 
-          if (matches) {
+          let shouldShow = false;
+          if (isAll) {
+            shouldShow = isArchiveExpanded || !isOverflow;
+          } else {
+            shouldShow = tagsArray.some((t) => matchTag(t, cleanTarget));
+          }
+
+          if (shouldShow) {
             const wasHidden = item.classList.contains('hidden');
             if (wasHidden) {
               item.classList.remove('hidden');
@@ -243,24 +311,27 @@ const filterTags = coreTopicTags.map(topic => ({
           }
         });
 
-        // 4. Update count indicator
         if (countIndicator) {
-          countIndicator.textContent = `${visibleCount} yazı`;
+          if (isAll && !isArchiveExpanded && totalPosts > recentLimit) {
+            countIndicator.textContent = `${visibleCount} / ${totalPosts} yazı`;
+          } else {
+            countIndicator.textContent = `${visibleCount} yazı`;
+          }
         }
 
-        // 5. Empty state and list visibility
+        updateArchiveButtonUI(isAll);
+
         if (emptyState) {
           if (visibleCount === 0) {
             emptyState.classList.remove('hidden');
             if (emptyTagSpan) emptyTagSpan.textContent = targetTag;
-            if (articlesList) articlesList.classList.add('hidden');
+            articlesList.classList.add('hidden');
           } else {
             emptyState.classList.add('hidden');
-            if (articlesList) articlesList.classList.remove('hidden');
+            articlesList.classList.remove('hidden');
           }
         }
 
-        // 6. Update URL (using pushState for browser history back/forward navigation)
         if (updateUrl && window.history && window.history.pushState) {
           try {
             const url = new URL(window.location.href);
@@ -279,39 +350,41 @@ const filterTags = coreTopicTags.map(topic => ({
         }
       }
 
-      // Expose globally for Sidebar and other components
       window.filterArticlesByTag = filterArticles;
 
-      // Filter button click events
-      filterButtons.forEach(btn => {
+      filterButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
           const tag = btn.getAttribute('data-tag-filter') || 'all';
           filterArticles(tag, true);
         });
       });
 
-      // Tag badge clicks inside article cards
-      tagBadges.forEach(badge => {
+      tagBadges.forEach((badge) => {
         badge.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           const tag = badge.getAttribute('data-tag-click');
           if (tag) {
             filterArticles(tag, true);
-            const section = document.getElementById('articles');
-            if (section) {
-              section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            document.getElementById('articles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         });
       });
 
-      // Reset button click
+      if (archiveToggleBtn) {
+        archiveToggleBtn.addEventListener('click', () => {
+          isArchiveExpanded = !isArchiveExpanded;
+          filterArticles(currentTag, false);
+          if (!isArchiveExpanded) {
+            document.getElementById('articles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
+
       if (resetBtn) {
         resetBtn.addEventListener('click', () => filterArticles('all', true));
       }
 
-      // History navigation (Back / Forward button popstate)
       window.addEventListener('popstate', (e) => {
         try {
           const urlParams = new URLSearchParams(window.location.search);
@@ -322,19 +395,15 @@ const filterTags = coreTopicTags.map(topic => ({
         }
       });
 
-      // Read initial tag from URL (supports both standard ?tag= and fallback #articles?tag=)
       try {
         const urlParams = new URLSearchParams(window.location.search);
         let initialTag = urlParams.get('tag');
         if (!initialTag && window.location.hash.includes('tag=')) {
           const match = window.location.hash.match(/[?&]tag=([^&#]+)/);
-          if (match) {
-            initialTag = decodeURIComponent(match[1]);
-          }
+          if (match) initialTag = decodeURIComponent(match[1]);
         }
         if (initialTag) {
           filterArticles(initialTag, false);
-          // If loaded with a specific tag filter, scroll to articles section
           window.requestAnimationFrame(() => {
             const section = document.getElementById('articles');
             if (section && window.scrollY < 100) {

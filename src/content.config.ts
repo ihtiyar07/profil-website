@@ -12,11 +12,14 @@ const posts = defineCollection({
     slug: z.string().optional(),
     date: z.string(),
     summary: z.string(),
-    lang: z.literal('tr').default('tr'),
+    lang: z.enum(['tr', 'en']).default('tr'),
+    translationKey: z.string().optional(),
+    badge: z.string().optional(),
     tags: z.array(z.string()),
     readingTime: z.string().optional(),
     parent: z.string().optional(),
     order: z.number().optional(),
+    priority: z.number().optional(),
   }),
 });
 

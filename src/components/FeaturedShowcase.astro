@@ -6,18 +6,18 @@ const allPosts = await getCollection('posts');
 
 const cornerstoneSlugs = [
   { slug: 'postgresql-mimarisi-ve-calisma-prensipleri', tag: 'MİMARİ' },
-  { slug: 'postgresql-bellek-yonetimi', tag: 'BELLEK' },
-  { slug: 'timescaledb-mimarisi-ve-kullanim-rehberi', tag: 'TIMESERIES' },
+  { slug: 'postgresql-mvcc-transaction-ve-vacuum', tag: 'MVCC & VACUUM' },
   { slug: 'postgresql-kilit-mekanizmalari-ve-eszamanlilik', tag: 'KİLİTLER' },
-  { slug: 'patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover', tag: 'HA & FAILOVER' }
+  { slug: 'postgresql-wal-ve-checkpoint-mimarisi', tag: 'WAL & RECOVERY' },
+  { slug: 'patroni-ile-postgresql-yuksek-erisebilirlik-ve-otomatik-failover', tag: 'PATRONİ HA' }
 ];
 
 const featuredPosts = cornerstoneSlugs
-  .map(item => {
-    const post = allPosts.find(p => getPostSlug(p) === item.slug);
+  .map((item) => {
+    const post = allPosts.find((p) => getPostSlug(p) === item.slug);
     return post ? { post, tag: item.tag } : null;
   })
-  .filter((item): item is { post: any; tag: string } => item !== null);
+  .filter((item): item is { post: NonNullable<typeof allPosts[number]>; tag: string } => item !== null);
 ---
 
 <section id="showcase" class="py-8 sm:py-10 border-b border-[var(--border)] scroll-mt-16">
@@ -25,18 +25,16 @@ const featuredPosts = cornerstoneSlugs
     <!-- Sol Kutu: ÖNE ÇIKAN REHBERLER -->
     <div class="border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] p-5 sm:p-6 flex flex-col justify-between shadow-2xs">
       <div>
-        <!-- Kutu Başlığı -->
         <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-3.5">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-            <h3 class="font-mono text-xs uppercase tracking-wider font-semibold text-[var(--text)]">
+            <h2 class="font-mono text-xs uppercase tracking-wider font-semibold text-[var(--text)]">
               Öne Çıkan Rehberler
-            </h3>
+            </h2>
           </div>
-          <span class="font-mono text-[11px] text-[var(--text-dim)]">05 Temel Rehber</span>
+          <span class="font-mono text-[11px] text-[var(--text-dim)]">05 Çekirdek Seri</span>
         </div>
 
-        <!-- Rehberler Listesi -->
         <div class="space-y-2">
           {featuredPosts.map(({ post, tag }, idx) => {
             const slug = getPostSlug(post);
@@ -51,9 +49,9 @@ const featuredPosts = cornerstoneSlugs
                   </span>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline justify-between gap-2">
-                      <h4 class="font-serif text-sm sm:text-[15px] font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug line-clamp-1">
+                      <h3 class="font-serif text-sm sm:text-[15px] font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors leading-snug line-clamp-1">
                         {post.data.title}
-                      </h4>
+                      </h3>
                       <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0 hidden sm:inline">
                         #{tag}
                       </span>
@@ -70,10 +68,10 @@ const featuredPosts = cornerstoneSlugs
       </div>
 
       <div class="pt-3.5 mt-3 border-t border-[var(--border)]/70 flex items-center justify-between text-xs font-mono">
-        <span class="text-[var(--text-dim)]">Çekirdek altyapı notları</span>
-        <a href="#articles" class="text-[var(--accent)] hover:underline inline-flex items-center gap-1 font-medium">
-          <span>Tüm Yazılar</span>
-          <span aria-hidden="true">↓</span>
+        <span class="text-[var(--text-dim)]">Çekirdek PostgreSQL mimarisi</span>
+        <a href="/ogrenme-rotasi" class="text-[var(--accent)] hover:underline inline-flex items-center gap-1 font-medium">
+          <span>Öğrenme Rotası</span>
+          <span aria-hidden="true">→</span>
         </a>
       </div>
     </div>
@@ -81,18 +79,16 @@ const featuredPosts = cornerstoneSlugs
     <!-- Sağ Kutu: MİMARİ ODAK & PRENSİPLER -->
     <div class="border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] p-5 sm:p-6 flex flex-col justify-between shadow-2xs">
       <div>
-        <!-- Kutu Başlığı -->
         <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-3.5">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-[var(--accent)]" aria-hidden="true"></span>
-            <h3 class="font-mono text-xs uppercase tracking-wider font-semibold text-[var(--text)]">
+            <h2 class="font-mono text-xs uppercase tracking-wider font-semibold text-[var(--text)]">
               Mimari Odak & Prensipler
-            </h3>
+            </h2>
           </div>
           <span class="font-mono text-[11px] text-[var(--text-dim)]">Üretim Kriterleri</span>
         </div>
 
-        <!-- Prensipler Listesi -->
         <div class="space-y-3.5 text-xs font-sans">
           <div class="space-y-0.5">
             <div class="flex items-center gap-1.5 font-mono text-xs font-semibold text-[var(--text)]">
@@ -107,20 +103,20 @@ const featuredPosts = cornerstoneSlugs
           <div class="space-y-0.5">
             <div class="flex items-center gap-1.5 font-mono text-xs font-semibold text-[var(--text)]">
               <span class="text-[var(--accent)]">▸</span>
-              <span>Zero-Copy Apache Arrow IPC</span>
+              <span>MVCC, HOT & Bloat Kontrolü</span>
             </div>
             <p class="text-[var(--text-muted)] leading-relaxed pl-3.5">
-              Veritabanından istemciye (tarayıcı/servis) veri aktarımında JSON serileştirme darboğazını ortadan kaldıran sütunsal ikili (binary) bellek paylaşımı.
+              <code class="font-mono text-[11px] bg-[var(--bg-subtle)] px-1 py-0.5 rounded">fillfactor</code>, Heap-Only Tuple zincirleri ve agresif autovacuum maliyet ayarlarıyla XID wraparound ve disk şişmesinin önlenmesi.
             </p>
           </div>
 
           <div class="space-y-0.5">
             <div class="flex items-center gap-1.5 font-mono text-xs font-semibold text-[var(--text)]">
               <span class="text-[var(--accent)]">▸</span>
-              <span>Depolama & ZFS Blok Optimizasyonu</span>
+              <span>Zero-Downtime DDL & Lock Güvenliği</span>
             </div>
             <p class="text-[var(--text-muted)] leading-relaxed pl-3.5">
-              PostgreSQL'in 8KB Data Page yapısı ile ZFS recordsize bloklarının birebir hizalanması, Write Amplification eliminasyonu ve NVMe ARC/L2ARC katmanlaması.
+              <code class="font-mono text-[11px] bg-[var(--bg-subtle)] px-1 py-0.5 rounded">CONCURRENTLY</code> indeksleme, <code class="font-mono text-[11px] bg-[var(--bg-subtle)] px-1 py-0.5 rounded">NOT VALID</code> kısıtlar ve kısa <code class="font-mono text-[11px] bg-[var(--bg-subtle)] px-1 py-0.5 rounded">lock_timeout</code> retry döngüleriyle Lock Queue Starvation önlemi.
             </p>
           </div>
 
@@ -137,8 +133,8 @@ const featuredPosts = cornerstoneSlugs
       </div>
 
       <div class="pt-3.5 mt-3 border-t border-[var(--border)]/70 flex items-center justify-between text-xs font-mono">
-        <span class="text-[var(--text-dim)]">Donanım & Motor</span>
-        <span class="text-[var(--text-dim)] font-mono text-[11px]">PostgreSQL · TimescaleDB · ZFS</span>
+        <span class="text-[var(--text-dim)]">Odak Teknolojiler</span>
+        <span class="text-[var(--text-dim)] font-mono text-[11px]">PostgreSQL · TimescaleDB · Patroni</span>
       </div>
     </div>
   </div>

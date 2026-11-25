@@ -1,7 +1,7 @@
 ---
 title: "Deadlock ve Timeout Yönetimi: Algılama Döngüsü ve Savunma Parametreleri"
 slug: "postgresql-deadlock-ve-timeout-yonetimi"
-date: "2026-11-23"
+date: "2026-11-25"
 lang: "tr"
 summary: "PostgreSQL'de deadlock algılama döngüsü, deadlock_timeout mekanizması, log grafiklerinin analizi, lock_timeout ve idle_in_transaction_session_timeout ile savunma."
 tags: ["PostgreSQL", "Deadlock", "Timeout", "Eşzamanlılık", "Laboratuvar"]
@@ -108,7 +108,25 @@ Eğer Terminal 1 satırı tutuyorsa Terminal 2 tam 200 ms sonra beklemeden çık
 ERROR:  canceling statement due to lock timeout
 ```
 
-Bu pratik, mikroservis ve API mimarilerinde connection pool tükenmesini engelleyen en kritik resilience desenidir.
+### Adım 3: `idle_in_transaction_session_timeout` ile Atıl Oturumu Düşürme
+Bir uygulamanın `BEGIN` dedikten sonra açık unuttuğu transaksiyonların kilit ve `xmin` tutmasını engellemek için:
+
+```sql
+SET idle_in_transaction_session_timeout = '1s';
+BEGIN;
+SELECT 1;
+-- 2 saniye hiçbir sorgu göndermeden beklenir...
+SELECT 2;
+```
+
+Zaman aşımı dolduğu anda sunucu bağlantıyı otomatik keser ve tutulan tüm kilitleri serbest bırakır:
+
+```text
+FATAL:  terminating connection due to idle-in-transaction timeout
+server closed the connection unexpectedly
+```
+
+Bu pratikler, mikroservis ve API mimarilerinde connection pool tükenmesini engelleyen en kritik resilience desenidir.
 
 <References
   items={[

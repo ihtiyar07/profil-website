@@ -1,7 +1,7 @@
 ---
 title: "Zero-Downtime DDL Rehberi: Lock Queue Starvation ve Güvenli Migrasyon"
 slug: "postgresql-zero-downtime-ddl-rehberi"
-date: "2026-11-23"
+date: "2026-11-25"
 lang: "tr"
 summary: "Production PostgreSQL ortamlarında kesintisiz şema değişimi, Lock Queue Starvation tuzağı, CONCURRENTLY indeksleme, NOT VALID kısıtları ve lock_timeout ile retry deseni."
 tags: ["PostgreSQL", "DDL", "Zero-Downtime", "Migrasyon", "Laboratuvar"]
@@ -123,6 +123,37 @@ FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID;
 -- Tablo aktif trafik alırken arka planda güvenle doğrulanır:
 ALTER TABLE orders VALIDATE CONSTRAINT fk_orders_user;
 ```
+
+### Adım 3: `CONCURRENTLY` Sırasında `INVALID` İndeks Tespiti ve Temizliği
+`CREATE UNIQUE INDEX CONCURRENTLY` işlemi ikinci fazda tekrar eden (duplicate) veri nedeniyle başarısız olursa indeks silinmez; katalogda `INVALID` olarak kalır:
+
+```sql
+CREATE TABLE conc_test (id int, email text);
+INSERT INTO conc_test VALUES (1, 'a@test.com'), (2, 'a@test.com');
+
+CREATE UNIQUE INDEX CONCURRENTLY idx_conc_email ON conc_test (email);
+```
+
+Alınan gerçek hata ve katalog durumu:
+```text
+ERROR:  could not create unique index "idx_conc_email"
+DETAIL:  Key (email)=(a@test.com) is duplicated.
+```
+
+```sql
+SELECT indexrelid::regclass, indisvalid, indisready
+FROM pg_index
+WHERE indexrelid = 'idx_conc_email'::regclass;
+```
+
+```text
+   indexrelid   | indisvalid | indisready 
+----------------+------------+------------
+ idx_conc_email | f          | f
+(1 row)
+```
+
+`INVALID` indeksler okuma sorgularında kullanılmaz ancak her `INSERT/UPDATE` işleminde güncellenerek gereksiz yazma maliyeti üretir. Trafiği kesmeden `DROP INDEX CONCURRENTLY idx_conc_email;` komutuyla temizlenmelidir.
 
 Bu yöntemle canlı veritabanlarında milyarlarca satırlık tablolara dahi tek bir kullanıcı isteğini düşürmeden veri bütünlüğü kuralları eklenebilir.
 

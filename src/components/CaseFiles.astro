@@ -8,11 +8,11 @@ const systems = [
     stack: ['PostgreSQL', 'TimescaleDB', 'parallel-copy', 'pgvectorscale']
   },
   {
-    href: '/cases/apache-arrow',
+    href: '/posts/postgresql-kilit-mekanizmalari-ve-eszamanlilik',
     id: '02',
-    title: 'Apache Arrow: Zero-Copy Veri Akışı',
-    description: 'Büyük analitik sorgu sonuçlarının JSON serileştirme darboğazına girmeden doğrudan Arrow RecordBatch IPC akışıyla client belleğine eşlenmesi.',
-    stack: ['Apache Arrow', '.NET 10', 'TypeScript', 'HTTP/2']
+    title: 'PostgreSQL: Kilit Mekanizmaları ve Eşzamanlılık',
+    description: 'Yüksek eşzamanlı OLTP ortamlarında tablo ve satır kilitleri, deadlock analizi, advisory kilitler ve sıfır kesintili DDL stratejileri.',
+    stack: ['PostgreSQL', 'Lock Manager', 'pg_locks', 'Advisory Lock']
   }
 ];
 ---

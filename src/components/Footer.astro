@@ -4,13 +4,12 @@ import { getCollection } from 'astro:content';
 
 const currentYear = new Date().getFullYear();
 
-// Build sırasında tüm posts ve cases içeriklerini tarayarak en güncel yayın/güncelleme tarihini bulma
+// Build sırasında tüm posts içeriklerini tarayarak en güncel yayın/güncelleme tarihini bulma
 const allPosts = await getCollection('posts');
-const allCases = await getCollection('cases');
 
 let latestTimestamp = 0;
 
-[...allPosts, ...allCases].forEach((item) => {
+allPosts.forEach((item) => {
   const dateStr = item.data?.date;
   if (dateStr) {
     const time = new Date(dateStr).getTime();

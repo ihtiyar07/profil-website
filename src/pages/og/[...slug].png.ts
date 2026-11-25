@@ -1,6 +1,6 @@
 import { getCollection } from 'astro:content';
 import sharp from 'sharp';
-import { getCaseSlug, getPostSlug } from '../../data/slugUtils';
+import { getPostSlug } from '../../data/slugUtils';
 
 export interface Props {
   title: string;
@@ -97,21 +97,6 @@ export async function getStaticPaths() {
       },
     },
   ];
-
-  // Cases
-  const cases = await getCollection('cases');
-  for (const entry of cases) {
-    const slug = getCaseSlug(entry);
-    paths.push({
-      params: { slug: `cases/${slug}` },
-      props: {
-        title: entry.data.title,
-        subtitle: entry.data.tagline,
-        badge: entry.data.fileNumber,
-        meta: entry.data.stack.slice(0, 4).join(' · '),
-      },
-    });
-  }
 
   // Posts
   const posts = await getCollection('posts');

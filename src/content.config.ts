@@ -1,29 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
-const cases = defineCollection({
-  loader: glob({
-    pattern: '**/*.{md,mdx}',
-    base: './src/content/cases',
-    generateId: ({ entry }) => entry.replace(/\.(md|mdx)$/, ''),
-  }),
-  schema: z.object({
-    title: z.string(),
-    fileNumber: z.string(), // "Dosya 01", "Dosya 02", "Dosya 03"
-    tagline: z.string(),
-    date: z.string(),
-    lang: z.literal('tr').default('tr'),
-    testedScale: z.string(),
-    summary: z.string(),
-    stack: z.array(z.string()),
-    slug: z.string().optional(),
-    metrics: z.array(z.object({
-      label: z.string(),
-      value: z.string(),
-    })).optional(),
-  }),
-});
-
 const posts = defineCollection({
   loader: glob({
     pattern: '**/*.{md,mdx}',
@@ -43,4 +20,4 @@ const posts = defineCollection({
   }),
 });
 
-export const collections = { cases, posts };
+export const collections = { posts };

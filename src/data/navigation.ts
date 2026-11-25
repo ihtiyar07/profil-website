@@ -221,33 +221,6 @@ export const navSections: NavSection[] = [
         href: '/posts/postgrest-ile-postgresql-uzerinden-aninda-rest-api'
       }
     ]
-  },
-  {
-    id: 'storage',
-    title: 'Depolama & Altyapı',
-    overviewHref: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi',
-    items: [
-      {
-        title: 'ZFS & Depolama Düzeni',
-        href: '/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi'
-      },
-      {
-        title: 'Arrow ile Zero-Copy',
-        href: '/posts/arrow-ile-dbden-tarayiciya-zero-copy'
-      },
-      {
-        title: 'Apache Arrow Vaka Dosyası',
-        href: '/cases/apache-arrow'
-      },
-      {
-        title: 'Proxmox VE: Ağ & ZFS',
-        href: '/posts/dedicated-sunucuya-sifirdan-proxmox-ag-ve-firewall-notlari'
-      },
-      {
-        title: 'JWT vs Redis O(1) Yetki',
-        href: '/posts/jwtde-yetki-tasimak-neden-her-zaman-iyi-fikir-degil'
-      }
-    ]
   }
 ];
 
@@ -267,14 +240,6 @@ export const sectionThemes: Record<string, SectionColorRole> = {
     toggleText: 'text-teal-700 group-hover:text-teal-900 dark:text-teal-300 dark:group-hover:text-teal-100',
     treeBorder: 'border-teal-300/80 dark:border-teal-700/60',
     groupBorder: 'border-teal-200/70 dark:border-teal-900/40'
-  },
-  storage: {
-    dot: 'bg-indigo-600 dark:bg-indigo-400',
-    headerBg: 'bg-indigo-50/75 hover:bg-indigo-100/80 dark:bg-indigo-950/35 dark:hover:bg-indigo-900/45',
-    headerText: 'text-indigo-950 dark:text-indigo-100',
-    toggleText: 'text-indigo-700 group-hover:text-indigo-900 dark:text-indigo-300 dark:group-hover:text-indigo-100',
-    treeBorder: 'border-indigo-300/80 dark:border-indigo-700/60',
-    groupBorder: 'border-indigo-200/70 dark:border-indigo-900/40'
   },
   general: {
     dot: 'bg-slate-500 dark:bg-slate-400',

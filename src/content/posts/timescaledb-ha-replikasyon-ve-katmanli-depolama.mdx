@@ -66,7 +66,7 @@ ORDER BY j.job_id;
 
 ## 2. `move_chunk()` ile Hot / Cold Tablespace Katmanlama
 
-Yıllarca saklanması gereken eski Chunk'ları pahalı PCIe NVMe havuzunda tutmak yerine daha ucuz büyük kapasiteli disklere (**Tablespace**) taşımak için PostgreSQL'in doğal `TABLESPACE` özelliği TimescaleDB'nin **`move_chunk()`** fonksiyonuyla birleştirilir (bkz. [ZFS ve Depolama Düzeni](/posts/veritabani-depolama-ve-donanim-altyapisi-mimarisi)):
+Yıllarca saklanması gereken eski Chunk'ları pahalı PCIe NVMe havuzunda tutmak yerine daha ucuz büyük kapasiteli disklere (**Tablespace**) taşımak için PostgreSQL'in doğal `TABLESPACE` özelliği TimescaleDB'nin **`move_chunk()`** fonksiyonuyla birleştirilir (bkz. [Cluster, OID ve PGDATA Anatomisi](/posts/postgresql-cluster-oid-ve-pgdata)):
 
 <Mermaid
   title="Hot NVMe'den Cold Tablespace'e Chunk Taşıma"

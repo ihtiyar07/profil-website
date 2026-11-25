@@ -80,7 +80,7 @@ Satır kilitleri bellek yerine disk üzerindeki tuple header alanlarında (`t_in
 
 ## 4. Laboratuvar: DDL Kilit Çatışması ve Row-Lock Davranışı
 
-Aşağıdaki senaryoyu iki ayrı `psql` terminali açarak test edebilirsiniz.
+Aşağıdaki adımlarla iki ayrı oturumda tablo ve satır kilitlerinin nasıl çatıştığını, dönen hata çıktılarını ve `pg_locks` tablosundaki durumunu gözlemleyelim.
 
 ### Adım 1: Test Tablosunu Hazırlama
 ```sql
@@ -97,25 +97,67 @@ INSERT INTO accounts VALUES (1, 'Ahmet', 1000), (2, 'Mehmet', 2500);
 -- Terminal 1: Açık bir transaksiyonda SELECT yapıp bekleyelim (AccessShareLock)
 BEGIN;
 SELECT * FROM accounts WHERE id = 1;
--- Transaksiyonu bilerek COMMIT etmiyoruz!
+-- Transaksiyon bilerek COMMIT edilmiyor!
 
 -- Terminal 2: Tabloya yeni bir sütun eklemeyi deneyelim (AccessExclusiveLock)
+SET lock_timeout = '2s';
 ALTER TABLE accounts ADD COLUMN status text DEFAULT 'active';
--- Terminal 2 ANINDA BLOKE OLUR ve Terminal 1 COMMIT/ROLLBACK yapana kadar bekler!
 ```
 
-### Adım 3: Satır Seviyesi Non-Key Update Eşzamanlılığı
+Terminal 2 anında kilit kuyruğuna girer; Terminal 1 oturumu açık olduğu için 2 saniye sonra doğrudan kilit zaman aşımı hatasıyla sonlanır:
+
+```text
+SET
+ERROR:  canceling statement due to lock timeout
+```
+
+Terminal 2 beklerken üçüncü bir terminalden `pg_locks` incelendiğinde kilit kuyruğu net biçimde görülür:
+
 ```sql
--- Terminal 1'de ROLLBACK yaptıktan sonra:
--- Terminal 1: Satırda FOR KEY SHARE kilidi alalım (FK kontrolü simülasyonu)
+SELECT pid, locktype, mode, granted
+FROM pg_locks
+WHERE relation = 'accounts'::regclass
+ORDER BY granted DESC;
+```
+
+```text
+ pid | locktype |        mode         | granted 
+-----+----------+---------------------+---------
+ 114 | relation | AccessShareLock     | t
+ 118 | relation | AccessExclusiveLock | f
+(2 rows)
+```
+PID 114 kilidi tutarken (`granted = t`), DDL komutunu koşturan PID 118 kuyrukta bekletilmektedir (`granted = f`).
+
+### Adım 3: Satır Seviyesi Çakışma ve `NOWAIT` Hatası
+```sql
+-- Terminal 1'de açık transaksiyonda satırı kilitleyelim:
+ROLLBACK;
+BEGIN;
+SELECT * FROM accounts WHERE id = 1 FOR UPDATE;
+
+-- Terminal 2: Beklemeden aynı satırı kilitlemeyi denesin:
+SELECT * FROM accounts WHERE id = 1 FOR UPDATE NOWAIT;
+```
+
+PostgreSQL satırın kilitli olduğunu görür görmez kuyrukta beklemeden hata fırlatır:
+
+```text
+ERROR:  could not obtain lock on row in relation "accounts"
+```
+
+### Adım 4: Non-Key Update Eşzamanlılığı (`FOR KEY SHARE` vs `FOR NO KEY UPDATE`)
+```sql
+-- Terminal 1: Satırda FOR KEY SHARE kilidi alsın (Yabancı anahtar denetimi):
+ROLLBACK;
 BEGIN;
 SELECT * FROM accounts WHERE id = 1 FOR KEY SHARE;
 
--- Terminal 2: Satırın anahtar olmayan 'balance' sütununu güncelleyelim (FOR NO KEY UPDATE)
+-- Terminal 2: Satırın anahtar olmayan 'balance' alanını güncellesin:
 BEGIN;
 UPDATE accounts SET balance = balance + 100 WHERE id = 1;
--- UPDATE BLOKE OLMADAN ANINDA BAŞARILI OLUR!
 COMMIT;
+-- Çıktı: UPDATE 1 (Bloke olmadan, anında başarılı!)
 
 -- Terminal 1:
 COMMIT;

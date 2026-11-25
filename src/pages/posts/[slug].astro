@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getPostSlug, getCaseSlug } from '../../data/slugUtils';
+import { getPostSlug } from '../../data/slugUtils';
 import { SITE_META } from '../../data/siteMeta';
 import { getAdjacentNavItems, type FlatNavItem } from '../../data/navigation';
 
@@ -20,7 +20,6 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 
 const allPosts = await getCollection('posts');
-const allCases = await getCollection('cases');
 
 const currentSlug = getPostSlug(entry);
 const currentPath = `/posts/${currentSlug}`;
@@ -31,10 +30,9 @@ const adjacent = getAdjacentNavItems(currentPath);
 function resolveAdjacentDoc(item: FlatNavItem | null) {
   if (!item) return null;
   const post = allPosts.find((p) => `/posts/${getPostSlug(p)}` === item.href);
-  const caseItem = allCases.find((c) => `/cases/${getCaseSlug(c)}` === item.href);
   return {
     href: item.href,
-    title: post?.data.title || caseItem?.data.title || item.title,
+    title: post?.data.title || item.title,
     sectionTitle: item.sectionTitle,
     parentTitle: item.parentTitle
   };

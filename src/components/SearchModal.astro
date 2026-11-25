@@ -4,7 +4,7 @@
 
 <div
   id="search-modal"
-  class="fixed inset-0 z-[100] hidden items-start justify-center pt-[8vh] sm:pt-[12vh] px-4 pb-6"
+  class="fixed inset-0 z-[100] hidden items-start justify-center pt-[7vh] sm:pt-[11vh] px-4 pb-6"
   role="dialog"
   aria-modal="true"
   aria-labelledby="search-modal-title"
@@ -13,16 +13,19 @@
   <!-- Backdrop -->
   <div
     id="search-modal-backdrop"
-    class="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity"
+    class="fixed inset-0 bg-slate-950/45 dark:bg-black/65 backdrop-blur-sm transition-opacity duration-150"
     aria-hidden="true"
   ></div>
 
   <!-- Modal Container -->
-  <div class="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-[2px] shadow-2xl overflow-hidden flex flex-col max-h-[78vh]">
+  <div
+    id="search-modal-panel"
+    class="relative w-full max-w-2xl bg-[var(--bg-card)]/98 dark:bg-[#0D1118]/98 border border-[var(--border)] ring-1 ring-black/5 dark:ring-white/10 rounded-xl shadow-[0_24px_70px_-15px_rgba(15,23,42,0.3)] overflow-hidden flex flex-col max-h-[80vh] transition-all duration-150 ease-out"
+  >
     <h2 id="search-modal-title" class="sr-only">Dokümantasyon Araması</h2>
 
     <!-- Input Bar -->
-    <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] bg-[var(--bg)]">
+    <div class="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)]/80 bg-[var(--bg)]/60 focus-within:border-[var(--accent)]/50 transition-colors">
       <svg class="w-4 h-4 text-[var(--accent)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="11" cy="11" r="8" />
         <path stroke-linecap="round" d="m21 21-4.3-4.3" />
@@ -40,8 +43,20 @@
 
       <button
         type="button"
+        id="search-modal-clear-btn"
+        class="hidden shrink-0 w-6 h-6 items-center justify-center rounded-md text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+        aria-label="Aramayı temizle"
+        title="Temizle"
+      >
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
         id="search-modal-close-btn"
-        class="shrink-0 font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-dim)] hover:text-[var(--text)] cursor-pointer"
+        class="shrink-0 font-mono text-[10px] px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
         aria-label="Aramayı kapat (Esc)"
       >
         ESC
@@ -49,39 +64,61 @@
     </div>
 
     <!-- Results Container -->
-    <div id="search-modal-results" class="overflow-y-auto divide-y divide-[var(--border)]/70 p-2 space-y-1">
+    <div id="search-modal-results" class="overflow-y-auto p-2.5 space-y-1.5">
       <!-- Populated dynamically by script -->
     </div>
 
     <!-- Footer Shortcuts Hint -->
-    <div class="px-4 py-2 border-t border-[var(--border)] bg-[var(--bg-subtle)]/70 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--text-dim)]">
-      <div class="flex items-center gap-3">
+    <div class="px-4 py-2.5 border-t border-[var(--border)]/80 bg-[var(--bg-subtle)]/50 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--text-dim)]">
+      <div class="hidden sm:flex items-center gap-3.5">
         <span class="inline-flex items-center gap-1">
-          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">↑</kbd>
-          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">↓</kbd>
+          <kbd class="px-1.5 py-0.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[10px] shadow-2xs">↑</kbd>
+          <kbd class="px-1.5 py-0.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[10px] shadow-2xs">↓</kbd>
           <span>Gezin</span>
         </span>
         <span class="inline-flex items-center gap-1">
-          <kbd class="px-1.5 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">Enter</kbd>
+          <kbd class="px-1.5 py-0.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[10px] shadow-2xs">↵</kbd>
           <span>Aç</span>
         </span>
         <span class="inline-flex items-center gap-1">
-          <kbd class="px-1 py-0.5 rounded-[2px] bg-[var(--bg)] border border-[var(--border)]">Esc</kbd>
+          <kbd class="px-1.5 py-0.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[10px] shadow-2xs">Esc</kbd>
           <span>Kapat</span>
         </span>
       </div>
-      <span id="search-status-text">Hazır</span>
+      <span id="search-status-text" class="ml-auto">Hazır</span>
     </div>
   </div>
 </div>
 
 <style is:global>
+  /* Suppress global input focus-visible ring inside floating command palette */
+  #search-modal-input:focus,
+  #search-modal-input:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  #search-modal-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   #search-modal mark {
     background-color: var(--accent-subtle);
     color: var(--accent);
     font-weight: 600;
-    padding: 0 2px;
+    padding: 0.5px 0;
     border-radius: 2px;
+  }
+
+  #search-modal [data-search-nav-item].is-active {
+    background-color: var(--accent-subtle);
+    box-shadow: inset 0 0 0 1px var(--accent-border);
+  }
+
+  #search-modal [data-search-nav-item].is-active .search-enter-hint {
+    opacity: 1;
+    color: var(--accent);
   }
 </style>
 
@@ -277,6 +314,34 @@
     if (statusEl) statusEl.textContent = `${items.length} makale indekslendi`;
   }
 
+  function syncClearButton(val: string): void {
+    const clearBtn = document.getElementById('search-modal-clear-btn');
+    if (!clearBtn) return;
+    if (val.trim().length > 0) {
+      clearBtn.classList.remove('hidden');
+      clearBtn.classList.add('flex');
+    } else {
+      clearBtn.classList.add('hidden');
+      clearBtn.classList.remove('flex');
+    }
+  }
+
+  const QUICK_QUERIES = ['pg_locks', 'shared_buffers', 'HOT update', 'autovacuum', 'work_mem', 'pg_waldump'];
+
+  function renderQuickChipsHtml(): string {
+    return QUICK_QUERIES.map(
+      (q) => `
+      <button
+        type="button"
+        data-quick-query="${escapeHtml(q)}"
+        class="px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--border)] bg-[var(--bg-subtle)]/70 hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] text-[var(--text-muted)] transition-colors cursor-pointer"
+      >
+        ${escapeHtml(q)}
+      </button>
+    `
+    ).join('');
+  }
+
   function renderDefaultSuggestions(container: HTMLElement): void {
     const statusEl = document.getElementById('search-status-text');
     const featuredIds = [
@@ -296,24 +361,40 @@
     }
 
     let html = `
-      <div class="px-2 py-1.5">
-        <div class="text-[10px] font-mono uppercase tracking-wider text-[var(--text-dim)] px-2 pb-1.5">
+      <div class="px-1.5 pt-1 pb-2.5 border-b border-[var(--border)]/60">
+        <div class="text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--text-dim)] px-2 pb-2">
+          Popüler Kavramlar
+        </div>
+        <div class="flex flex-wrap gap-1.5 px-2">
+          ${renderQuickChipsHtml()}
+        </div>
+      </div>
+
+      <div class="px-1 pt-2 pb-1 space-y-0.5">
+        <div class="text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--text-dim)] px-2.5 pb-1.5">
           Hızlı Erişim & Çekirdek Seriler
         </div>
         <a
           href="/ogrenme-rotasi"
           data-search-nav-item
-          class="search-nav-item flex items-center justify-between px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+          class="search-nav-item group flex items-center justify-between gap-3 px-2.5 py-2 rounded-lg hover:bg-[var(--bg-subtle)]/80 transition-colors"
         >
-          <div class="flex items-center gap-2.5 min-w-0">
-            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] shrink-0">
-              ROTA
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-7 h-7 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] flex items-center justify-center shrink-0">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+              </svg>
             </span>
-            <span class="font-sans text-sm font-medium text-[var(--text)] truncate">
-              PostgreSQL Öğrenme Rotası (6 Aşama)
-            </span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-sans text-[13.5px] font-medium text-[var(--text)] truncate">PostgreSQL Öğrenme Rotası</span>
+                <span class="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)] font-medium shrink-0">6 Aşama</span>
+              </div>
+              <div class="text-[11px] font-mono text-[var(--text-dim)]">Adım adım mimari ve lab yolu</div>
+            </div>
           </div>
-          <span class="font-mono text-xs text-[var(--accent)] shrink-0">→</span>
+          <span class="search-enter-hint font-mono text-[11px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">↵</span>
         </a>
     `;
 
@@ -322,13 +403,21 @@
         <a
           href="${item.url}"
           data-search-nav-item
-          class="search-nav-item flex items-center justify-between px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+          class="search-nav-item group flex items-center justify-between gap-3 px-2.5 py-2 rounded-lg hover:bg-[var(--bg-subtle)]/80 transition-colors"
         >
-          <div class="min-w-0 pr-3">
-            <div class="text-sm font-serif text-[var(--text)] truncate">${escapeHtml(item.title)}</div>
-            <div class="text-[11px] font-mono text-[var(--text-dim)]">${escapeHtml(item.category)} · ${escapeHtml(item.readingTime)}</div>
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-7 h-7 rounded-md bg-[var(--bg-subtle)] text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center justify-center shrink-0 transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5h5M9 13h6M9 17h4" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <div class="text-[13.5px] font-medium font-sans text-[var(--text)] group-hover:text-[var(--accent)] truncate transition-colors">${escapeHtml(item.title)}</div>
+              <div class="text-[11px] font-mono text-[var(--text-dim)] truncate">${escapeHtml(item.category)} · ${escapeHtml(item.readingTime)}</div>
+            </div>
           </div>
-          <span class="font-mono text-xs text-[var(--text-dim)] shrink-0">→</span>
+          <span class="search-enter-hint font-mono text-[11px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">↵</span>
         </a>
       `;
     }
@@ -339,6 +428,7 @@
   }
 
   function renderResults(query: string, container: HTMLElement): void {
+    syncClearButton(query);
     const trimmed = query.trim();
     if (!trimmed) {
       renderDefaultSuggestions(container);
@@ -363,13 +453,13 @@
 
     if (results.length === 0) {
       container.innerHTML = `
-        <div class="py-10 px-4 text-center space-y-2">
+        <div class="py-10 px-4 text-center space-y-3">
           <p class="text-sm font-sans text-[var(--text-muted)]">
             "<span class="font-mono text-[var(--text)] font-semibold">${escapeHtml(trimmed)}</span>" için eşleşen sonuç bulunamadı.
           </p>
-          <p class="text-xs font-mono text-[var(--text-dim)]">
-            Örnek aramalar: pg_locks, vacuum, shared_buffers, deadlock, advisory
-          </p>
+          <div class="flex flex-wrap justify-center gap-1.5 pt-1">
+            ${renderQuickChipsHtml()}
+          </div>
         </div>
       `;
       activeIndex = -1;
@@ -378,7 +468,7 @@
 
     const cleanTerms = terms.map(normalizeTr).filter((t) => t.length >= 2);
     const topResults = results.slice(0, 12);
-    let html = '';
+    let html = '<div class="space-y-1.5">';
 
     for (const res of topResults) {
       const item = itemById.get(res.id);
@@ -396,51 +486,63 @@
       const snippet = buildSnippet(item, terms);
 
       html += `
-        <div class="py-2 px-1.5 space-y-1">
+        <div class="space-y-1">
           <!-- Level 1: Article Title + Category -->
           <a
             href="${item.url}"
             data-search-nav-item
-            class="search-nav-item block px-3 py-2 rounded-[2px] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+            class="search-nav-item group flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bg-subtle)]/80 transition-colors"
           >
-            <div class="flex items-center justify-between gap-2 mb-0.5">
-              <div class="flex items-center gap-1.5 min-w-0 font-mono text-[10.5px]">
-                <span class="px-1.5 py-0.5 rounded-[2px] bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] font-medium truncate">
-                  ${escapeHtml(item.category)}
-                </span>
-                ${item.badge ? `<span class="px-1.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] text-[var(--text-dim)] border border-[var(--border)]">${escapeHtml(item.badge)}</span>` : ''}
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+              <span class="w-7 h-7 rounded-md bg-[var(--bg-subtle)] text-[var(--text-dim)] group-hover:text-[var(--accent)] flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5h5M9 13h6M9 17h4" />
+                </svg>
+              </span>
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2 mb-0.5">
+                  <div class="flex items-center gap-1.5 min-w-0 font-mono text-[10px]">
+                    <span class="px-1.5 py-0.5 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)] font-medium truncate">
+                      ${escapeHtml(item.category)}
+                    </span>
+                    ${item.badge ? `<span class="px-1.5 py-0.5 rounded-md bg-[var(--bg-subtle)] text-[var(--text-dim)]">${escapeHtml(item.badge)}</span>` : ''}
+                  </div>
+                  <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0">${escapeHtml(item.readingTime)}</span>
+                </div>
+
+                <div class="font-sans font-medium text-[14px] text-[var(--text)] leading-snug">
+                  ${highlightMatches(item.title, terms)}
+                </div>
+
+                ${
+                  snippet
+                    ? `<p class="mt-1 text-xs font-sans text-[var(--text-muted)] line-clamp-2 leading-relaxed">${highlightMatches(snippet.text, terms)}</p>`
+                    : ''
+                }
               </div>
-              <span class="font-mono text-[10.5px] text-[var(--text-dim)] shrink-0">${escapeHtml(item.readingTime)}</span>
             </div>
-
-            <div class="font-serif text-[15.5px] text-[var(--text)] leading-snug">
-              ${highlightMatches(item.title, terms)}
-            </div>
-
-            ${
-              snippet
-                ? `<p class="mt-1 text-xs font-sans text-[var(--text-muted)] line-clamp-2 leading-relaxed">${highlightMatches(snippet.text, terms)}</p>`
-                : ''
-            }
+            <span class="search-enter-hint font-mono text-[11px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1">↵</span>
           </a>
 
           <!-- Level 2: Indented Matching H2/H3 Headings -->
           ${
             matchingHeadings.length > 0
-              ? `<div class="pl-5 ml-3 border-l border-[var(--border-strong)] space-y-0.5">
+              ? `<div class="pl-3 ml-6 border-l border-[var(--border)] space-y-0.5">
                   ${matchingHeadings
                     .map(
                       (h) => `
                     <a
                       href="${item.url}#${h.slug}"
                       data-search-nav-item
-                      class="search-nav-item flex items-center justify-between gap-2 px-2.5 py-1 rounded-[2px] text-xs font-sans text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent"
+                      class="search-nav-item group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-xs font-sans text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]/80 transition-colors"
                     >
-                      <span class="flex items-center gap-1.5 min-w-0 truncate">
-                        <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0">${h.depth === 2 ? 'H2' : 'H3'}</span>
+                      <span class="flex items-center gap-2 min-w-0 truncate">
+                        <span class="font-mono text-[10px] px-1 py-0.2 rounded bg-[var(--bg-subtle)] text-[var(--text-dim)] shrink-0">${h.depth === 2 ? 'H2' : 'H3'}</span>
                         <span class="truncate">${highlightMatches(h.text, terms)}</span>
                       </span>
-                      <span class="font-mono text-[10px] text-[var(--text-dim)] shrink-0">#</span>
+                      <span class="search-enter-hint font-mono text-[10px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 shrink-0">↵</span>
                     </a>
                   `
                     )
@@ -452,6 +554,7 @@
       `;
     }
 
+    html += '</div>';
     container.innerHTML = html;
     activeIndex = 0;
     updateActiveNavVisual();
@@ -461,10 +564,10 @@
     const items = document.querySelectorAll<HTMLElement>('#search-modal-results [data-search-nav-item]');
     items.forEach((el, idx) => {
       if (idx === activeIndex) {
-        el.classList.add('bg-[var(--bg-subtle)]', 'border-[var(--accent-border)]');
+        el.classList.add('is-active');
         el.scrollIntoView({ block: 'nearest' });
       } else {
-        el.classList.remove('bg-[var(--bg-subtle)]', 'border-[var(--accent-border)]');
+        el.classList.remove('is-active');
       }
     });
   }
@@ -487,6 +590,7 @@
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
 
+    syncClearButton(input.value);
     input.focus();
 
     try {
@@ -528,6 +632,30 @@
 
       if (target.closest('#search-modal-backdrop') || target.closest('#search-modal-close-btn')) {
         closeSearchModal();
+        return;
+      }
+
+      const quickChip = target.closest<HTMLElement>('[data-quick-query]');
+      if (quickChip) {
+        const q = quickChip.getAttribute('data-quick-query') || '';
+        const input = document.getElementById('search-modal-input') as HTMLInputElement | null;
+        const resultsEl = document.getElementById('search-modal-results');
+        if (input && resultsEl) {
+          input.value = q;
+          input.focus();
+          renderResults(q, resultsEl);
+        }
+        return;
+      }
+
+      if (target.closest('#search-modal-clear-btn')) {
+        const input = document.getElementById('search-modal-input') as HTMLInputElement | null;
+        const resultsEl = document.getElementById('search-modal-results');
+        if (input && resultsEl) {
+          input.value = '';
+          input.focus();
+          renderResults('', resultsEl);
+        }
         return;
       }
 

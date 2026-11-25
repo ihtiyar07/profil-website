@@ -90,12 +90,14 @@ UPDATE accounts SET balance = 150 WHERE id = 1;
 
 Bu güncellemenin ardından 0 numaralı bloktaki line pointer ve tuple başlıkları incelendiğinde zincir doğrudan açığa çıkar:
 
-```text
+```sql
 SELECT lp, lp_off, t_xmin, t_xmax, t_ctid,
        CASE WHEN (t_infomask2 & 16384) > 0 THEN 'HEAP_HOT_UPDATED' ELSE 'NORMAL' END AS hot_updated,
        CASE WHEN (t_infomask2 & 32768) > 0 THEN 'HEAP_ONLY_TUPLE' ELSE 'ROOT' END AS hot_tuple
 FROM heap_page_items(get_raw_page('accounts', 0));
+```
 
+```text
  lp | lp_off | t_xmin | t_xmax | t_ctid |   hot_updated    |    hot_tuple    
 ----+--------+--------+--------+--------+------------------+-----------------
   1 |   8144 |    755 |    756 | (0,2)  | HEAP_HOT_UPDATED | ROOT
@@ -108,9 +110,11 @@ FROM heap_page_items(get_raw_page('accounts', 0));
 **HOT Mekanizmasının İndeks Güvencesi:**
 B-Tree primary key indeks bloğu (`bt_page_items`) sorgulandığında, indeksin **yalnızca tek bir satır** içerdiği görülür:
 
-```text
+```sql
 SELECT itemoffset, ctid FROM bt_page_items(get_raw_page('accounts_pkey', 1));
+```
 
+```text
  itemoffset | ctid  
 ------------+-------
           1 | (0,1)

@@ -62,7 +62,7 @@ Dead tuple'ların diskte yer kaplamaya devam etmesine **Table Bloat** denir. Bir
 
 Autovacuum kapatılmış (`autovacuum_enabled = false`) 10.000 satırlık bir tabloda ardışık 5 tur güncelleme (50.000 dead tuple) yapıldığında diskin davranışı ve `VACUUM` farkı:
 
-```text
+```sql
 -- 1. Başlangıç (10.000 canlı satır):
 SELECT pg_size_pretty(pg_total_relation_size('bloat_test')); -- 624 kB
 

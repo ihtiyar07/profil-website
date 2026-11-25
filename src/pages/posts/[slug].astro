@@ -165,30 +165,9 @@ const tocHeadings = [
         <Content />
       </div>
 
-      <!-- Article Bottom Navigation & Feedback -->
-      <div class="pt-8 border-t border-[var(--border)] space-y-4">
-        <!-- Top bar: Back link + Subtle feedback link -->
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 font-mono text-xs text-[var(--text-dim)]">
-          <a
-            href="/#articles"
-            class="text-[var(--text-accent)] hover:text-[var(--accent-hover)] inline-flex items-center gap-1.5 transition-colors tactile-btn group"
-            aria-label="Tüm yazılara dön"
-          >
-            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-            <span>Tüm Yazılar ve Notlar</span>
-          </a>
-
-          <a
-            href={`mailto:${SITE_META.email}?subject=${encodeURIComponent(`Geri Bildirim: ${entry.data.title}`)}`}
-            class="hover:text-[var(--text)] hover:underline inline-flex items-center gap-1 transition-colors text-[11px]"
-          >
-            <span>Yazı hakkında geri bildirim veya katkı ilet</span>
-            <span aria-hidden="true">↗</span>
-          </a>
-        </div>
-
-        <!-- Next / Prev Article Navigation Cards -->
-        <nav aria-label="Döküman gezintisi" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+      <!-- Article Bottom Navigation (Prev / Next only) -->
+      {(prevDoc || nextDoc) && (
+        <nav aria-label="Döküman gezintisi" class="pt-8 border-t border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-3">
           {prevDoc ? (
             <a
               href={prevDoc.href}
@@ -225,11 +204,11 @@ const tocHeadings = [
             </a>
           )}
         </nav>
-      </div>
+      )}
     </article>
     </div>
 
-    <!-- Sticky Right Rail: Clean, borderless "On This Page" TOC -->
+    <!-- Sticky Right Rail: Clean, borderless "On This Page" TOC + Utility Actions -->
     <aside 
       id="article-right-panel"
       class="hidden xl:block w-56 2xl:w-64 shrink-0 pr-6 pl-2 py-10 space-y-5 self-start sticky top-0 max-h-screen overflow-y-auto select-none"
@@ -243,7 +222,7 @@ const tocHeadings = [
             <span>İçindekiler</span>
           </div>
 
-          <nav aria-label="İçindekiler" class="border-l border-[var(--border)] space-y-0.5 text-[12px] font-sans max-h-[calc(100vh-10rem)] overflow-y-auto pr-2">
+          <nav aria-label="İçindekiler" class="border-l border-[var(--border)] space-y-0.5 text-[12px] font-sans max-h-[calc(100vh-14rem)] overflow-y-auto pr-2">
             {tocHeadings.map((h) => (
               <a
                 href={`#${h.slug}`}
@@ -262,27 +241,29 @@ const tocHeadings = [
         </div>
       )}
 
-      {parentPost && (
-        <div class="pt-3 border-t border-[var(--border)]/60">
-          <a
-            href={`/posts/${getPostSlug(parentPost)}`}
-            class="group flex items-start gap-1.5 text-[11.5px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors leading-snug"
-            title={`Üst Rehber: ${parentPost.data.title}`}
-          >
-            <span class="font-mono text-[var(--text-dim)] group-hover:text-[var(--accent)] group-hover:-translate-x-0.5 transition-all shrink-0" aria-hidden="true">←</span>
-            <span class="line-clamp-2">{parentPost.data.title}</span>
-          </a>
-        </div>
-      )}
-
-      <!-- Jump to Top Link -->
-      <div class="pt-2 border-t border-[var(--border)]/60">
+      <!-- Page Utility Actions -->
+      <div class="pt-3.5 border-t border-[var(--border)]/60 space-y-2 text-[11.5px] font-sans">
         <a
-          href="#main-content"
-          class="font-mono text-[11px] text-[var(--text-dim)] hover:text-[var(--text)] inline-flex items-center gap-1.5 transition-colors"
+          href="/#articles"
+          class="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors group"
         >
-          <span aria-hidden="true">↑</span>
-          <span>Başa Dön</span>
+          <svg class="w-3.5 h-3.5 text-[var(--text-dim)] group-hover:text-[var(--accent)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h10" />
+          </svg>
+          <span>Tüm Yazıları Görüntüle</span>
+        </a>
+
+        <a
+          href={`mailto:${SITE_META.email}?subject=${encodeURIComponent(`Geri Bildirim: ${entry.data.title}`)}`}
+          class="flex items-center justify-between gap-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors group"
+        >
+          <span class="flex items-center gap-2 min-w-0">
+            <svg class="w-3.5 h-3.5 text-[var(--text-dim)] group-hover:text-[var(--accent)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="truncate">Geri Bildirim / Katkı İlet</span>
+          </span>
+          <span class="font-mono text-[10px] text-[var(--text-dim)] group-hover:text-[var(--accent)] shrink-0" aria-hidden="true">↗</span>
         </a>
       </div>
     </aside>

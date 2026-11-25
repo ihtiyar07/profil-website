@@ -1,5 +1,4 @@
 ---
-import { SITE_META } from '../data/siteMeta';
 import { getCollection } from 'astro:content';
 
 const currentYear = new Date().getFullYear();
@@ -28,50 +27,27 @@ const latestDate = latestTimestamp > 0 ? new Date(latestTimestamp) : new Date();
 const lastUpdatedFormatted = `${turkishMonths[latestDate.getMonth()]} ${latestDate.getFullYear()}`;
 ---
 
-<footer class="w-full border-t border-[var(--border)] bg-[var(--bg)] text-xs font-mono py-6 transition-colors">
+<footer class="w-full border-t border-[var(--border)]/70 bg-[var(--bg)] text-[11.5px] py-5 transition-colors">
   <div class="max-w-[1140px] w-full mx-auto px-5 sm:px-8 lg:px-10">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[var(--text-muted)]">
-      <!-- Identity, Copyright & Last Updated -->
-      <div class="flex flex-wrap items-center gap-2 text-[11.5px]">
-        <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" aria-hidden="true"></span>
-        <span class="font-medium text-[var(--text)]">© {currentYear} Ahmet İhtiyar</span>
-        <span class="text-[var(--text-dim)]">·</span>
-        <span class="text-[var(--text-dim)]">PostgreSQL & Veritabanı Notları</span>
-        <span class="text-[var(--text-dim)] hidden md:inline">·</span>
-        <span class="text-[var(--text-dim)] hidden md:inline">Son güncelleme: {lastUpdatedFormatted}</span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[var(--text-dim)]">
+      <!-- Colophon / Identity -->
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 font-sans">
+        <span class="font-medium text-[var(--text-muted)]">© {currentYear} Ahmet İhtiyar</span>
+        <span class="text-[var(--border-strong)]" aria-hidden="true">·</span>
+        <span>PostgreSQL & Veritabanı Mimarisi Notları</span>
       </div>
 
-      <!-- Links & Navigation -->
-      <div class="flex flex-wrap items-center gap-3.5 text-[var(--text-dim)] text-[11.5px]">
-        <a 
-          href={SITE_META.github} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="hover:text-[var(--text)] transition-colors"
+      <!-- Freshness & Feed -->
+      <div class="flex items-center gap-2.5 font-mono text-[11px]">
+        <span>Son güncelleme: {lastUpdatedFormatted}</span>
+        <span class="text-[var(--border-strong)]" aria-hidden="true">·</span>
+        <a
+          href="/rss.xml"
+          class="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors inline-flex items-center gap-0.5"
+          title="RSS Akışı"
         >
-          GitHub ↗
-        </a>
-        <a 
-          href={SITE_META.linkedin} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="hover:text-[var(--text)] transition-colors"
-        >
-          LinkedIn ↗
-        </a>
-        <a 
-          href={`mailto:${SITE_META.email}`} 
-          class="hover:text-[var(--text)] transition-colors"
-        >
-          E-posta
-        </a>
-        <span class="text-[var(--border)]">|</span>
-        <a 
-          href="#main-content" 
-          class="hover:text-[var(--text)] transition-colors inline-flex items-center gap-1"
-        >
-          <span>Başa Dön</span>
-          <span aria-hidden="true">↑</span>
+          <span>RSS</span>
+          <span aria-hidden="true">↗</span>
         </a>
       </div>
     </div>
